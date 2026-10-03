@@ -6,6 +6,8 @@ extends Control
 ## follows it. Where it was left is remembered (SettingsManager.code_window).
 
 signal closed
+## The Upgrade button was pressed (Game shows the confirm pop-up).
+signal upgrade_requested(staff_name: String)
 
 const Builtins := preload("res://systems/c_interpreter/c_builtins.gd")
 const Kitchen := preload("res://systems/kitchen/kitchen_rules.gd")
@@ -36,6 +38,7 @@ var _drag := ""          # "", "move" or "resize"
 var _drag_from := Vector2.ZERO
 var _rect_from := Rect2()
 var _error_line := -1
+var _upgrade: Button
 
 @onready var title: Label = %Title
 @onready var code_edit: CodeEdit = %CodeEdit
@@ -57,6 +60,36 @@ func _ready() -> void:
 	code_edit.text_changed.connect(_on_code_changed)
 	_build_library_drawer()
 	_setup_floating()
+	_build_upgrade_button()
+
+
+## "Upgrade" in the title row: buys this staff member's next level.
+func _build_upgrade_button() -> void:
+	_upgrade = Button.new()
+	_upgrade.custom_minimum_size = Vector2(130, 56)
+	_upgrade.add_theme_font_size_override("font_size", 22)
+	_upgrade.focus_mode = Control.FOCUS_NONE
+	_upgrade.tooltip_text = "Level up this staff member: faster walking and work, more coins per dish."
+	_upgrade.pressed.connect(func():
+		if staff:
+			upgrade_requested.emit(staff.staff_name))
+	close_button.get_parent().add_child(_upgrade)
+	close_button.get_parent().move_child(_upgrade, close_button.get_index())
+	title.clip_text = true
+	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	GameState.staff_upgraded.connect(func(_n, _l, _s): _update_title())
+
+
+func _update_title() -> void:
+	if staff == null:
+		return
+	var sp: String = GameState.staff_spec(staff.staff_name)
+	var spec := (" " + sp) if sp != "" else ""
+	title.text = "%s · Lv %d%s" % [staff.staff_name, GameState.staff_level(staff.staff_name), spec]
+	title.tooltip_text = "%s's program" % staff.staff_name
+	var cost: int = GameState.staff_upgrade_cost(staff.staff_name)
+	_upgrade.text = "Upgrade %d" % cost if cost > 0 else "Max Lv"
+	_upgrade.disabled = cost <= 0
 
 
 func _setup_editor() -> void:
@@ -96,7 +129,7 @@ func open(for_staff: Staff) -> void:
 	staff.running_changed.connect(_on_running_changed)
 	staff.line_changed.connect(_on_line_changed)
 	staff.error_at.connect(_on_error_at)
-	title.text = "Program: %s  (Staff Lv %d)" % [staff.staff_name, staff.level]
+	_update_title()
 	code_edit.text = staff.program_source
 	_clear_marks()
 	_update_hint()

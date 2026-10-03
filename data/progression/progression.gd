@@ -31,9 +31,73 @@ const STAFF := [
 	{"name": "Gab", "by": "player", "level": 10, "color": Color(0.95, 0.85, 0.35)},
 ]
 
-## Staff levels (each staff member levels up separately; upgrades come later).
+## Staff levels: each staff member is upgraded separately with coins (expensive
+## on purpose: a full Lv 1 -> 10 costs 12,050 coins per staff member).
 const MAX_STAFF_LEVEL := 10
-const STAFF_SPECIALIZATIONS := ["Chef", "Assistant Chef", "Sales"]
+## Coins to go from Lv N to N+1 (first entry = Lv 1 -> 2).
+const STAFF_UPGRADE_COST := [250, 400, 600, 850, 1150, 1500, 1900, 2400, 3000]
+## Per level above 1: walks faster, works faster, earns more per dish served.
+const STAFF_WALK_PER_LEVEL := 0.06   # Lv 10: +54% walking speed
+const STAFF_WORK_PER_LEVEL := 0.05   # Lv 10: actions take 55% of the time
+const STAFF_PROFIT_PER_LEVEL := 0.03 # Lv 10: +27% coins on dishes they serve
+## Role picked when reaching Lv 10 (FR-17/18).
+const STAFF_SPECIALIZATIONS := ["Chef", "Barista", "Cashier", "Waiter"]
+const SPECIALIZATION_INFO := {
+	"Chef": "Cooks 30% faster (grill, fryer, stove, rice cooker).",
+	"Barista": "Brews and bakes 30% faster in the Café (coffee machine, oven).",
+	"Cashier": "+20% coins on every dish they serve.",
+	"Waiter": "Walks 20% faster; while a Waiter is on staff, customers lose patience 25% slower.",
+}
+## Café stations sped up by the Barista.
+const CAFE_STATIONS := ["COFFEE_MACHINE", "OVEN"]
+## Customer patience drain while a Waiter is on staff.
+const WAITER_PATIENCE_MULT := 0.75
+
+
+## Coins for the next staff upgrade (0 = already max level).
+static func staff_upgrade_cost(level: int) -> int:
+	if level >= MAX_STAFF_LEVEL:
+		return 0
+	return STAFF_UPGRADE_COST[clampi(level, 1, MAX_STAFF_LEVEL - 1) - 1]
+
+
+## Total coins spent to reach `level` from Lv 1.
+static func staff_spent_to(level: int) -> int:
+	var n := 0
+	for l in range(1, clampi(level, 1, MAX_STAFF_LEVEL)):
+		n += staff_upgrade_cost(l)
+	return n
+
+
+## Walking speed multiplier.
+static func staff_walk_mult(level: int, spec := "") -> float:
+	var m := 1.0 + STAFF_WALK_PER_LEVEL * (clampi(level, 1, MAX_STAFF_LEVEL) - 1)
+	return m * (1.2 if spec == "Waiter" else 1.0)
+
+
+## Time multiplier for an action ("pick", "cook", "brew" (Café cooking), "plate",
+## "assemble", "serve", "trash", "take").
+static func staff_work_mult(level: int, spec := "", kind := "") -> float:
+	var m := 1.0 - STAFF_WORK_PER_LEVEL * (clampi(level, 1, MAX_STAFF_LEVEL) - 1)
+	var fast := false
+	match spec:
+		"Chef": fast = kind == "cook"
+		"Barista": fast = kind == "brew"
+	return m * (0.7 if fast else 1.0)
+
+
+## Coin multiplier for dishes this staff member serves.
+static func staff_profit_mult(level: int, spec := "") -> float:
+	var m := 1.0 + STAFF_PROFIT_PER_LEVEL * (clampi(level, 1, MAX_STAFF_LEVEL) - 1)
+	return m + (0.2 if spec == "Cashier" else 0.0)
+
+
+## Short "what this level gives" text, e.g. for the upgrade popup.
+static func staff_perks_text(level: int, spec := "") -> String:
+	var walk := roundi((staff_walk_mult(level, spec) - 1.0) * 100)
+	var work := roundi((1.0 - staff_work_mult(level)) * 100)
+	var profit := roundi((staff_profit_mult(level, spec) - 1.0) * 100)
+	return "+%d%% walking speed · %d%% faster work · +%d%% coins per dish" % [walk, work, profit]
 
 
 static func exp_to_next(level: int) -> int:

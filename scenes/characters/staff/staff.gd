@@ -20,6 +20,7 @@ signal _arrived
 const CInterpreter := preload("res://systems/c_interpreter/c_interpreter.gd")
 const Kitchen := preload("res://systems/kitchen/kitchen_rules.gd")
 const PixelArt := preload("res://scenes/art/pixel_art.gd")
+const Progression := preload("res://data/progression/progression.gd")
 
 @export var staff_name := "Jane":
 	set(v):
@@ -40,7 +41,10 @@ const PixelArt := preload("res://scenes/art/pixel_art.gd")
 	set(v):
 		show_name = v
 		queue_redraw()
+## Staff level (1–10, bought with coins) and the Lv 10 specialization.
+## Kept in GameState; synced in _ready() and on GameState.staff_upgraded.
 @export var level := 1
+var specialization := ""
 @export var move_speed := 180.0
 
 const RADIUS := 22.0
@@ -95,8 +99,23 @@ func _ready() -> void:
 		program_source = GameState.staff_programs[staff_name]  # from the save file
 	if not Engine.is_editor_hint():
 		collision_mask = 0  # staff follow paths; they don't get pushed around
+		_sync_level()
+		GameState.staff_upgraded.connect(func(n: String, _l: int, _s: String):
+			if n == staff_name:
+				_sync_level())
 	_refresh_art()
 	queue_redraw()
+
+
+func _sync_level() -> void:
+	level = GameState.staff_level(staff_name)
+	specialization = GameState.staff_spec(staff_name)
+	queue_redraw()
+
+
+## Coin multiplier for dishes this staff member serves (upgrades, Cashier).
+func profit_mult() -> float:
+	return Progression.staff_profit_mult(level, specialization)
 
 
 ## Finds this staff member's art and sets up the sprite (drawn behind the
@@ -134,7 +153,8 @@ func _draw() -> void:
 	var top := _art_top()
 	var bottom := RADIUS
 	if show_name:
-		_draw_centered(font, staff_name, Vector2(0, top - 12), 18, Color.WHITE)
+		var tag := staff_name if level <= 1 else "%s · Lv %d" % [staff_name, level]
+		_draw_centered(font, tag, Vector2(0, top - 12), 18, Color.WHITE if level < Progression.MAX_STAFF_LEVEL else Color(1, 0.85, 0.4))
 	if not held.is_empty():
 		_draw_held(font)
 	if busy_text != "":
@@ -176,7 +196,7 @@ func _physics_process(delta: float) -> void:
 	_animate(delta)
 	if _path.is_empty():
 		return
-	var step := move_speed * delta
+	var step := move_speed * Progression.staff_walk_mult(level, specialization) * delta
 	while step > 0.0 and not _path.is_empty():
 		var d := global_position.distance_to(_path[0])
 		if d <= step:
@@ -228,7 +248,10 @@ func _act(kind: String, seconds: float, text := "", at = null) -> void:
 	_action = kind
 	_action_t = 0.0
 	busy_text = text
-	await _sleep(seconds)
+	var work := "take" if text.begins_with("taking the order") else kind
+	if kind == "cook" and _at_station in Progression.CAFE_STATIONS:
+		work = "brew"
+	await _sleep(seconds * Progression.staff_work_mult(level, specialization, work))
 	_action = ""
 	busy_text = ""
 	queue_redraw()

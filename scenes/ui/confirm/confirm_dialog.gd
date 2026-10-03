@@ -12,6 +12,9 @@ var _cost: Label
 var _yes: Button
 var _no: Button
 var _on_yes: Callable
+## Pick-one mode (ask_choice): one button per option instead of Buy.
+var _choices: HBoxContainer
+var _on_pick: Callable
 
 
 func _ready() -> void:
@@ -46,6 +49,11 @@ func _ready() -> void:
 	_cost.add_theme_font_size_override("font_size", 24)
 	_cost.add_theme_constant_override("outline_size", 0)
 	box.add_child(_cost)
+	_choices = HBoxContainer.new()
+	_choices.alignment = BoxContainer.ALIGNMENT_CENTER
+	_choices.add_theme_constant_override("separation", 14)
+	_choices.hide()
+	box.add_child(_choices)
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", 20)
@@ -70,6 +78,8 @@ func ask(title: String, body: String, cost: int, on_yes: Callable, yes_text := "
 	_title.text = title
 	_body.text = body
 	_on_yes = on_yes
+	_choices.hide()
+	_yes.show()
 	var afford: bool = GameState.money >= cost and not locked
 	_yes.text = "%s (%d)" % [yes_text, cost] if cost > 0 else yes_text
 	_yes.disabled = not afford
@@ -84,8 +94,37 @@ func ask(title: String, body: String, cost: int, on_yes: Callable, yes_text := "
 	(_yes if afford else _no).grab_focus()
 
 
+## Like ask(), but the player picks one of `options` (e.g. a specialization);
+## on_pick(option) runs when they pick one and can afford `cost`.
+func ask_choice(title: String, body: String, cost: int, options: Array, on_pick: Callable) -> void:
+	ask(title, body, cost, Callable())
+	_yes.hide()
+	_on_pick = on_pick
+	for c in _choices.get_children():
+		c.queue_free()
+	var afford: bool = GameState.money >= cost
+	for o in options:
+		var b := Button.new()
+		b.text = str(o)
+		b.custom_minimum_size = Vector2(170, 64)
+		b.theme_type_variation = &"StartButton"
+		b.add_theme_font_size_override("font_size", 24)
+		b.disabled = not afford
+		b.pressed.connect(_pick.bind(str(o)))
+		_choices.add_child(b)
+	_choices.show()
+	_no.grab_focus()
+
+
+func _pick(option: String) -> void:
+	var f := _on_pick
+	close()
+	if f.is_valid():
+		f.call(option)
+
+
 func _confirm() -> void:
-	if _yes.disabled:
+	if not _yes.visible or _yes.disabled:
 		return
 	var f := _on_yes
 	close()

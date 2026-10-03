@@ -14,6 +14,8 @@ signal staff_roster_changed(joined: Array)
 signal stats_changed
 ## The Café was unlocked or a Café recipe was bought (Restaurant Level 5).
 signal cafe_changed(step: int)
+## A staff member was upgraded (new level, specialization or "").
+signal staff_upgraded(staff_name: String, level: int, spec: String)
 
 const MAX_RESTAURANT_LEVEL := 5
 const MAX_STAFF := 6
@@ -78,6 +80,9 @@ const LevelChallenges := preload("res://systems/challenges/level_challenges.gd")
 var library_slots: Array = new_library()
 ## Each staff member's C program, by name (so programs survive saving).
 var staff_programs := {}
+## Staff levels and Lv 10 specializations by name ({"Jane": 3}, {"Jane": "Chef"}).
+var staff_levels := {}
+var staff_specs := {}
 ## Café progress: 0 = locked, 1 = open (Macchiato), up to 10 = full Café menu.
 var cafe_step := 0
 
@@ -120,6 +125,8 @@ func reset() -> void:
 	todays_special = "EGSILOG"
 	library_slots = new_library()
 	staff_programs = {}
+	staff_levels = {}
+	staff_specs = {}
 	cafe_step = 0
 	table_chairs = START_SEATING.duplicate()
 	money = START_MONEY
@@ -142,6 +149,7 @@ func to_save() -> Dictionary:
 		"table_chairs": table_chairs,
 		"dishes_served": dishes_served, "coins_from_sales": coins_from_sales,
 		"library_slots": library_slots, "staff_programs": staff_programs,
+		"staff_levels": staff_levels, "staff_specs": staff_specs,
 		"cafe_step": cafe_step, "customers_lost": customers_lost,
 		"tutorials_seen": tutorials_seen, "challenges_done": challenges_done, "level_sales": level_sales, "goals_reached": goals_reached, "todays_special": todays_special,
 	}
@@ -199,6 +207,13 @@ func from_save(d: Dictionary) -> void:
 	var progs: Dictionary = d.get("staff_programs", {})
 	for k in progs:
 		staff_programs[str(k)] = str(progs[k])
+	var lvls: Dictionary = d.get("staff_levels", {})
+	for k in lvls:
+		staff_levels[str(k)] = clampi(int(lvls[k]), 1, Progression.MAX_STAFF_LEVEL)
+	var specs: Dictionary = d.get("staff_specs", {})
+	for k in specs:
+		if str(specs[k]) in Progression.STAFF_SPECIALIZATIONS:
+			staff_specs[str(k)] = str(specs[k])
 	cafe_step = clampi(int(d.get("cafe_step", 0)), 0, Kitchen.CAFE_STEPS)
 	restaurant_level = int(d.get("restaurant_level", 1))
 	seating_changed.emit()
@@ -288,6 +303,49 @@ func set_player_level(level: int) -> void:
 ## Staff entries on the team now: [{"name", "color", ...}], Jane first.
 func staff_roster() -> Array:
 	return Progression.staff_for(restaurant_level, player_level)
+
+
+func staff_level(staff_name: String) -> int:
+	return int(staff_levels.get(staff_name, 1))
+
+
+func staff_spec(staff_name: String) -> String:
+	return str(staff_specs.get(staff_name, ""))
+
+
+## Coins for this staff member's next level (0 = max level).
+func staff_upgrade_cost(staff_name: String) -> int:
+	return Progression.staff_upgrade_cost(staff_level(staff_name))
+
+
+func can_upgrade_staff(staff_name: String) -> bool:
+	var cost := staff_upgrade_cost(staff_name)
+	return cost > 0 and money >= cost
+
+
+## Pays and levels up a staff member. Reaching Lv 10 needs a role
+## (Chef / Barista / Cashier / Waiter).
+func upgrade_staff(staff_name: String, spec := "") -> bool:
+	if not can_upgrade_staff(staff_name):
+		return false
+	var next := staff_level(staff_name) + 1
+	if next >= Progression.MAX_STAFF_LEVEL and not spec in Progression.STAFF_SPECIALIZATIONS:
+		return false
+	money -= staff_upgrade_cost(staff_name)
+	staff_levels[staff_name] = next
+	if next >= Progression.MAX_STAFF_LEVEL:
+		staff_specs[staff_name] = spec
+	staff_upgraded.emit(staff_name, next, staff_spec(staff_name))
+	save_now()
+	return true
+
+
+## Customer patience drain multiplier: slower while a Lv 10 Waiter is on staff.
+func customer_patience_mult() -> float:
+	for st in staff_roster():
+		if staff_spec(st.name) == "Waiter":
+			return Progression.WAITER_PATIENCE_MULT
+	return 1.0
 
 
 func _check_roster() -> void:

@@ -6,6 +6,10 @@ extends "res://scenes/ui/common/art_window.gd"
 
 const Kitchen := preload("res://systems/kitchen/kitchen_rules.gd")
 const PixelArt := preload("res://scenes/art/pixel_art.gd")
+const Progression := preload("res://data/progression/progression.gd")
+
+## The Staff page's Upgrade button was pressed (Game shows the confirm pop-up).
+signal staff_upgrade_requested(staff_name: String)
 
 const LEDGER := Vector2(712, 184)
 ## Ledger rows line up with the ruled lines in ledger.png (art px 16, 30, 44 …).
@@ -26,7 +30,12 @@ var _rows: Control
 var _total_exp: Label
 var _page := 0
 var _page_buttons: Array[Button] = []
-const PAGES := ["Restaurant", "Café Drinks", "Café Pastries"]
+const PAGES := ["Restaurant", "Café Drinks", "Café Pastries", "Staff"]
+const STAFF_PAGE := 3
+## Ledger column headers per page: dishes, or staff.
+const DISH_HEADERS := ["Dish", "Served", "Price", "Earned"]
+const STAFF_HEADERS := ["Staff", "Bonuses", "Level", "Upgrade"]
+var _headers: Array[Label] = []
 
 
 func _build() -> void:
@@ -71,22 +80,26 @@ func _build() -> void:
 
 	# Ledger pages: restaurant dishes, Café drinks, Café pastries.
 	for i in PAGES.size():
-		var b := Art.button(frame, PAGES[i], Rect2(712 + i * 236, 112, 224, 60), false, 22)
+		var b := Art.button(frame, PAGES[i], Rect2(712 + i * 258, 112, 246, 60), false, 22)
 		b.pressed.connect(func():
 			_page = i
 			_refresh())
 		_page_buttons.append(b)
 	# Ledger of dishes.
 	Art.image(frame, "stats/ledger.png", LEDGER)
-	Art.label(frame, "Dish", LEDGER + Vector2(68, 18), 22, Art.CREAM, true)
-	Art.label(frame, "Served", LEDGER + Vector2(536, 18), 22, Art.CREAM, true, 200, HORIZONTAL_ALIGNMENT_CENTER)
-	Art.label(frame, "Price", LEDGER + Vector2(764, 18), 22, Art.CREAM, true, 150, HORIZONTAL_ALIGNMENT_CENTER)
-	Art.label(frame, "Earned", LEDGER + Vector2(886, 18), 22, Art.CREAM, true, 120, HORIZONTAL_ALIGNMENT_CENTER)
+	_headers.append(Art.label(frame, "Dish", LEDGER + Vector2(68, 18), 22, Art.CREAM, true))
+	_headers.append(Art.label(frame, "Served", LEDGER + Vector2(536, 18), 22, Art.CREAM, true, 200, HORIZONTAL_ALIGNMENT_CENTER))
+	_headers.append(Art.label(frame, "Price", LEDGER + Vector2(764, 18), 22, Art.CREAM, true, 150, HORIZONTAL_ALIGNMENT_CENTER))
+	_headers.append(Art.label(frame, "Earned", LEDGER + Vector2(886, 18), 22, Art.CREAM, true, 120, HORIZONTAL_ALIGNMENT_CENTER))
 	_rows = Control.new()
 	_rows.position = LEDGER
 	_rows.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	frame.add_child(_rows)
 	GameState.stats_changed.connect(_on_stats_changed)
+	GameState.staff_upgraded.connect(func(_n, _l, _s): _on_stats_changed())
+	GameState.money_changed.connect(func(_m):
+		if _page == STAFF_PAGE:
+			_on_stats_changed())
 
 
 func _stat_tile(pos: Vector2, caption: String, dish_icon: bool) -> Label:
@@ -132,6 +145,27 @@ func _refresh() -> void:
 		c.queue_free()
 	for i in _page_buttons.size():
 		Art.set_button_look(_page_buttons[i], i == _page, 22)
+	var heads: Array = STAFF_HEADERS if _page == STAFF_PAGE else DISH_HEADERS
+	var staff_page := _page == STAFF_PAGE
+	for i in _headers.size():
+		_headers[i].text = heads[i]
+	_headers[1].position.x = LEDGER.x + (200.0 if staff_page else 536.0)
+	_headers[1].horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT if staff_page else HORIZONTAL_ALIGNMENT_CENTER
+	_headers[2].position.x = LEDGER.x + (695.0 if staff_page else 764.0)
+	if _page == STAFF_PAGE:
+		var roster: Array = GameState.staff_roster()
+		for i in roster.size():
+			_add_staff_row(i, roster[i])
+		var tip := Label.new()
+		_rows.add_child(tip)
+		tip.position = Vector2(68, FIRST_ROW_Y + roster.size() * ROW_H + 14)
+		tip.size = Vector2(900, 0)
+		tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		tip.add_theme_font_size_override("font_size", 22)
+		tip.add_theme_color_override("font_color", Art.INK_SOFT)
+		tip.add_theme_constant_override("outline_size", 0)
+		tip.text = "Each level: +6% walking speed, 5% faster work, +3% coins on dishes they serve. At Lv 10 pick a role: Chef (cooks faster), Barista (Café brewing faster), Cashier (+20% coins) or Waiter (walks faster, customers wait longer). You can also upgrade from a staff member's code editor."
+		return
 	var keys: Array = Kitchen.restaurant_menu()
 	if _page > 0:
 		keys = []
@@ -188,6 +222,35 @@ func _add_row(i: int, dish: String) -> void:
 	Art.image(row, "recipe_book/coin.png", Vector2(784, 10))
 	Art.label(row, str(d.price), Vector2(828, ty), 22, Art.INK, true)
 	Art.label(row, str(count * int(d.price)), Vector2(886, ty), 22, Art.INK, true, 120, HORIZONTAL_ALIGNMENT_CENTER)
+
+
+## One staff member on the Staff page: name, bonuses, level, Upgrade button.
+func _add_staff_row(i: int, entry: Dictionary) -> void:
+	var n: String = entry.name
+	var lv: int = GameState.staff_level(n)
+	var spec: String = GameState.staff_spec(n)
+	var row := Control.new()
+	row.position = Vector2(0, FIRST_ROW_Y + i * ROW_H)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_rows.add_child(row)
+	var dot := ColorRect.new()
+	dot.color = entry.get("color", Color.WHITE)
+	dot.position = Vector2(26, 16)
+	dot.size = Vector2(20, 20)
+	dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(dot)
+	Art.label(row, n, Vector2(68, 12), 24, Art.INK, true, 130)
+	var perks := "no bonus yet" if lv <= 1 and spec == "" else Progression.staff_perks_text(lv, spec) \
+		.replace("walking speed", "walk").replace(" faster work", " work").replace(" coins per dish", " coins")
+	Art.label(row, perks, Vector2(200, 13), 21, Art.INK_SOFT, false, 500)
+	Art.label(row, "Lv %d%s" % [lv, (" " + spec) if spec != "" else ""], Vector2(690, 12), 24,
+		Art.RED_HEAD if lv >= Progression.MAX_STAFF_LEVEL else Art.INK, true, 160, HORIZONTAL_ALIGNMENT_CENTER)
+	var cost: int = GameState.staff_upgrade_cost(n)
+	var b := Art.button(row, "%d" % cost if cost > 0 else "Max", Rect2(862, 4, 150, 48), cost > 0 and GameState.money >= cost, 24)
+	b.focus_mode = Control.FOCUS_NONE
+	b.disabled = cost <= 0
+	b.tooltip_text = "Upgrade %s to Lv %d for %d coins" % [n, lv + 1, cost] if cost > 0 else "Max level"
+	b.pressed.connect(func(): staff_upgrade_requested.emit(n))
 
 
 ## The manager's picture: first frame (standing, facing down) of manager art.

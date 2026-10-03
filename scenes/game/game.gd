@@ -30,6 +30,7 @@ var tutorials_enabled := true
 const TABLE_SCENE := preload("res://scenes/restaurant/table/Table.tscn")
 const NavGrid := preload("res://systems/navigation/nav_grid.gd")
 const Kitchen := preload("res://systems/kitchen/kitchen_rules.gd")
+const Progression := preload("res://data/progression/progression.gd")
 const STAFF_SCENE := preload("res://scenes/characters/staff/Staff.tscn")
 const PixelArt := preload("res://scenes/art/pixel_art.gd")
 const BACKGROUND := Color(0.16, 0.12, 0.1)
@@ -477,7 +478,7 @@ func unclaim_serving(order: Dictionary) -> void:
 func deliver_order(order: Dictionary, staff: Staff) -> int:
 	orders.erase(order)
 	_refresh_tickets()
-	return _deliver(order, staff.staff_name)
+	return _deliver(order, staff.staff_name, staff.profit_mult())
 
 
 func counter_full() -> bool:
@@ -514,9 +515,12 @@ func _find_order(dish: String, staff: Staff) -> Dictionary:
 
 
 ## Pays for a delivered order and lets the customer eat. Returns the price.
-func _deliver(order: Dictionary, by: String) -> int:
+## mult = the serving staff member's upgrade bonus (1.0 = none); the extra
+## coins count as profit too.
+func _deliver(order: Dictionary, by: String, mult := 1.0) -> int:
 	var dish: String = order.dish
-	var price: int = Kitchen.DISHES[dish].price if Kitchen.DISHES.has(dish) else 10
+	var base: int = Kitchen.DISHES[dish].price if Kitchen.DISHES.has(dish) else 10
+	var price: int = roundi(base * mult)
 	var first := int(GameState.dishes_served.get(dish, 0)) == 0
 	GameState.money += price
 	GameState.record_sale(dish, price)
@@ -531,7 +535,7 @@ func _deliver(order: Dictionary, by: String) -> int:
 		hud.show_toast("First %s ever! %s served %s  +%d coins (+%d first-dish bonus)" % [Kitchen.title_of(dish), by, who, price, FIRST_DISH_BONUS])
 	else:
 		hud.show_toast("%s served %s to %s!  +%d coins" % [by, Kitchen.title_of(dish), who, price])
-	GameState.add_sale_exp(price)  # a level-up toast may replace the sale toast
+	GameState.add_sale_exp(base)  # a level-up toast may replace the sale toast
 	return price
 
 
@@ -919,6 +923,10 @@ func _offer_upgrade(target: Node) -> bool:
 
 
 func _ask(title: String, body: String, cost: int, on_yes: Callable, yes_text := "Buy", locked := false) -> void:
+	_confirm_dialog().ask(title, body, cost, on_yes, yes_text, locked)
+
+
+func _confirm_dialog() -> Control:
 	if confirm_dialog == null:
 		confirm_dialog = Control.new()
 		confirm_dialog.set_script(CONFIRM_SCRIPT)
@@ -926,7 +934,42 @@ func _ask(title: String, body: String, cost: int, on_yes: Callable, yes_text := 
 		confirm_dialog.closed.connect(_on_panel_closed)
 	manager.can_move = false
 	hud.show_prompt_for(null)
-	confirm_dialog.ask(title, body, cost, on_yes, yes_text, locked)
+	return confirm_dialog
+
+
+# --- Staff upgrades (code editor's Upgrade button or the Stats window's Staff page) ---
+
+## Asks to buy the next level for a staff member. Lv 9 -> 10 also picks a
+## role (Chef / Barista / Cashier / Waiter).
+func offer_staff_upgrade(staff_name: String) -> void:
+	var gs = GameState
+	var lv: int = gs.staff_level(staff_name)
+	var spec: String = gs.staff_spec(staff_name)
+	if lv >= Progression.MAX_STAFF_LEVEL:
+		hud.show_toast("%s is already max level (Lv %d %s)." % [staff_name, lv, spec])
+		return
+	var cost: int = gs.staff_upgrade_cost(staff_name)
+	var now := "Now (Lv %d): %s" % [lv, Progression.staff_perks_text(lv, spec)]
+	if lv + 1 >= Progression.MAX_STAFF_LEVEL:
+		var lines: Array = []
+		for sp in Progression.STAFF_SPECIALIZATIONS:
+			lines.append("• %s: %s" % [sp, Progression.SPECIALIZATION_INFO[sp]])
+		_confirm_dialog().ask_choice("Upgrade %s to Lv 10" % staff_name,
+			"%s\nLv 10: %s\n\nPick a role (it can't be changed later):\n%s" % [
+				now, Progression.staff_perks_text(lv + 1), "\n".join(lines)],
+			cost, Progression.STAFF_SPECIALIZATIONS,
+			func(sp: String): _staff_upgraded(gs.upgrade_staff(staff_name, sp), staff_name))
+		return
+	_ask("Upgrade %s" % staff_name, "%s\nLv %d: %s" % [now, lv + 1, Progression.staff_perks_text(lv + 1, spec)],
+		cost, func(): _staff_upgraded(gs.upgrade_staff(staff_name), staff_name), "Upgrade")
+
+
+func _staff_upgraded(ok: bool, staff_name: String) -> void:
+	if not ok:
+		return
+	var lv: int = GameState.staff_level(staff_name)
+	var spec: String = GameState.staff_spec(staff_name)
+	hud.show_toast("%s is now Lv %d%s!" % [staff_name, lv, (" " + spec) if spec != "" else ""])
 
 
 ## Level challenges: called by a staff member after each printf and serve().
@@ -999,6 +1042,8 @@ func _add_windows() -> void:
 		ui.add_child(w)
 		w.closed.connect(_on_panel_closed)
 	hud.window_requested.connect(_open_window)
+	stats_panel.staff_upgrade_requested.connect(offer_staff_upgrade)
+	programming_panel.upgrade_requested.connect(offer_staff_upgrade)
 
 
 ## Lessons, Recipe Book, Library and Stats float: several can be open while the

@@ -11,6 +11,7 @@ const GAME := preload("res://scenes/game/Game.tscn")
 const CodeSets := preload("res://data/help/code_sets.gd")
 const LG_GOALS := preload("res://systems/goals/level_goals.gd")
 const Kitchen := preload("res://systems/kitchen/kitchen_rules.gd")
+const Progression := preload("res://data/progression/progression.gd")
 
 var _failed := 0
 var game
@@ -419,6 +420,45 @@ func _ready() -> void:
 	_report(csw.visible and csw.frame.size.x == 1920 and game._staff_list()[0].program_source == csw.current_code(),
 		"Admin Code Sets window: %d sets, Give to staff works" % csw._sets.size())
 	csw.close()
+	# Staff upgrades: expensive, need coins, speed up, Lv 10 needs a specialization.
+	var jn = game.get_node("Characters/Staff/Jane")
+	GameState.money = 100
+	var too_poor: bool = not GameState.upgrade_staff("Jane")
+	GameState.money = 20000
+	var up_ok: bool = GameState.upgrade_staff("Jane") and GameState.money == 20000 - 250
+	for _i in 7:
+		GameState.upgrade_staff("Jane")
+	var at9: bool = GameState.staff_level("Jane") == 9 and jn.level == 9
+	var no_spec: bool = not GameState.upgrade_staff("Jane")
+	var spent: int = 20000 - GameState.money
+	game.offer_staff_upgrade("Jane")
+	await get_tree().process_frame
+	var picker_ok: bool = game.confirm_dialog.visible and game.confirm_dialog._choices.get_child_count() == 4
+	game.confirm_dialog._pick("Cashier")
+	_report(too_poor and up_ok and at9 and no_spec and picker_ok and spent == 9050 and GameState.staff_level("Jane") == 10
+		and GameState.staff_spec("Jane") == "Cashier" and jn.specialization == "Cashier" and is_equal_approx(jn.profit_mult(), 1.47),
+		"Staff upgrades: 250 for Lv 2, Lv 1->9 costs 9,050 + 3,000 for Lv 10 Cashier (x%.2f coins)" % jn.profit_mult())
+	GameState.staff_levels["John"] = 10
+	GameState.staff_specs["John"] = "Waiter"
+	var waiter_ok: bool = is_equal_approx(GameState.customer_patience_mult(), 0.75)
+	GameState.staff_levels.erase("John")
+	GameState.staff_specs.erase("John")
+	_report(waiter_ok and is_equal_approx(Progression.staff_work_mult(10, "Barista", "brew"), 0.55 * 0.7)
+		and is_equal_approx(Progression.staff_work_mult(10, "Chef", "brew"), 0.55),
+		"Lv 10 roles: Waiter slows customer patience, Barista brews faster, Chef cooks faster")
+	game.stats_panel.open()
+	game.stats_panel._page = game.stats_panel.STAFF_PAGE
+	game.stats_panel._refresh()
+	await get_tree().process_frame
+	_report(game.stats_panel._headers[0].text == "Staff" and game.stats_panel._rows.get_child_count() >= 2,
+		"Stats window has a Staff page with Upgrade buttons")
+	game.stats_panel.close()
+	var price_before := GameState.money
+	game.place_order(null, "EGSILOG")
+	var o: Dictionary = game.orders[game.orders.size() - 1]
+	game.deliver_order(o, jn)
+	_report(GameState.money - price_before == roundi(30 * 1.47) + (0 if int(GameState.dishes_served.get("EGSILOG", 0)) > 1 else game.FIRST_DISH_BONUS),
+		"A Lv 10 Cashier staff member earns %d coins for a 30-coin Egsilog" % (GameState.money - price_before))
 	# Save and load.
 	GameState.game_name = "Test Kitchen"
 	GameState.manager_name = "Chris"
@@ -428,8 +468,9 @@ func _ready() -> void:
 	var saved := GameState.to_save()
 	GameState.reset()
 	GameState.from_save(saved)
-	_report(GameState.game_name == "Test Kitchen" and GameState.manager_name == "Chris" and GameState.money == 777 and GameState.library_slots[2].name == "Mine" and GameState.library_slots[2].code == "void hi() { }" and not GameState.library_slots[2].enabled and GameState.total_dishes_served() == served_n,
-		"Save/load keeps game name, manager name and coins")
+	_report(GameState.game_name == "Test Kitchen" and GameState.manager_name == "Chris" and GameState.money == 777 and GameState.library_slots[2].name == "Mine" and GameState.library_slots[2].code == "void hi() { }" and not GameState.library_slots[2].enabled and GameState.total_dishes_served() == served_n
+		and GameState.staff_level("Jane") == 10 and GameState.staff_spec("Jane") == "Cashier",
+		"Save/load keeps game name, manager name, coins and staff levels")
 	print("==== Smoke test: %s ====" % ("ALL PASSED" if _failed == 0 else "%d FAILED" % _failed))
 	get_tree().quit(_failed)
 

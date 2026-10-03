@@ -104,7 +104,7 @@ func _process(delta: float) -> void:
 			# making this order; after ordering it drains at half speed.
 			being_made = game != null and game.is_being_made(self)
 			if not food_coming and not being_made:
-				waited += delta * (TAKEN_PATIENCE_RATE if order_taken else 1.0)
+				waited += delta * (TAKEN_PATIENCE_RATE if order_taken else 1.0) * GameState.customer_patience_mult()
 			var m := Mood.HAPPY if waited < patience * 0.28 else (Mood.OKAY if waited < patience * 0.56 else Mood.ANNOYED)
 			if m != mood:
 				mood = m
