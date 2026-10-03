@@ -20,7 +20,7 @@ var _exp_bar: ProgressBar
 var _special: Button
 ## Goals + challenges checklist (top left).
 var _goals: PanelContainer
-var _goals_toggle: Button
+var _goals_tab: Control
 var _chal_label: RichTextLabel
 const LevelChallenges := preload("res://systems/challenges/level_challenges.gd")
 const LevelGoals := preload("res://systems/goals/level_goals.gd")
@@ -143,35 +143,26 @@ func _on_level_changed(level: int) -> void:
 ## Goals (sell dishes, earn profit) and Challenges (programming tasks) for this
 ## level, under Today's Special. Both unlock the next upgrade. Hover for hints.
 func _build_challenges() -> void:
+	# A drawer on the left edge: a sideways tab, and the list beside it when open.
 	_goals = PanelContainer.new()
 	_goals.theme_type_variation = &"WoodPanel"
-	_goals.position = Vector2(24, 200)
-	_goals.custom_minimum_size = Vector2(470, 0)
+	_goals.position = Vector2(0, 200)
 	_goals.mouse_filter = Control.MOUSE_FILTER_PASS
 	add_child(_goals)
 	_chal_label = RichTextLabel.new()
 	_chal_label.bbcode_enabled = true
 	_chal_label.fit_content = true
 	_chal_label.scroll_active = false
-	_chal_label.custom_minimum_size = Vector2(430, 0)
-	_chal_label.add_theme_font_size_override("normal_font_size", 18)
-	_chal_label.add_theme_font_size_override("bold_font_size", 20)
+	_chal_label.custom_minimum_size = Vector2(300, 0)
+	_chal_label.add_theme_font_size_override("normal_font_size", 15)
+	_chal_label.add_theme_font_size_override("bold_font_size", 16)
 	_chal_label.mouse_filter = Control.MOUSE_FILTER_PASS
-	# Header button: click (or press G) to open / close the list.
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 4)
-	_goals.add_child(box)
-	_goals_toggle = Button.new()
-	_goals_toggle.flat = true
-	_goals_toggle.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	_goals_toggle.focus_mode = Control.FOCUS_NONE
-	_goals_toggle.add_theme_font_size_override("font_size", 20)
-	_goals_toggle.add_theme_color_override("font_color", Color(1, 0.85, 0.54))
-	_goals_toggle.add_theme_color_override("font_hover_color", Color(1, 0.93, 0.7))
-	_goals_toggle.tooltip_text = "Show / hide goals and challenges (G)"
-	_goals_toggle.pressed.connect(toggle_goals)
-	box.add_child(_goals_toggle)
-	box.add_child(_chal_label)
+	_goals.add_child(_chal_label)
+	_goals_tab = preload("res://scenes/ui/hud/side_tab.gd").new()
+	_goals_tab.size = Vector2(34, 200)
+	_goals_tab.tooltip_text = "Goals & Challenges: click or press G to open / close"
+	_goals_tab.pressed.connect(toggle_goals)
+	add_child(_goals_tab)
 	GameState.challenge_completed.connect(func(_l, _i): _refresh_challenges())
 	GameState.goal_reached.connect(func(_l, _i): _refresh_challenges())
 	GameState.stats_changed.connect(_refresh_challenges)
@@ -187,7 +178,7 @@ func toggle_goals() -> void:
 
 func _unhandled_key_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_G \
-			and _goals != null and _goals.visible:
+			and _goals_tab != null and _goals_tab.visible:
 		var f := get_viewport().gui_get_focus_owner()
 		if f is TextEdit or f is LineEdit:
 			return
@@ -201,8 +192,10 @@ func _refresh_challenges() -> void:
 	var lv: int = GameState.restaurant_level
 	var goals: Array = LevelGoals.for_level(lv)
 	var chals: Array = LevelChallenges.for_level(lv)
-	_goals.visible = not (goals.is_empty() and chals.is_empty())
-	if not _goals.visible:
+	var any := not (goals.is_empty() and chals.is_empty())
+	_goals_tab.visible = any
+	_goals.visible = any
+	if not any:
 		return
 	var t := ""
 	var tips: Array = []
@@ -228,10 +221,11 @@ func _refresh_challenges() -> void:
 	_chal_label.text = t.strip_edges()
 	var open: bool = SettingsManager.goals_open
 	var left: int = GameState.goals_left(lv).size() + GameState.challenges_left(lv).size()
-	_goals_toggle.text = "%s  Goals & Challenges  (%d left)" % ["▾" if open else "▸", left]
-	_chal_label.visible = open
-	_goals.tooltip_text = "\n\n".join(tips) if not tips.is_empty() else "Goals count dishes sold and coins earned at this level."
+	_goals_tab.text = "%s Goals  ·  %d left" % ["◂" if open else "▸", left]
+	_goals.visible = open
 	_goals.reset_size()
+	_goals_tab.position = Vector2(_goals.size.x - 4 if open else 0.0, _goals.position.y)
+	_goals.tooltip_text = "\n\n".join(tips) if not tips.is_empty() else "Goals count dishes sold and coins earned at this level."
 
 
 ## Today's Special (Restaurant Levels 1-2): click to change what every customer orders.
