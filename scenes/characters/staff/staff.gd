@@ -55,30 +55,8 @@ const SERVE_TIME := 0.5
 const MAX_LOG_CHARS := 12000
 
 ## The player's C code for this staff member.
-var program_source := """// %s's program: make one Egsilog (rice + egg).
-// Press Run and watch %s work!
-
-void main() {
-    go_to(FRIDGE);
-    pick_up(RICE);
-    go_to(GRILL);
-    cook();
-    go_to(ASSEMBLY);
-    plate();
-
-    go_to(FRIDGE);
-    pick_up(EGG);
-    go_to(GRILL);
-    cook();
-    go_to(ASSEMBLY);
-    plate();
-
-    assemble(EGSILOG);
-    serve();   // carries it to the customer who ordered it
-
-    printf("Egsilog served!\\n");
-}
-"""
+## The staff member's C program. New games start with an empty editor.
+var program_source := ""
 
 ## Set by Game: find_path(), get_station(), on_dish_served(), level_display_name().
 var world: Node
@@ -115,8 +93,6 @@ var _action_at := Vector2.ZERO
 func _ready() -> void:
 	if not Engine.is_editor_hint() and GameState.staff_programs.has(staff_name):
 		program_source = GameState.staff_programs[staff_name]  # from the save file
-	else:
-		program_source = program_source % [staff_name, staff_name]
 	if not Engine.is_editor_hint():
 		collision_mask = 0  # staff follow paths; they don't get pushed around
 	_refresh_art()
@@ -388,15 +364,15 @@ func _log(text: String, newline := true) -> void:
 # --- Host API for the C interpreter -------------------------------------------------
 
 ## For cook_station(): a station in this restaurant that cooks the ingredient.
-## What this Run has done so far, for level goals (systems/goals/level_goals.gd).
+## What this Run has done so far, for level challenges (systems/challenges/level_challenges.gd).
 var run_trace := {"served": 0, "printfs": [], "stats": {}, "dishes": {}, "tickets": 0}
 
 
 ## Called by the interpreter after each printf.
 func note_printf(items: Array, _text: String) -> void:
 	run_trace.printfs.append({"items": items, "served_before": run_trace.served})
-	if world and world.has_method("check_goals"):
-		world.check_goals(self)
+	if world and world.has_method("check_challenges"):
+		world.check_challenges(self)
 
 
 ## orders(list): the dishes on the counter's tickets, oldest first.
@@ -704,8 +680,8 @@ func _served_one(dish := "") -> void:
 	run_trace.served += 1
 	if dish != "":
 		run_trace.dishes[dish] = true
-	if world and world.has_method("check_goals"):
-		world.check_goals(self)
+	if world and world.has_method("check_challenges"):
+		world.check_challenges(self)
 
 
 func _do_serve() -> Dictionary:

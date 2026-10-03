@@ -3,6 +3,7 @@ extends Node2D
 ## tables and characters, runs the camera, and wires HUD and panels together.
 
 const PAUSE_SCENE := preload("res://scenes/ui/pause_menu/PauseMenu.tscn")
+const LevelChallenges := preload("res://systems/challenges/level_challenges.gd")
 const LevelGoals := preload("res://systems/goals/level_goals.gd")
 const STATION_SCENE := preload("res://scenes/stations/Station.tscn")
 const TABLE_SPOT_SCRIPT := preload("res://scenes/game/table_spot.gd")
@@ -109,6 +110,7 @@ func _ready() -> void:
 	GameState.restaurant_level_changed.connect(_on_level_changed)
 	GameState.seating_changed.connect(_spawn_tables)
 	GameState.cafe_changed.connect(_on_cafe_changed)
+	GameState.goal_reached.connect(_on_goal_reached)
 	GameState.staff_roster_changed.connect(_on_roster_changed)
 	GameState.player_leveled_up.connect(_on_player_leveled_up)
 	_sync_staff()
@@ -853,12 +855,13 @@ func _offer_upgrade(target: Node) -> bool:
 			return true
 		var d: RestaurantLevelData = gs.level_data()
 		var next: RestaurantLevelData = gs.level_data(gs.restaurant_level + 1)
-		var left: Array = gs.goals_left()
-		if not left.is_empty():
-			var lines: Array = []
-			for g in left:
-				lines.append("☐ %s: %s" % [g.title, g.task])
-			_ask("Upgrade the restaurant", "Finish this level's goals first (they're also listed at the top left):\n" + "\n".join(lines),
+		var lines: Array = []
+		for g in gs.goals_left():
+			lines.append("☐ Goal: %s (%d / %d)" % [g.title, gs.goal_progress(g), g.n])
+		for g in gs.challenges_left():
+			lines.append("☐ Challenge: %s: %s" % [g.title, g.task])
+		if not lines.is_empty():
+			_ask("Upgrade the restaurant", "Finish this level's goals and challenges first (also listed at the top left):\n" + "\n".join(lines),
 				d.upgrade_cost, Callable(), "Upgrade", true)
 			return true
 		_ask("Upgrade the restaurant", "Move up to Level %d: %s. It teaches %s and brings new dishes. Seating starts again at 1 table." % [
@@ -894,16 +897,25 @@ func _ask(title: String, body: String, cost: int, on_yes: Callable, yes_text := 
 	confirm_dialog.ask(title, body, cost, on_yes, yes_text, locked)
 
 
-## Level goals: called by a staff member after each printf and serve().
-func check_goals(staff: Node) -> void:
+## Level challenges: called by a staff member after each printf and serve().
+func check_challenges(staff: Node) -> void:
 	var lv: int = GameState.restaurant_level
-	for id in LevelGoals.met(lv, staff.run_trace):
-		if GameState.complete_goal(lv, id):
-			var g: Dictionary = LevelGoals.find(lv, id)
-			var left: int = GameState.goals_left(lv).size()
-			var all_done := "" if left > 0 else ("  ·  All Level %d goals done%s" % [lv,
-				": upgrade at the chalkboard!" if lv < GameState.MAX_RESTAURANT_LEVEL else "!"])
-			hud.show_toast("Goal done: %s!  +%d coins  +%d EXP%s" % [g.title, g.coins, g.exp, all_done])
+	for id in LevelChallenges.met(lv, staff.run_trace):
+		if GameState.complete_challenge(lv, id):
+			var g: Dictionary = LevelChallenges.find(lv, id)
+			hud.show_toast("Challenge done: %s!  +%d coins  +%d EXP%s" % [g.title, g.coins, g.exp, _all_done_text(lv)])
+
+
+## Level goal reached (a sale counted toward it): toast with the reward.
+func _on_goal_reached(level: int, id: String) -> void:
+	var g: Dictionary = LevelGoals.find(level, id)
+	hud.show_toast("Goal reached: %s!  +%d coins  +%d EXP%s" % [g.title, g.coins, g.exp, _all_done_text(level)])
+
+
+func _all_done_text(lv: int) -> String:
+	if not GameState.goals_left(lv).is_empty() or not GameState.challenges_left(lv).is_empty():
+		return ""
+	return "  ·  Level %d complete%s" % [lv, ": upgrade at the chalkboard!" if lv < GameState.MAX_RESTAURANT_LEVEL else "!"]
 
 
 func _bought(ok: bool, message: String) -> void:

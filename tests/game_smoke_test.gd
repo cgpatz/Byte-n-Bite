@@ -9,6 +9,7 @@ extends Node
 
 const GAME := preload("res://scenes/game/Game.tscn")
 const CodeSets := preload("res://data/help/code_sets.gd")
+const LG_GOALS := preload("res://systems/goals/level_goals.gd")
 const Kitchen := preload("res://systems/kitchen/kitchen_rules.gd")
 
 var _failed := 0
@@ -289,25 +290,37 @@ func _ready() -> void:
 	for c in game.restaurant.get_node("Stations/Decor").get_children():
 		if c is Station and c.opens == "upgrades":
 			board = c
-	# Level 1 goals: the upgrade is locked until they're done.
-	GameState.goals_done = []
+	# Level 1 challenges: the upgrade is locked until they're done.
+	GameState.challenges_done = []
 	game._offer_upgrade(board)
-	_report(game.confirm_dialog.visible and game.confirm_dialog._yes.disabled, "Upgrade locked until the Level 1 goals are done")
+	_report(game.confirm_dialog.visible and game.confirm_dialog._yes.disabled, "Upgrade locked until the Level 1 challenges are done")
 	game.confirm_dialog.close()
 	jane.program_source = "void main() { int served = 0; float price = 30.50; char size = 'L'; go_to(FRIDGE); pick_up(EGG); printf(\"%d %.2f %c\\n\", served, price, size); }"
 	await jane.run_program()
-	_report(GameState.goals_done.is_empty(), "No goal without serving a dish")
+	_report(GameState.challenges_done.is_empty(), "No goal without serving a dish")
 	game.place_order(null, "EGSILOG")
 	var coins_g := GameState.money
-	jane.program_source = CodeSets.level1_goals("EGSILOG")
+	jane.program_source = CodeSets.level1_challenges("EGSILOG")
 	jane.clear_log()
 	Engine.time_scale = 8.0
 	await jane.run_program()
 	Engine.time_scale = 1.0
-	_report(GameState.goals_left(1).is_empty() and GameState.money >= coins_g + 220,
-		"Level 1 goals: int/%%d, float/%%.2f, char/%%c and the receipt all done (%s, +%d coins)" % [GameState.goals_done, GameState.money - coins_g])
-	if not GameState.goals_left(1).is_empty():
+	_report(GameState.challenges_left(1).is_empty() and GameState.money >= coins_g + 220,
+		"Level 1 challenges: int/%%d, float/%%.2f, char/%%c and the receipt all done (%s, +%d coins)" % [GameState.challenges_done, GameState.money - coins_g])
+	if not GameState.challenges_left(1).is_empty():
 		print(jane.log_text)
+	# Level 1 goals: 10 Hotsilog, 10 Egsilog, 300 profit (counted from sales at this level).
+	GameState.goals_reached = []
+	GameState.level_sales = {}
+	_report(not GameState.can_upgrade_restaurant(), "Upgrade still locked until the Level 1 goals are reached")
+	var exp_g := GameState.total_exp()
+	for k in 10:
+		GameState.record_sale("EGSILOG", 30)
+	_report(GameState.goal_reached_at(1, "egsilog") and not GameState.goal_reached_at(1, "hotsilog") and GameState.goal_reached_at(1, "profit"),
+		"Goals: 10 Egsilog reached, profit 300 reached, Hotsilog %d / 10" % GameState.goal_progress(LG_GOALS.find(1, "hotsilog")))
+	for k in 10:
+		GameState.record_sale("HOTSILOG", 40)
+	_report(GameState.goals_left(1).is_empty() and GameState.total_exp() > exp_g, "All Level 1 goals reached (+%d EXP)" % (GameState.total_exp() - exp_g))
 	game._offer_upgrade(board)
 	game.confirm_dialog.close()
 	_report(GameState.restaurant_level == 1, "Cancel on the Upgrade Board keeps Level 1")
@@ -326,16 +339,16 @@ func _ready() -> void:
 				b = c
 		_report(b != null and game.nav.find_path(game.manager.global_position, Rect2(b.global_position - b.size / 2.0, b.size), 60.0).ok,
 			"Restaurant Lv %d: the manager can walk to the Upgrade Board" % lv)
-	# Level goals 2-5, each finished by its Code Sets program.
-	GameState.goals_done = []
+	# Level challenges 2-5, each finished by its Code Sets program.
+	GameState.challenges_done = []
 	Engine.time_scale = 8.0
 	GameState.restaurant_level = 2
 	await get_tree().process_frame
 	await get_tree().process_frame
 	game.place_order(null, "TOCILOG")
-	jane.program_source = CodeSets.goals_program(2)
+	jane.program_source = CodeSets.challenges_program(2)
 	await jane.run_program()
-	_report(GameState.goals_left(2).is_empty(), "Level 2 goals (take_order, if/else, switch+default) done: %s" % [GameState.goals_done])
+	_report(GameState.challenges_left(2).is_empty(), "Level 2 challenges (take_order, if/else, switch+default) done: %s" % [GameState.challenges_done])
 	GameState.restaurant_level = 3
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -344,18 +357,18 @@ func _ready() -> void:
 		game.place_order(null, d)
 		game.take_order_now(null)
 		game.post_order(null, d)
-	jane.program_source = CodeSets.goals_program(3)
+	jane.program_source = CodeSets.challenges_program(3)
 	await jane.run_program()
-	_report(GameState.goals_left(3).is_empty(), "Level 3 goals (3 in a Run, for loop, waiter + cook) done: %s" % [GameState.goals_left(3).map(func(g): return g.id)])
+	_report(GameState.challenges_left(3).is_empty(), "Level 3 challenges (3 in a Run, for loop, waiter + cook) done: %s" % [GameState.challenges_left(3).map(func(g): return g.id)])
 	GameState.restaurant_level = 4
 	await get_tree().process_frame
 	await get_tree().process_frame
 	jane = game.get_node("Characters/Staff/Jane")
 	game.place_order(null, "EGSILOG")
 	game.place_order(null, "HAMBURGER")
-	jane.program_source = CodeSets.goals_program(4).replace("while (1)", "for (int r = 0; r < 2; r++)")
+	jane.program_source = CodeSets.challenges_program(4).replace("while (1)", "for (int r = 0; r < 2; r++)")
 	await jane.run_program()
-	_report(GameState.goals_left(4).is_empty(), "Level 4 goals (recipe array, 2 dishes, sizeof) done: %s" % [GameState.goals_left(4).map(func(g): return g.id)])
+	_report(GameState.challenges_left(4).is_empty(), "Level 4 challenges (recipe array, 2 dishes, sizeof) done: %s" % [GameState.challenges_left(4).map(func(g): return g.id)])
 	GameState.restaurant_level = 5
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -363,12 +376,12 @@ func _ready() -> void:
 	GameState.library_slots = GameState.new_library()
 	GameState.library_slots[1].code = CodeSets.make_dish()
 	game.place_order(null, "EGSILOG")
-	jane.program_source = CodeSets.goals_program(5).replace("while (1)", "for (int r = 0; r < 1; r++)")
+	jane.program_source = CodeSets.challenges_program(5).replace("while (1)", "for (int r = 0; r < 1; r++)")
 	var exp_before := GameState.total_exp()
 	await jane.run_program()
-	_report(GameState.goals_left(5).is_empty() and GameState.total_exp() > exp_before,
-		"Level 5 goals (function, return, Library) done, EXP +%d" % (GameState.total_exp() - exp_before))
-	if not GameState.goals_left(5).is_empty():
+	_report(GameState.challenges_left(5).is_empty() and GameState.total_exp() > exp_before,
+		"Level 5 challenges (function, return, Library) done, EXP +%d" % (GameState.total_exp() - exp_before))
+	if not GameState.challenges_left(5).is_empty():
 		print(jane.log_text)
 	Engine.time_scale = 1.0
 	GameState.library_slots = GameState.new_library()

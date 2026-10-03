@@ -18,9 +18,10 @@ var _toast_tween: Tween
 var _player_label: Label
 var _exp_bar: ProgressBar
 var _special: Button
-## Level goals checklist (Level 1: data types, variables, printf).
+## Goals + challenges checklist (top left).
 var _goals: PanelContainer
-var _goals_label: RichTextLabel
+var _chal_label: RichTextLabel
+const LevelChallenges := preload("res://systems/challenges/level_challenges.gd")
 const LevelGoals := preload("res://systems/goals/level_goals.gd")
 const Kitchen := preload("res://systems/kitchen/kitchen_rules.gd")
 const Art := preload("res://scenes/ui/common/ui_art.gd")
@@ -34,7 +35,7 @@ func _ready() -> void:
 	_build_player_level()
 	_build_buttons()
 	_build_special()
-	_build_goals()
+	_build_challenges()
 	var hint := get_node_or_null("ControlsHint") as Label
 	if hint:
 		hint.text = "WASD move  ·  E interact / buy upgrades  ·  T lessons  ·  R recipes  ·  L library  ·  Tab stats  ·  Esc / P pause"
@@ -135,50 +136,65 @@ func _on_money_changed(amount: int) -> void:
 func _on_level_changed(level: int) -> void:
 	level_label.text = "Restaurant Lv %d" % level
 	_refresh_special()
-	_refresh_goals()
+	_refresh_challenges()
 
 
-## Level goals checklist under Today's Special. Hover a goal line for a hint.
-func _build_goals() -> void:
+## Goals (sell dishes, earn profit) and Challenges (programming tasks) for this
+## level, under Today's Special. Both unlock the next upgrade. Hover for hints.
+func _build_challenges() -> void:
 	_goals = PanelContainer.new()
 	_goals.theme_type_variation = &"WoodPanel"
 	_goals.position = Vector2(24, 200)
 	_goals.custom_minimum_size = Vector2(470, 0)
 	_goals.mouse_filter = Control.MOUSE_FILTER_PASS
 	add_child(_goals)
-	_goals_label = RichTextLabel.new()
-	_goals_label.bbcode_enabled = true
-	_goals_label.fit_content = true
-	_goals_label.scroll_active = false
-	_goals_label.custom_minimum_size = Vector2(430, 0)
-	_goals_label.add_theme_font_size_override("normal_font_size", 18)
-	_goals_label.add_theme_font_size_override("bold_font_size", 20)
-	_goals_label.mouse_filter = Control.MOUSE_FILTER_PASS
-	_goals.add_child(_goals_label)
-	GameState.goal_completed.connect(func(_l, _i): _refresh_goals())
-	_refresh_goals()
+	_chal_label = RichTextLabel.new()
+	_chal_label.bbcode_enabled = true
+	_chal_label.fit_content = true
+	_chal_label.scroll_active = false
+	_chal_label.custom_minimum_size = Vector2(430, 0)
+	_chal_label.add_theme_font_size_override("normal_font_size", 18)
+	_chal_label.add_theme_font_size_override("bold_font_size", 20)
+	_chal_label.mouse_filter = Control.MOUSE_FILTER_PASS
+	_goals.add_child(_chal_label)
+	GameState.challenge_completed.connect(func(_l, _i): _refresh_challenges())
+	GameState.goal_reached.connect(func(_l, _i): _refresh_challenges())
+	GameState.stats_changed.connect(_refresh_challenges)
+	_refresh_challenges()
 
 
-func _refresh_goals() -> void:
+func _refresh_challenges() -> void:
 	if _goals == null:
 		return
 	var lv: int = GameState.restaurant_level
-	var list: Array = LevelGoals.for_level(lv)
-	_goals.visible = not list.is_empty()
-	if list.is_empty():
+	var goals: Array = LevelGoals.for_level(lv)
+	var chals: Array = LevelChallenges.for_level(lv)
+	_goals.visible = not (goals.is_empty() and chals.is_empty())
+	if not _goals.visible:
 		return
-	var left: int = GameState.goals_left(lv).size()
-	var t := "[b][color=#ffd98a]Level %d goals[/color][/b]  [color=#c9b48f](%d / %d done%s)[/color]\n" % [
-		lv, list.size() - left, list.size(), "" if left > 0 else (": upgrade unlocked!" if lv < GameState.MAX_RESTAURANT_LEVEL else ": all done!")]
+	var t := ""
 	var tips: Array = []
-	for g in list:
-		var done: bool = GameState.goal_done(lv, g.id)
-		t += "%s [color=%s]%s[/color]  [color=#c9b48f]+%d coins · +%d EXP[/color]\n" % [
-			"☑" if done else "☐", "#9fd18a" if done else "#f2e3c4", g.title, g.coins, g.exp]
-		if not done:
-			tips.append("%s: %s\n   e.g. %s" % [g.title, g.task, g.how])
-	_goals_label.text = t.strip_edges()
-	_goals.tooltip_text = "\n\n".join(tips) if not tips.is_empty() else "All done! Upgrade at the chalkboard."
+	if not goals.is_empty():
+		var gl: int = GameState.goals_left(lv).size()
+		t += "[b][color=#ffd98a]Level %d goals[/color][/b]  [color=#c9b48f](%d / %d)[/color]\n" % [lv, goals.size() - gl, goals.size()]
+		for g in goals:
+			var done: bool = GameState.goal_reached_at(lv, g.id)
+			t += "%s [color=%s]%s[/color]  [color=#c9b48f]%d / %d[/color]\n" % [
+				"☑" if done else "☐", "#9fd18a" if done else "#f2e3c4", g.title,
+				GameState.goal_progress(g, lv), g.n]
+	if not chals.is_empty():
+		var cl: int = GameState.challenges_left(lv).size()
+		t += "[b][color=#ffd98a]Challenges[/color][/b]  [color=#c9b48f](%d / %d)[/color]\n" % [chals.size() - cl, chals.size()]
+		for g in chals:
+			var done: bool = GameState.challenge_done(lv, g.id)
+			t += "%s [color=%s]%s[/color]  [color=#c9b48f]+%d coins · +%d EXP[/color]\n" % [
+				"☑" if done else "☐", "#9fd18a" if done else "#f2e3c4", g.title, g.coins, g.exp]
+			if not done:
+				tips.append("%s: %s\n   e.g. %s" % [g.title, g.task, g.how])
+	if lv < GameState.MAX_RESTAURANT_LEVEL and GameState.goals_left(lv).is_empty() and GameState.challenges_left(lv).is_empty():
+		t += "[color=#9fd18a]All done: upgrade at the chalkboard![/color]"
+	_chal_label.text = t.strip_edges()
+	_goals.tooltip_text = "\n\n".join(tips) if not tips.is_empty() else "Goals count dishes sold and coins earned at this level."
 	_goals.reset_size()
 
 

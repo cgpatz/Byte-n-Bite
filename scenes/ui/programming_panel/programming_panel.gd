@@ -79,6 +79,7 @@ func _setup_editor() -> void:
 	hl.add_color_region("\"", "\"", Color(0.95, 0.85, 0.5))
 	hl.add_color_region("'", "'", Color(0.95, 0.85, 0.5))
 	code_edit.syntax_highlighter = hl
+	code_edit.placeholder_text = "// Empty program. Write your C code here, for example:\n\nvoid main() {\n    go_to(FRIDGE);\n    pick_up(RICE);\n}\n\n// Stuck? Open Lessons (T) or the Recipe Book's Kitchen Functions (R)."
 	code_edit.indent_size = 4
 	code_edit.indent_use_spaces = true
 	code_edit.gutters_draw_executing_lines = true

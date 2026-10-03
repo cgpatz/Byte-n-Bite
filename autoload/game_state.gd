@@ -64,10 +64,16 @@ signal special_changed(dish: String)
 const SPECIAL_UNTIL_LEVEL := 2
 ## Restaurant levels whose C lesson the player has seen.
 var tutorials_seen: Array = []
-## Level goals finished, e.g. ["1:count", "1:receipt"] (systems/goals/level_goals.gd).
-var goals_done: Array = []
-signal goal_completed(level: int, id: String)
+## Level challenges finished, e.g. ["1:count", "1:receipt"] (systems/challenges/level_challenges.gd).
+var challenges_done: Array = []
+signal challenge_completed(level: int, id: String)
+## Level goals (sell N dishes, earn a profit): sales made at each level and the
+## goals reached, e.g. {"1": {"dishes": {"EGSILOG": 4}, "profit": 120}} and ["1:profit"].
+var level_sales := {}
+var goals_reached: Array = []
+signal goal_reached(level: int, id: String)
 const LevelGoals := preload("res://systems/goals/level_goals.gd")
+const LevelChallenges := preload("res://systems/challenges/level_challenges.gd")
 ## Library: the player's own C functions, usable in every staff member's program.
 var library_slots: Array = new_library()
 ## Each staff member's C program, by name (so programs survive saving).
@@ -108,7 +114,9 @@ func reset() -> void:
 	coins_from_sales = 0
 	customers_lost = 0
 	tutorials_seen = []
-	goals_done = []
+	challenges_done = []
+	level_sales = {}
+	goals_reached = []
 	todays_special = "EGSILOG"
 	library_slots = new_library()
 	staff_programs = {}
@@ -135,7 +143,7 @@ func to_save() -> Dictionary:
 		"dishes_served": dishes_served, "coins_from_sales": coins_from_sales,
 		"library_slots": library_slots, "staff_programs": staff_programs,
 		"cafe_step": cafe_step, "customers_lost": customers_lost,
-		"tutorials_seen": tutorials_seen, "goals_done": goals_done, "todays_special": todays_special,
+		"tutorials_seen": tutorials_seen, "challenges_done": challenges_done, "level_sales": level_sales, "goals_reached": goals_reached, "todays_special": todays_special,
 	}
 
 
@@ -168,9 +176,13 @@ func from_save(d: Dictionary) -> void:
 	todays_special = str(d.get("todays_special", "EGSILOG"))
 	if not Kitchen.DISHES.has(todays_special):
 		todays_special = "EGSILOG"
-	goals_done = []
-	for g in d.get("goals_done", []):
-		goals_done.append(str(g))
+	challenges_done = []
+	for g in d.get("challenges_done", d.get("goals_done", [])):  # older saves: goals_done
+		challenges_done.append(str(g))
+	level_sales = d.get("level_sales", {})
+	goals_reached = []
+	for g in d.get("goals_reached", []):
+		goals_reached.append(str(g))
 	tutorials_seen = []
 	for t in d.get("tutorials_seen", []):
 		tutorials_seen.append(int(t))
@@ -216,6 +228,7 @@ static func new_library() -> Array:
 func record_sale(dish: String, price: int) -> void:
 	dishes_served[dish] = int(dishes_served.get(dish, 0)) + 1
 	coins_from_sales += price
+	_count_level_sale(dish, price)
 	stats_changed.emit()
 
 
@@ -294,34 +307,72 @@ func level_data(level := restaurant_level) -> RestaurantLevelData:
 
 func can_upgrade_restaurant() -> bool:
 	return restaurant_level < MAX_RESTAURANT_LEVEL and money >= level_data().upgrade_cost \
-		and goals_left().is_empty()
+		and challenges_left().is_empty() and goals_left().is_empty()
 
 
-## This level's goals not finished yet (the upgrade waits for them).
+# --- Level goals (sell N dishes, earn a profit) ----------------------------------
+
+func sales_at(level := restaurant_level) -> Dictionary:
+	return level_sales.get(str(level), {"dishes": {}, "profit": 0})
+
+
+func goal_progress(goal: Dictionary, level := restaurant_level) -> int:
+	return mini(LevelGoals.progress(goal, sales_at(level)), int(goal.n))
+
+
+func goal_reached_at(level: int, id: String) -> bool:
+	return ("%d:%s" % [level, id]) in goals_reached
+
+
+## This level's goals not reached yet (the upgrade waits for them).
 func goals_left(level := restaurant_level) -> Array:
 	var out: Array = []
 	for g in LevelGoals.for_level(level):
-		if not ("%d:%s" % [level, g.id]) in goals_done:
+		if not goal_reached_at(level, g.id):
 			out.append(g)
 	return out
 
 
-func goal_done(level: int, id: String) -> bool:
-	return ("%d:%s" % [level, id]) in goals_done
+## Counts a sale toward this level's goals and pays any goal just reached.
+func _count_level_sale(dish: String, price: int) -> void:
+	var key := str(restaurant_level)
+	var s: Dictionary = level_sales.get(key, {"dishes": {}, "profit": 0})
+	s.dishes[dish] = int(s.dishes.get(dish, 0)) + 1
+	s.profit = int(s.profit) + price
+	level_sales[key] = s
+	for g in LevelGoals.for_level(restaurant_level):
+		if not goal_reached_at(restaurant_level, g.id) and LevelGoals.progress(g, s) >= int(g.n):
+			goals_reached.append("%d:%s" % [restaurant_level, g.id])
+			money += int(g.coins)
+			add_exp(int(g.exp), "goal")
+			goal_reached.emit(restaurant_level, g.id)
 
 
-## Marks a goal finished and pays its reward. False if it was already done.
-func complete_goal(level: int, id: String) -> bool:
+## This level's challenges not finished yet (the upgrade waits for them).
+func challenges_left(level := restaurant_level) -> Array:
+	var out: Array = []
+	for g in LevelChallenges.for_level(level):
+		if not ("%d:%s" % [level, g.id]) in challenges_done:
+			out.append(g)
+	return out
+
+
+func challenge_done(level: int, id: String) -> bool:
+	return ("%d:%s" % [level, id]) in challenges_done
+
+
+## Marks a challenge finished and pays its reward. False if it was already done.
+func complete_challenge(level: int, id: String) -> bool:
 	var key := "%d:%s" % [level, id]
-	if key in goals_done:
+	if key in challenges_done:
 		return false
-	var g: Dictionary = LevelGoals.find(level, id)
+	var g: Dictionary = LevelChallenges.find(level, id)
 	if g.is_empty():
 		return false
-	goals_done.append(key)
+	challenges_done.append(key)
 	money += int(g.coins)
-	add_exp(int(g.exp), "goal")
-	goal_completed.emit(level, id)
+	add_exp(int(g.exp), "challenge")
+	challenge_completed.emit(level, id)
 	return true
 
 

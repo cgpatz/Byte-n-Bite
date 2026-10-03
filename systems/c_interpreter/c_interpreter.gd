@@ -61,7 +61,7 @@ var _ret_value = 0
 var _steps := 0
 var _since_yield := 0
 var _output_chars := 0
-## What this run has used, for level goals (systems/goals/level_goals.gd):
+## What this run has used, for level challenges (systems/challenges/level_challenges.gd):
 ## "if_else", "switch", "switch_default", "loop", "for", "index", "sizeof",
 ## "array2d", "user_call", "user_call_args", "user_return", "library_call",
 ## and "fn:<kitchen function>" counts.
@@ -1000,7 +1000,7 @@ func _printf(n: Dictionary):
 		_fail("printf's first value must be text in quotes, like  printf(\"%%d\\n\", x);", n.line)
 		return 0
 	var values: Array = []
-	var sources: Array = []  # for level goals: did each value come from a variable?
+	var sources: Array = []  # for level challenges: did each value come from a variable?
 	for i in range(1, n.args.size()):
 		values.append(await _eval(n.args[i]))
 		if _halted():

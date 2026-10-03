@@ -143,21 +143,21 @@ func _run_all() -> void:
 	await check("orders() with an empty counter", "void main(){ int list[5]; int n = orders(list); printf(\"%d %d\", n, list[0] == NOTHING); }", "0 1", "", 4)
 	await check("orders() locked before Level 4", "void main(){ int list[5]; orders(list); }", "", "unlocks at Restaurant Level 4", 3)
 	await check("post_order() locked at Level 2", "void main(){ post_order(EGSILOG); }", "", "unlocks at Restaurant Level 3", 2)
-	# Level goals checker (systems/goals/level_goals.gd).
-	var LG = preload("res://systems/goals/level_goals.gd")
+	# Level challenges checker (systems/challenges/level_challenges.gd).
+	var LG = preload("res://systems/challenges/level_challenges.gd")
 	var tr := {"served": 1, "printfs": [{"served_before": 1, "items": [
 		{"conv": "d", "type": "int", "var": true, "changed": true},
 		{"conv": "f", "type": "float", "var": true, "changed": false},
 		{"conv": "c", "type": "char", "var": true, "changed": false}]}]}
 	var got: Array = LG.met(1, tr)
 	got.sort()
-	_report_bool(got == ["count", "price", "receipt", "size"], "goals: one receipt line meets all four (%s)" % [got])
+	_report_bool(got == ["count", "price", "receipt", "size"], "challenges: one receipt line meets all four (%s)" % [got])
 	tr.printfs[0].served_before = 0
-	_report_bool(not "receipt" in LG.met(1, tr), "goals: receipt only counts after serve()")
+	_report_bool(not "receipt" in LG.met(1, tr), "challenges: receipt only counts after serve()")
 	tr.printfs[0].items[0].changed = false
-	_report_bool(not "count" in LG.met(1, tr), "goals: count needs an int that changed")
+	_report_bool(not "count" in LG.met(1, tr), "challenges: count needs an int that changed")
 	tr.served = 0
-	_report_bool(LG.met(1, tr).is_empty(), "goals: nothing counts without serving a dish")
+	_report_bool(LG.met(1, tr).is_empty(), "challenges: nothing counts without serving a dish")
 	await check("3D rejected", 'void main(){ int a[2][2][2]; }', "", "1 or 2 dimensions")
 	await check("struct rejected", "struct Order { int id; };", "", "'struct' isn't used")
 	await check("division by zero", "void main(){ int z = 0; printf(\"%d\", 5 / z); }", "", "Division by zero")
@@ -200,7 +200,7 @@ func _run_all() -> void:
 		var interp := CInterpreter.new()
 		interp.host = host
 		var src: String = cs.code if cs.group != "Library" else cs.code + "\nvoid main() { }"
-		var lib: String = preload("res://data/help/code_sets.gd").make_dish() if cs.group == "Level goals" and cs.level == 5 else ""
+		var lib: String = preload("res://data/help/code_sets.gd").make_dish() if cs.group == "Level challenges" and cs.level == 5 else ""
 		if not interp.compile(src, lib):
 			bad.append("%s / %s: %s" % [cs.group, cs.title, interp.error.get("msg", "")])
 	if bad.is_empty() and sets.size() > 30:
