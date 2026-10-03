@@ -23,6 +23,7 @@ const EXTRA_KEYS := {"recipe_book": KEY_R, "library": KEY_L, "stats": KEY_TAB, "
 # --- Market (FR-11–FR-14, FR-58–FR-61) ---
 const MARKET_SCRIPT := preload("res://scenes/market/market.gd")
 const SHOP_SCRIPT := preload("res://scenes/ui/shop/shop_window.gd")
+const FRIDGE_SCRIPT := preload("res://scenes/ui/shop/fridge_window.gd")
 const CRATE_SCRIPT := preload("res://scenes/market/delivery_crate.gd")
 const Market := preload("res://systems/market/market_rules.gd")
 ## The Market is built far away from the restaurant in the same world, so the
@@ -30,6 +31,7 @@ const Market := preload("res://systems/market/market_rules.gd")
 const MARKET_ORIGIN := Vector2(0, -3000)
 var market: Node2D
 var shop_window: Control
+var fridge_window: Control
 var crates_root: Node2D
 var in_market := false
 var _pad_armed := false
@@ -1102,7 +1104,7 @@ func _on_panel_closed() -> void:
 
 ## Pop-ups that need an answer first (they stop the manager and the hotkeys).
 func _modal_open() -> bool:
-	for w in [upgrade_panel, admin_panel, confirm_dialog, shop_window]:
+	for w in [upgrade_panel, admin_panel, confirm_dialog, shop_window, fridge_window]:
 		if w and w.visible:
 			return true
 	return false
@@ -1152,6 +1154,11 @@ func _setup_market() -> void:
 	shop_window.set_script(SHOP_SCRIPT)
 	ui.add_child(shop_window)
 	shop_window.closed.connect(_on_panel_closed)
+	fridge_window = Control.new()
+	fridge_window.set_script(FRIDGE_SCRIPT)
+	ui.add_child(fridge_window)
+	fridge_window.closed.connect(_on_panel_closed)
+	fridge_window.market_requested.connect(go_to_market)
 	GameState.delivery_arrived.connect(_on_delivery_arrived)
 	GameState.deliveries_changed.connect(_on_deliveries_changed)
 	GameState.cafe_changed.connect(func(_s): market.refresh())
@@ -1215,7 +1222,9 @@ func _market_interaction(target: Node) -> bool:
 		go_to_market()
 		return true
 	if target.station_id == "FRIDGE":
-		_ask("Fridge", inventory_text(), 0, Callable(), "OK")
+		manager.can_move = false
+		hud.show_prompt_for(null)
+		fridge_window.open()
 		return true
 	if target.opens.begins_with("shop:"):
 		manager.can_move = false
