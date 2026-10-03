@@ -26,6 +26,13 @@ const LevelChallenges := preload("res://systems/challenges/level_challenges.gd")
 const LevelGoals := preload("res://systems/goals/level_goals.gd")
 const Kitchen := preload("res://systems/kitchen/kitchen_rules.gd")
 const Art := preload("res://scenes/ui/common/ui_art.gd")
+const Market := preload("res://systems/market/market_rules.gd")
+## Market button (M) and delivery timers (top right, under the window buttons).
+var _market_button: Button
+var _deliveries_box: VBoxContainer
+var _delivery_tick := 0.0
+var _arrived: Control
+var _arrived_tween: Tween
 
 
 func _ready() -> void:
@@ -37,9 +44,10 @@ func _ready() -> void:
 	_build_buttons()
 	_build_special()
 	_build_challenges()
+	_build_deliveries()
 	var hint := get_node_or_null("ControlsHint") as Label
 	if hint:
-		hint.text = "WASD move  ·  E interact / buy upgrades  ·  T lessons  ·  R recipes  ·  L library  ·  Tab stats  ·  G goals  ·  Esc / P pause"
+		hint.text = "WASD move  ·  E interact / buy upgrades  ·  M market  ·  T lessons  ·  R recipes  ·  L library  ·  Tab stats  ·  G goals  ·  Esc / P pause"
 		hint.offset_left = -1100
 	_add_icon(money_label, "coin")
 	_add_icon(level_label, "restaurant")
@@ -90,6 +98,16 @@ func _build_buttons() -> void:
 	row.offset_bottom = 134
 	row.alignment = BoxContainer.ALIGNMENT_END
 	add_child(row)
+	_market_button = Button.new()
+	_market_button.text = "Market (M)"
+	_market_button.focus_mode = Control.FOCUS_NONE
+	_market_button.custom_minimum_size = Vector2(0, 64)
+	_market_button.add_theme_font_size_override("font_size", 22)
+	_market_button.tooltip_text = "Go to the Night Market to buy ingredients (or use the back door)."
+	PixelArt.button_icon(_market_button, ["market"])
+	_market_button.pressed.connect(func(): window_requested.emit("market"))
+	row.add_child(_market_button)
+	row.offset_left -= 230
 	for spec in [["Lessons (T)", "tutorial", "tutorial"], ["Recipes (R)", "recipe_book", "recipe_book"], ["Library (L)", "library", "library"], ["Stats (Tab)", "stats", "stats"]]:
 		var b := Button.new()
 		b.text = spec[0]
@@ -271,3 +289,116 @@ func set_admin_badge(on: bool) -> void:
 	var badge := get_node_or_null("AdminBadge") as Label
 	if badge:
 		badge.visible = on
+
+
+# --- Market and deliveries -----------------------------------------------------------
+
+func set_in_market(on: bool) -> void:
+	if _market_button:
+		_market_button.text = "Back (M)" if on else "Market (M)"
+		_market_button.tooltip_text = "Go back to the restaurant." if on else "Go to the Night Market to buy ingredients (or use the back door)."
+
+
+func _build_deliveries() -> void:
+	_deliveries_box = VBoxContainer.new()
+	_deliveries_box.name = "Deliveries"
+	_deliveries_box.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_deliveries_box.offset_left = -312
+	_deliveries_box.offset_right = -24
+	_deliveries_box.offset_top = 150
+	_deliveries_box.add_theme_constant_override("separation", 8)
+	_deliveries_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_deliveries_box)
+	refresh_deliveries()
+
+
+func _process(delta: float) -> void:
+	_delivery_tick -= delta
+	if _delivery_tick <= 0.0:
+		_delivery_tick = 0.25
+		refresh_deliveries()
+
+
+## One row per delivery on its way, plus a "Here!" row while crates wait.
+func refresh_deliveries() -> void:
+	if _deliveries_box == null:
+		return
+	for c in _deliveries_box.get_children():
+		c.queue_free()
+	for dv in GameState.deliveries:
+		if dv.get("waiting", false):
+			_delivery_row("Full!", 1.0, Color(1, 0.6, 0.3), "Waiting: the delivery area is full. Claim crates to make room.", true)
+		else:
+			var p: float = 1.0 - float(dv.left) / maxf(float(dv.total), 0.01)
+			_delivery_row(Market.clock(dv.left), p, Art.GOLD, "%d items on the way" % Market.items_in(dv.cart))
+	if not GameState.crates.is_empty():
+		_delivery_row("Here!", 1.0, Color(0.55, 0.95, 0.45), "%d crate(s) in the delivery area: walk there and press E on each." % GameState.crates.size(), true)
+
+
+func _delivery_row(text: String, progress: float, col: Color, tip: String, full := false) -> void:
+	# assets/delivery/delivery_timer_*.png: a 72 × 16 panel (truck at the left,
+	# bar at art x 37–68), shown 4×. The time goes between the truck and the bar.
+	var row := Control.new()
+	row.custom_minimum_size = Vector2(288, 64)
+	row.tooltip_text = tip
+	row.mouse_filter = Control.MOUSE_FILTER_PASS
+	_deliveries_box.add_child(row)
+	var bg := TextureRect.new()
+	bg.texture = PixelArt.find(["res://assets/delivery/delivery_timer_full.png" if full else "res://assets/delivery/delivery_timer_0.png"])
+	bg.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bg.size = Vector2(288, 64)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(bg)
+	if not full:
+		var fill := ColorRect.new()
+		fill.color = Color(0.93, 0.8, 0.1)
+		fill.position = Vector2(148, 28)
+		fill.size = Vector2(roundf(124 * clampf(progress, 0.0, 1.0) / 4.0) * 4.0, 16)
+		fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(fill)
+	var l := Label.new()
+	l.text = text
+	l.position = Vector2(58, 14)
+	l.size = Vector2(90, 36)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.add_theme_font_size_override("font_size", 20 if text.length() > 5 else 24)
+	l.add_theme_color_override("font_color", col)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(l)
+
+
+## "Delivery arrived!" note at the top of the screen.
+func show_delivery_arrived(crates: int) -> void:
+	if _arrived == null:
+		_arrived = Control.new()
+		_arrived.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_arrived.set_anchors_preset(Control.PRESET_CENTER_TOP)
+		_arrived.offset_left = -244
+		_arrived.offset_top = 160
+		_arrived.size = Vector2(488, 144)
+		add_child(_arrived)
+		var bg := TextureRect.new()
+		bg.texture = PixelArt.find(["res://assets/delivery/arrived_popup.png"])
+		bg.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		bg.size = Vector2(488, 144)
+		_arrived.add_child(bg)
+		var truck := TextureRect.new()
+		truck.texture = PixelArt.find(["res://assets/delivery/delivery_truck_open.png", "res://assets/delivery/delivery_truck.png"])
+		truck.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		truck.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		truck.position = Vector2(18, 22)
+		truck.size = Vector2(160, 100)
+		_arrived.add_child(truck)
+		Art.label(_arrived, "Delivery arrived!", Vector2(196, 28), 28, Art.INK, false, 280, HORIZONTAL_ALIGNMENT_LEFT, Art.serif())
+		var sub := Art.label(_arrived, "", Vector2(198, 76), 18, Art.INK_SOFT, false, 280)
+		sub.name = "Sub"
+	(_arrived.get_node("Sub") as Label).text = "%d crate%s in the delivery area" % [crates, "" if crates == 1 else "s"]
+	_arrived.modulate.a = 1.0
+	_arrived.show()
+	if _arrived_tween:
+		_arrived_tween.kill()
+	_arrived_tween = create_tween()
+	_arrived_tween.tween_interval(3.0)
+	_arrived_tween.tween_property(_arrived, "modulate:a", 0.0, 0.6)

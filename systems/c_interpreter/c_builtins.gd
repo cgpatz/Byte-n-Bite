@@ -27,7 +27,7 @@ const FUNCS := {
 	"has_order": {"level": 3, "args": 0, "sig": "has_order()", "desc": "Returns 1 while a customer is waiting for someone to take their order."},
 	"post_order": {"level": 3, "args": 1, "sig": "post_order(DISH)", "desc": "At SERVING_COUNTER: pin the order you took as a ticket at the back of the queue."},
 	"check_counter": {"level": 3, "args": 0, "sig": "check_counter()", "desc": "Walk to the SERVING_COUNTER and take the oldest ticket (first in, first out). Returns its dish, or NOTHING."},
-	"stock": {"level": 3, "args": 1, "sig": "stock(INGREDIENT)", "desc": "Returns how many of an ingredient are left."},
+	"stock": {"level": 3, "args": 1, "sig": "stock(INGREDIENT)", "desc": "Returns how many of an ingredient the kitchen has (the manager buys more at the Market)."},
 	"doneness": {"level": 3, "args": 0, "sig": "doneness()", "desc": "Returns 0-100: how cooked the held food is."},
 	"flip": {"level": 3, "args": 0, "sig": "flip()", "desc": "At GRILL: flip what's cooking."},
 	# Level 4 — Busy Eatery: arrays (answered by the interpreter itself, no walking)

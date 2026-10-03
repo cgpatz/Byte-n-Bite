@@ -65,6 +65,34 @@ func _ready() -> void:
 	box.move_child(code_row, code_title.get_index() + 1)
 	_add_button(code_row, "Open ready-to-copy code", _on_code_sets)
 
+	# Ingredients and the Market.
+	var ing_title := Label.new()
+	ing_title.text = "Ingredients & Market"
+	ing_title.add_theme_color_override("font_color", Color(1, 0.86, 0.52))
+	ing_title.add_theme_font_size_override("font_size", 28)
+	box.add_child(ing_title)
+	box.move_child(ing_title, code_row.get_index() + 1)
+	var ing_row := HBoxContainer.new()
+	box.add_child(ing_row)
+	box.move_child(ing_row, ing_title.get_index() + 1)
+	_add_button(ing_row, "+20 of each", func():
+		for ing in GameState.Kitchen.INGREDIENTS:
+			GameState.add_ingredient(ing, 20))
+	_add_button(ing_row, "Restock Market", func():
+		GameState.market_restock_left = 0.0
+		GameState.tick_market(0.0))
+	_add_button(ing_row, "Deliveries arrive now", func():
+		for dv in GameState.deliveries:
+			dv.left = 0.0
+		GameState.tick_market(0.0))
+	var unlimited := CheckBox.new()
+	unlimited.text = "Unlimited ingredients"
+	unlimited.button_pressed = GameState.unlimited_ingredients
+	unlimited.add_theme_font_size_override("font_size", 22)
+	unlimited.toggled.connect(func(on: bool): GameState.unlimited_ingredients = on)
+	box.add_child(unlimited)
+	box.move_child(unlimited, ing_row.get_index() + 1)
+
 	GameState.money_changed.connect(func(_m): _refresh())
 	GameState.player_exp_changed.connect(func(_l, _e, _n): _refresh())
 	GameState.restaurant_level_changed.connect(func(_l): _refresh())

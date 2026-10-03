@@ -541,7 +541,7 @@ func run_builtin(fname: String, args: Array, _line: int) -> Dictionary:
 			var nm := Kitchen.name_of(int(args[0]))
 			if not Kitchen.is_item(int(args[0])):
 				return {"error": "stock() needs an ingredient like EGG, but got %s." % (nm if nm != "" else str(args[0]))}
-			return {"value": 99}  # real stock comes with deliveries (T18)
+			return {"value": GameState.stock_of(nm)}
 		"is_burnt":
 			return {"value": 1 if held.get("burnt", false) else 0}
 		"doneness":
@@ -617,6 +617,10 @@ func _do_pick_up(id: int) -> Dictionary:
 			if iname in Kitchen.STORAGE[st] and world and world.get_station(st) != null:
 				where.append(st)
 		return {"error": "There's no %s at the %s. Try the %s." % [iname, _at_station, " or ".join(where) if not where.is_empty() else "FRIDGE"]}
+	if not GameState.take_ingredient(iname):
+		if world and world.has_method("note_out_of_stock"):
+			world.note_out_of_stock(iname)
+		return {"error": "Out of %s! The manager has to buy more at the Market (back door or M) and claim the crates in the delivery area. Tip: check stock(%s) first." % [iname.capitalize(), iname]}
 	await _act("pick", PICK_TIME, "picking up...")
 	if not _stop_requested:
 		held = {"id": id, "cooked": false}

@@ -18,7 +18,23 @@ const LIBRARY_SCENE := preload("res://scenes/ui/library_panel/LibraryPanel.tscn"
 const TUTORIAL_SCENE := preload("res://scenes/ui/tutorial/TutorialWindow.tscn")
 const Lessons := preload("res://data/help/lessons.gd")
 ## Extra keys: R = Recipe Book, L = Library, Tab = Stats.
-const EXTRA_KEYS := {"recipe_book": KEY_R, "library": KEY_L, "stats": KEY_TAB, "tutorial": KEY_T}
+const EXTRA_KEYS := {"recipe_book": KEY_R, "library": KEY_L, "stats": KEY_TAB, "tutorial": KEY_T, "market": KEY_M}
+
+# --- Market (FR-11–FR-14, FR-58–FR-61) ---
+const MARKET_SCRIPT := preload("res://scenes/market/market.gd")
+const SHOP_SCRIPT := preload("res://scenes/ui/shop/shop_window.gd")
+const CRATE_SCRIPT := preload("res://scenes/market/delivery_crate.gd")
+const Market := preload("res://systems/market/market_rules.gd")
+## The Market is built far away from the restaurant in the same world, so the
+## restaurant (staff, customers) keeps running while the manager shops.
+const MARKET_ORIGIN := Vector2(0, -3000)
+var market: Node2D
+var shop_window: Control
+var crates_root: Node2D
+var in_market := false
+var _pad_armed := false
+var _door_extras: Array = []
+var _out_of_stock_said := {}
 
 var stats_panel: Control
 var code_sets_window: Control
@@ -103,6 +119,7 @@ func _ready() -> void:
 		if staff is Staff:
 			_hook_staff(staff)
 	_add_windows()
+	_setup_market()
 	programming_panel.closed.connect(_on_panel_closed)
 	upgrade_panel.closed.connect(_on_panel_closed)
 	admin_panel.closed.connect(_on_panel_closed)
@@ -156,8 +173,12 @@ func _load_level() -> void:
 		restaurant.show_greybox = false
 	_apply_cafe_lock()
 	_spawn_tables()
+	in_market = false
+	hud.set_in_market(false)
 	_place_characters()
 	_setup_camera()
+	_spawn_crates()
+	_decorate_back_door()
 
 
 ## The Grand Restaurant's Café door stays shut until the Café is bought.
@@ -815,6 +836,10 @@ var _cam_bounds := Rect2()
 func _setup_camera() -> void:
 	_cam_bounds = restaurant.get_bounds().grow(EDGE_MARGIN)
 	camera.zoom = Vector2(FOLLOW_ZOOM, FOLLOW_ZOOM)
+	if in_market and market:
+		_cam_bounds = market.bounds().grow_individual(0, 110, 0, 0)  # room under the HUD
+		var z := maxf(FOLLOW_ZOOM, get_viewport_rect().size.x / market.bounds().size.x)
+		camera.zoom = Vector2(z, z)
 	camera.global_position = _camera_target()  # jump there on level load
 
 
@@ -835,6 +860,8 @@ func _process(delta: float) -> void:
 		return
 	var t := 1.0 - exp(-FOLLOW_SPEED * delta)
 	camera.global_position = camera.global_position.lerp(_camera_target(), t)
+	GameState.tick_market(delta)
+	_check_teleport_pad()
 	if customers_enabled:
 		_spawn_timer -= delta
 		if _spawn_timer <= 0.0:
@@ -859,6 +886,8 @@ func set_placeholders_visible(on: bool) -> void:
 
 
 func _on_manager_interacted(target: Node, result: String) -> void:
+	if _market_interaction(target):
+		return
 	if _offer_upgrade(target):
 		return
 	hud.show_toast(result)
@@ -1052,6 +1081,12 @@ func _add_windows() -> void:
 func _open_window(which: String) -> void:
 	if _modal_open():
 		return
+	if which == "market":
+		if in_market:
+			return_from_market()
+		else:
+			go_to_market()
+		return
 	var w: Control = {"stats": stats_panel, "recipe_book": recipe_book, "library": library_panel, "tutorial": tutorial_window}.get(which)
 	if w == null:
 		return
@@ -1067,7 +1102,7 @@ func _on_panel_closed() -> void:
 
 ## Pop-ups that need an answer first (they stop the manager and the hotkeys).
 func _modal_open() -> bool:
-	for w in [upgrade_panel, admin_panel, confirm_dialog]:
+	for w in [upgrade_panel, admin_panel, confirm_dialog, shop_window]:
 		if w and w.visible:
 			return true
 	return false
@@ -1091,7 +1126,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("pause"):
 		get_viewport().set_input_as_handled()
 		ui.add_child(PAUSE_SCENE.instantiate())
-	elif event.is_action_pressed("recipe_book") or event.is_action_pressed("library") or event.is_action_pressed("stats") or event.is_action_pressed("tutorial"):
+	elif event.is_action_pressed("recipe_book") or event.is_action_pressed("library") or event.is_action_pressed("stats") or event.is_action_pressed("tutorial") or event.is_action_pressed("market"):
 		get_viewport().set_input_as_handled()
 		for action in EXTRA_KEYS:
 			if event.is_action_pressed(action):
@@ -1099,3 +1134,210 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif GameState.admin_mode and event.is_action_pressed("admin_panel"):
 		get_viewport().set_input_as_handled()
 		_open_admin_panel()
+
+
+# --- Market, deliveries and inventory ---------------------------------------------
+
+func _setup_market() -> void:
+	market = Node2D.new()
+	market.name = "Market"
+	market.set_script(MARKET_SCRIPT)
+	market.position = MARKET_ORIGIN
+	add_child(market)
+	crates_root = Node2D.new()
+	crates_root.name = "Crates"
+	crates_root.y_sort_enabled = true
+	add_child(crates_root)
+	shop_window = Control.new()
+	shop_window.set_script(SHOP_SCRIPT)
+	ui.add_child(shop_window)
+	shop_window.closed.connect(_on_panel_closed)
+	GameState.delivery_arrived.connect(_on_delivery_arrived)
+	GameState.deliveries_changed.connect(_on_deliveries_changed)
+	GameState.cafe_changed.connect(func(_s): market.refresh())
+
+
+## Back door / M: the manager goes to the Market. The restaurant keeps running.
+func go_to_market() -> void:
+	if in_market or market == null:
+		return
+	in_market = true
+	_pad_armed = false
+	manager.clear_interactions()
+	manager.global_position = market.arrival_point()
+	_setup_camera()
+	camera.global_position = _camera_target()
+	hud.set_in_market(true)
+	hud.show_toast("Night Market: walk to a stall and press E. Step on the pad to go back.")
+
+
+## Teleport pad / M: back to the restaurant, in front of the back door.
+func return_from_market() -> void:
+	if not in_market:
+		return
+	in_market = false
+	manager.clear_interactions()
+	manager.global_position = back_door_spot()
+	_setup_camera()
+	camera.global_position = _camera_target()
+	hud.set_in_market(false)
+
+
+## A free spot just inside the back door (where the manager comes back).
+func back_door_spot() -> Vector2:
+	var door := get_station("BACK_DOOR")
+	if door == null:
+		return restaurant.get_manager_spawn()
+	return nav.cell_center(nav._nearest_free(nav._to_cell(door.global_position)))
+
+
+func _check_teleport_pad() -> void:
+	if not in_market or market == null or _modal_open():
+		return
+	var d := manager.global_position.distance_to(market.pad_point())
+	if d > 110.0:
+		_pad_armed = true
+	elif _pad_armed and d < 36.0:
+		return_from_market()
+
+
+## Market stalls, the price board, the pad, the back door, crates and the fridge.
+func _market_interaction(target: Node) -> bool:
+	if target.get_script() == CRATE_SCRIPT:
+		var c: Dictionary = GameState.claim_crate(target.crate_index)
+		if not c.is_empty():
+			hud.show_toast("+%d %s in the kitchen (now %d)." % [c.n, Market.title(c.ing), GameState.stock_of(c.ing)])
+			_out_of_stock_said.erase(c.ing)
+		return true
+	if not target is Station:
+		return false
+	if target.station_id == "BACK_DOOR":
+		go_to_market()
+		return true
+	if target.station_id == "FRIDGE":
+		_ask("Fridge", inventory_text(), 0, Callable(), "OK")
+		return true
+	if target.opens.begins_with("shop:"):
+		manager.can_move = false
+		hud.show_prompt_for(null)
+		shop_window.open(target.opens.trim_prefix("shop:"))
+		return true
+	if target.opens == "price_board":
+		_ask("Price Board", price_board_text(), 0, Callable(), "OK")
+		return true
+	if target.opens == "return":
+		return_from_market()
+		return true
+	return false
+
+
+## "Rice 10 · Egg 4 ..." for every unlocked ingredient.
+func inventory_text() -> String:
+	var parts: Array = []
+	for ing in Kitchen.INGREDIENTS:
+		if Kitchen.available(ing, GameState.restaurant_level, GameState.cafe_step) == "":
+			parts.append("%s %d" % [Market.title(ing), GameState.stock_of(ing)])
+	var t := "Ingredients in the kitchen:\n" + "  ·  ".join(parts)
+	if not GameState.crates.is_empty():
+		t += "\n\n%d crate(s) waiting in the delivery area: press E on them to bring them in." % GameState.crates.size()
+	t += "\n\nBuy more at the Market (back door or M)."
+	return t
+
+
+func price_board_text() -> String:
+	var lines: Array = []
+	for key in Market.STALLS:
+		var st: Dictionary = Market.STALLS[key]
+		if st.get("cafe", false) and GameState.cafe_step < 1:
+			lines.append("%s: opens with the Café" % st.title)
+			continue
+		var parts: Array = []
+		for ing in st.items:
+			if Kitchen.available(ing, GameState.restaurant_level, GameState.cafe_step) != "":
+				continue
+			var n := int(GameState.market_stock.get(ing, 0))
+			parts.append("%s %d (%s)" % [Market.title(ing), Market.price(ing), "sold out" if n <= 0 else "%d left" % n])
+		lines.append("%s: %s" % [st.title, ", ".join(parts) if not parts.is_empty() else "nothing for your level yet"])
+	return "Prices in coins, and what each stall has tonight:\n" + "\n".join(lines) + \
+		"\n\nStock changes every %d minutes (next in %s). Deliveries take %d s + %d s per item (max %d s); one crate holds %d." % [
+		int(Market.RESTOCK_SECONDS / 60), Market.clock(GameState.market_restock_left), int(Market.DELIVERY_BASE),
+		int(Market.DELIVERY_PER_ITEM), int(Market.DELIVERY_MAX), Market.CRATE_SIZE]
+
+
+## Crates in the delivery area (from GameState.crates).
+func _spawn_crates() -> void:
+	if crates_root == null:
+		return
+	for c in crates_root.get_children():
+		c.queue_free()
+	var area := get_station("RECEIVING")
+	if area == null:
+		return
+	var cap := maxi(GameState.crate_capacity(), GameState.crates.size())
+	var r := Rect2(area.global_position - area.size / 2.0, area.size)
+	var cols := clampi(ceili(sqrt(cap * r.size.x / maxf(r.size.y, 1.0))), 1, cap)
+	var rows := ceili(cap / float(cols))
+	var step := Vector2(r.size.x / cols, r.size.y / rows)
+	for i in GameState.crates.size():
+		var cr := STATION_SCENE.instantiate()
+		cr.set_script(CRATE_SCRIPT)
+		cr.setup(i, GameState.crates[i])
+		cr.position = r.position + Vector2((i % cols + 0.5) * step.x, (i / cols + 0.5) * step.y + 8)
+		crates_root.add_child(cr)
+	manager.clear_interactions()
+
+
+func _on_deliveries_changed() -> void:
+	_spawn_crates()
+	hud.refresh_deliveries()
+
+
+func _on_delivery_arrived(cart: Dictionary) -> void:
+	hud.show_delivery_arrived(Market.crates_for(cart))
+
+
+## A staff member ran out of an ingredient (one toast per ingredient until restocked).
+func note_out_of_stock(ing: String) -> void:
+	if _out_of_stock_said.has(ing):
+		return
+	_out_of_stock_said[ing] = true
+	hud.show_toast("Out of %s! Buy more at the Market (back door or M)." % Market.title(ing))
+
+
+## MARKET sign above the back door, and a glow when the manager is next to it.
+func _decorate_back_door() -> void:
+	for n in _door_extras:
+		if is_instance_valid(n):
+			n.queue_free()
+	_door_extras.clear()
+	var door := get_station("BACK_DOOR")
+	if door == null:
+		return
+	var sign_tex := PixelArt.find(["res://assets/market/market_sign.png"])
+	if sign_tex:
+		var sg := Sprite2D.new()
+		sg.texture = sign_tex
+		sg.scale = Vector2(3, 3)
+		sg.z_index = 2
+		sg.position = door.global_position + Vector2(0, -door.size.y / 2.0 - 30)
+		add_child(sg)
+		_door_extras.append(sg)
+	var glow_tex := PixelArt.find(["res://assets/market/back_door_glow.png"])
+	if glow_tex:
+		var gl := Sprite2D.new()
+		gl.name = "BackDoorGlow"
+		gl.texture = glow_tex
+		gl.scale = Vector2(door.size.x / glow_tex.get_width() * 1.1, door.size.y / glow_tex.get_height() * 1.6)
+		gl.position = door.global_position
+		gl.z_index = 1
+		gl.visible = false
+		add_child(gl)
+		_door_extras.append(gl)
+		if not manager.focus_changed.is_connected(_on_focus_for_glow):
+			manager.focus_changed.connect(_on_focus_for_glow)
+
+
+func _on_focus_for_glow(target: Node) -> void:
+	for n in _door_extras:
+		if is_instance_valid(n) and n.name == "BackDoorGlow":
+			n.visible = target is Station and target.station_id == "BACK_DOOR"

@@ -19,6 +19,7 @@ var game
 
 func _ready() -> void:
 	GameState.reset()
+	GameState.unlimited_ingredients = true  # the Market has its own tests below
 	GameState.money = 0
 	game = GAME.instantiate()
 	add_child(game)
@@ -459,6 +460,7 @@ func _ready() -> void:
 	game.deliver_order(o, jn)
 	_report(GameState.money - price_before == roundi(30 * 1.47) + (0 if int(GameState.dishes_served.get("EGSILOG", 0)) > 1 else game.FIRST_DISH_BONUS),
 		"A Lv 10 Cashier staff member earns %d coins for a 30-coin Egsilog" % (GameState.money - price_before))
+	await _market_tests()
 	# Save and load.
 	GameState.game_name = "Test Kitchen"
 	GameState.manager_name = "Chris"
@@ -473,6 +475,100 @@ func _ready() -> void:
 		"Save/load keeps game name, manager name, coins and staff levels")
 	print("==== Smoke test: %s ====" % ("ALL PASSED" if _failed == 0 else "%d FAILED" % _failed))
 	get_tree().quit(_failed)
+
+
+## Market, deliveries and inventory (FR-11–FR-14, FR-58–FR-61).
+func _market_tests() -> void:
+	var Market = load("res://systems/market/market_rules.gd")
+	GameState.unlimited_ingredients = false
+	GameState.restaurant_level = 3
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var jn: Staff = game.get_node("Characters/Staff/Jane")
+	# Out of stock: pick_up() stops with a clear message; stock() is the real count.
+	GameState.inventory = {"RICE": 0, "EGG": 3}
+	jn.program_source = "void main() { printf(\"%d\\n\", stock(EGG)); go_to(FRIDGE); pick_up(RICE); }"
+	jn.clear_log()
+	await jn.run_program()
+	_report(jn.log_text.contains("Out of Rice") and GameState.stock_of("EGG") == 3,
+		"Out of stock: pick_up(RICE) with 0 rice stops with a Market hint")
+	jn.program_source = "void main() { go_to(FRIDGE); pick_up(EGG); }"
+	await jn.run_program()
+	_report(GameState.stock_of("EGG") == 2, "pick_up(EGG) uses one egg (3 -> %d)" % GameState.stock_of("EGG"))
+	# Random stock: amounts change, staples are never sold out.
+	var rolls_ok := true
+	var sold_out_seen := false
+	for i in 30:
+		var st: Dictionary = Market.roll_stock()
+		if st.RICE <= 0 or st.EGG <= 0:
+			rolls_ok = false
+		for ing in st:
+			if st[ing] == 0:
+				sold_out_seen = true
+	_report(rolls_ok and sold_out_seen, "Random Market stock: some items sell out, rice and eggs never do")
+	# Delivery time and crates.
+	_report(is_equal_approx(Market.delivery_seconds(5), 30.0) and is_equal_approx(Market.delivery_seconds(10), 45.0)
+		and is_equal_approx(Market.delivery_seconds(40), 90.0) and is_equal_approx(Market.delivery_seconds(10, true), 22.5),
+		"Delivery time: 5 items 0:30, 10 items 0:45, max 1:30, Express halves it")
+	GameState.money = 1000
+	GameState.market_stock = {"RICE": 50, "EGG": 50, "TOCINO": 0, "NOODLES": 20}
+	var too_many: String = GameState.buy_from_market({"RICE": 50})
+	var sold_out: String = GameState.buy_from_market({"TOCINO": 1})
+	var locked: String = GameState.buy_from_market({"NOODLES": 1})
+	_report(too_many.contains("crates") and sold_out != "" and locked.contains("Level 4"),
+		"Market refuses: too many crates for the delivery area, sold-out and locked items")
+	GameState.crates = []
+	GameState.deliveries = []
+	var ok: String = GameState.buy_from_market({"RICE": 12, "EGG": 5})
+	var paid := 1000 - GameState.money
+	var t0: float = GameState.deliveries[0].total if not GameState.deliveries.is_empty() else -1.0
+	_report(ok == "" and paid == 12 * 5 + 5 * 5 and is_equal_approx(t0, 66.0) and GameState.market_stock.RICE == 38 and GameState.stock_of("RICE") == 0,
+		"Buying 12 rice + 5 eggs: pays %d, 1:06 delivery, nothing in the fridge yet" % paid)
+	GameState.tick_market(65.0)
+	var not_yet := GameState.crates.is_empty()
+	GameState.tick_market(2.0)
+	await get_tree().process_frame
+	_report(not_yet and GameState.crates.size() == 3 and game.crates_root.get_child_count() == 3,
+		"Delivery arrives after its time: 3 crates (10 + 2 rice, 5 eggs) in the delivery area")
+	var crate = game.crates_root.get_child(0)
+	game._on_manager_interacted(crate, "")
+	await get_tree().process_frame
+	_report(GameState.stock_of("RICE") == 10 and GameState.crates.size() == 2, "Claiming a crate adds its 10 rice to the kitchen")
+	# A full delivery area makes the next truck wait.
+	GameState.crates = [{"ing": "EGG", "n": 1}, {"ing": "EGG", "n": 1}, {"ing": "EGG", "n": 1}, {"ing": "EGG", "n": 1}]
+	GameState.market_stock.RICE = 10
+	GameState.buy_from_market({"RICE": 5})
+	GameState.tick_market(100.0)
+	var waited: bool = GameState.deliveries.size() == 1 and GameState.deliveries[0].waiting
+	GameState.crates = []
+	GameState.tick_market(0.1)
+	_report(waited and GameState.deliveries.is_empty() and GameState.crates.size() == 1, "The truck waits while the delivery area is full")
+	# Going to the Market and back.
+	var cafe_before: int = GameState.cafe_step
+	GameState.cafe_step = 0
+	game.go_to_market()
+	var there: bool = game.in_market and game.market.bounds().has_point(game.manager.global_position)
+	game.shop_window.open("GREENS")
+	await get_tree().process_frame
+	var shop_ok: bool = game.shop_window.visible and game._modal_open()
+	game.shop_window.close()
+	game.shop_window.open("CAFE")
+	await get_tree().process_frame
+	var cafe_closed: bool = game.shop_window.is_closed_stall()
+	game.shop_window.close()
+	GameState.cafe_step = cafe_before
+	game.return_from_market()
+	var back: bool = not game.in_market and game.restaurant.get_bounds().has_point(game.manager.global_position)
+	_report(there and shop_ok and cafe_closed and back, "Market: go there, open a stall (Café Supplies closed), come back to the back door")
+	# Save / load keeps inventory, deliveries and crates.
+	GameState.market_stock.EGG = 10
+	GameState.buy_from_market({"EGG": 2})
+	var saved := GameState.to_save()
+	GameState.reset()
+	GameState.from_save(saved)
+	_report(GameState.stock_of("RICE") == 10 and GameState.deliveries.size() == 1 and GameState.crates.size() == 1,
+		"Save/load keeps inventory, deliveries on the way and crates")
+	GameState.unlimited_ingredients = true
 
 
 ## Cooks whatever the next customer ordered (Level 2 dishes).

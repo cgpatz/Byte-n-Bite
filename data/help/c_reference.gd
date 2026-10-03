@@ -223,7 +223,7 @@ const KITCHEN := {
 		"related": ["trash", "doneness"],
 	},
 	"stock": {
-		"about": "Returns how many of an ingredient are left. Check it before cooking so you don't run out in the middle of a dish.",
+		"about": "Returns how many of an ingredient the kitchen has. Every pick_up() uses one; the manager buys more at the Market and claims the crates in the delivery area. Check it before cooking so you don't run out in the middle of a dish.",
 		"steps": ["stock(EGG) gives a number.", "Compare it: if (stock(EGG) > 0) { ... }", "Use it as a loop condition: while (stock(EGG) > 0) { ... }"],
 		"example": "void main() {\n    if (stock(EGG) > 0) {\n        printf(\"%d eggs left\\n\", stock(EGG));\n    }\n}",
 		"mistakes": ["Passing a dish or station instead of an ingredient."],

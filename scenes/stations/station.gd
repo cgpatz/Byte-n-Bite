@@ -60,7 +60,8 @@ class_name Station
 ## Can the manager press E on it?
 @export var interactable := true
 ## What pressing E here offers: "" (shows info_text), "upgrades" (the Upgrade
-## Board: buy the next restaurant level) or "cafe_menu" (buy Café recipes).
+## Board: buy the next restaurant level), "cafe_menu" (buy Café recipes),
+## "shop:<STALL>" (a Market stall), "price_board" or "return" (Market teleport pad).
 @export var opens := ""
 @export_multiline var info_text := ""
 
@@ -150,6 +151,14 @@ func get_prompt() -> String:
 		return "Buy Café recipes"
 	if station_id == "CAFE_DOOR":
 		return "Open the Café"
+	if station_id == "BACK_DOOR":
+		return "Go to Market"
+	if station_id == "FRIDGE":
+		return "Check the fridge (ingredients)"
+	if opens == "price_board":
+		return "Read the price board"
+	if opens == "return":
+		return "Go back to the restaurant"
 	return "Inspect %s" % display_name
 
 

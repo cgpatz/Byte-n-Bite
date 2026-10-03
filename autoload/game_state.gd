@@ -39,6 +39,7 @@ void fetch_and_cook(int item) {
 """
 const Progression := preload("res://data/progression/progression.gd")
 const Kitchen := preload("res://systems/kitchen/kitchen_rules.gd")
+const Market := preload("res://systems/market/market_rules.gd")
 ## Grand Restaurant table slots inside the Café room (used once the Café opens).
 const CAFE_TABLE_SLOTS := 4
 
@@ -80,6 +81,24 @@ const LevelChallenges := preload("res://systems/challenges/level_challenges.gd")
 var library_slots: Array = new_library()
 ## Each staff member's C program, by name (so programs survive saving).
 var staff_programs := {}
+## Ingredients in the kitchen ({"RICE": 10}). pick_up() uses one; Market
+## orders arrive as crates in the delivery area and are added when claimed.
+var inventory := Market.START_INVENTORY.duplicate()
+## What the Market has for sale right now (random, renewed every few minutes).
+var market_stock := {}
+var market_restock_left := 0.0
+## Market orders on their way: [{"cart": {"RICE": 10}, "left": secs, "total": secs, "waiting": bool}]
+var deliveries: Array = []
+## Crates waiting in the delivery area: [{"ing": "RICE", "n": 10}]
+var crates: Array = []
+## Tests / Admin: ingredients never run out (not saved).
+var unlimited_ingredients := false
+signal inventory_changed
+signal market_changed
+signal deliveries_changed
+## A delivery reached the delivery area (its crates are now in `crates`).
+signal delivery_arrived(cart: Dictionary)
+
 ## Staff levels and Lv 10 specializations by name ({"Jane": 3}, {"Jane": "Chef"}).
 var staff_levels := {}
 var staff_specs := {}
@@ -112,6 +131,12 @@ const START_SEATING: Array[int] = [1]
 var table_chairs: Array[int] = START_SEATING.duplicate()
 
 
+func _ready() -> void:
+	if market_stock.is_empty():
+		market_stock = Market.roll_stock()
+		market_restock_left = Market.RESTOCK_SECONDS
+
+
 func reset() -> void:
 	game_name = ""
 	manager_name = "Manager"
@@ -127,6 +152,11 @@ func reset() -> void:
 	staff_programs = {}
 	staff_levels = {}
 	staff_specs = {}
+	inventory = Market.START_INVENTORY.duplicate()
+	market_stock = Market.roll_stock()
+	market_restock_left = Market.RESTOCK_SECONDS
+	deliveries = []
+	crates = []
 	cafe_step = 0
 	table_chairs = START_SEATING.duplicate()
 	money = START_MONEY
@@ -150,6 +180,8 @@ func to_save() -> Dictionary:
 		"dishes_served": dishes_served, "coins_from_sales": coins_from_sales,
 		"library_slots": library_slots, "staff_programs": staff_programs,
 		"staff_levels": staff_levels, "staff_specs": staff_specs,
+		"inventory": inventory, "market_stock": market_stock, "market_restock_left": market_restock_left,
+		"deliveries": deliveries, "crates": crates,
 		"cafe_step": cafe_step, "customers_lost": customers_lost,
 		"tutorials_seen": tutorials_seen, "challenges_done": challenges_done, "level_sales": level_sales, "goals_reached": goals_reached, "todays_special": todays_special,
 	}
@@ -215,6 +247,7 @@ func from_save(d: Dictionary) -> void:
 		if str(specs[k]) in Progression.STAFF_SPECIALIZATIONS:
 			staff_specs[str(k)] = str(specs[k])
 	cafe_step = clampi(int(d.get("cafe_step", 0)), 0, Kitchen.CAFE_STEPS)
+	_load_market(d)
 	restaurant_level = int(d.get("restaurant_level", 1))
 	seating_changed.emit()
 	cafe_changed.emit(cafe_step)
@@ -338,6 +371,146 @@ func upgrade_staff(staff_name: String, spec := "") -> bool:
 	staff_upgraded.emit(staff_name, next, staff_spec(staff_name))
 	save_now()
 	return true
+
+
+# --- Inventory and the Market ------------------------------------------------------
+
+func _load_market(d: Dictionary) -> void:
+	inventory = {}
+	if d.has("inventory"):
+		var inv: Dictionary = d.inventory
+		for k in inv:
+			inventory[str(k)] = maxi(0, int(inv[k]))
+	else:
+		# Saves from before the Market: start with 15 of every unlocked ingredient.
+		for ing in Kitchen.INGREDIENTS:
+			if Kitchen.available(ing, int(d.get("restaurant_level", 1)), cafe_step) == "":
+				inventory[ing] = 15
+	if d.has("market_stock"):
+		market_stock = {}
+		var ms: Dictionary = d.market_stock
+		for k in ms:
+			market_stock[str(k)] = maxi(0, int(ms[k]))
+	market_restock_left = float(d.get("market_restock_left", Market.RESTOCK_SECONDS))
+	deliveries = []
+	for dv in d.get("deliveries", []):
+		var cart := {}
+		for k in dv.get("cart", {}):
+			cart[str(k)] = int(dv.cart[k])
+		deliveries.append({"cart": cart, "left": float(dv.get("left", 0)), "total": float(dv.get("total", 1)), "waiting": false})
+	crates = []
+	for c in d.get("crates", []):
+		crates.append({"ing": str(c.get("ing", "RICE")), "n": int(c.get("n", 1))})
+
+
+## How many of an ingredient the kitchen has (stock()).
+func stock_of(ing: String) -> int:
+	if unlimited_ingredients:
+		return 99
+	return int(inventory.get(ing, 0))
+
+
+## Uses one ingredient (pick_up()). False when there is none left.
+func take_ingredient(ing: String) -> bool:
+	if unlimited_ingredients:
+		return true
+	if stock_of(ing) <= 0:
+		return false
+	inventory[ing] = stock_of(ing) - 1
+	inventory_changed.emit()
+	return true
+
+
+func add_ingredient(ing: String, n: int) -> void:
+	inventory[ing] = int(inventory.get(ing, 0)) + n
+	inventory_changed.emit()
+
+
+## Crates the delivery area holds at this restaurant level.
+func crate_capacity() -> int:
+	return Market.crate_capacity(restaurant_level)
+
+
+## Crates already on their way.
+func crates_on_the_way() -> int:
+	var n := 0
+	for dv in deliveries:
+		n += Market.crates_for(dv.cart)
+	return n
+
+
+## Why this cart can't be bought, or "" if it can.
+func market_order_problem(cart: Dictionary, express := false) -> String:
+	if Market.items_in(cart) <= 0:
+		return "Pick something to buy first."
+	for ing in cart:
+		var why := Kitchen.available(ing, restaurant_level, cafe_step)
+		if why != "":
+			return why
+		if int(cart[ing]) > int(market_stock.get(ing, 0)):
+			return "The Market only has %d %s right now." % [int(market_stock.get(ing, 0)), ing.capitalize()]
+	var crates_n := Market.crates_for(cart)
+	if crates_n > crate_capacity():
+		return "That's %d crates, but the delivery area holds %d. Buy less or upgrade the restaurant." % [crates_n, crate_capacity()]
+	var cost := Market.cost_of(cart) + (Market.EXPRESS_COST if express else 0)
+	if money < cost:
+		return "Not enough coins: %d needed." % cost
+	return ""
+
+
+## Pays for a Market order and sends it on its way. Returns "" or the problem.
+func buy_from_market(cart: Dictionary, express := false) -> String:
+	var clean := {}
+	for ing in cart:
+		if int(cart[ing]) > 0:
+			clean[ing] = int(cart[ing])
+	var why := market_order_problem(clean, express)
+	if why != "":
+		return why
+	money -= Market.cost_of(clean) + (Market.EXPRESS_COST if express else 0)
+	for ing in clean:
+		market_stock[ing] = int(market_stock[ing]) - int(clean[ing])
+	var t := Market.delivery_seconds(Market.items_in(clean), express)
+	deliveries.append({"cart": clean, "left": t, "total": t, "waiting": false})
+	market_changed.emit()
+	deliveries_changed.emit()
+	return ""
+
+
+## Runs the Market clock: restocks, delivery timers, arrivals. Called by Game.
+func tick_market(delta: float) -> void:
+	market_restock_left -= delta
+	if market_restock_left <= 0.0:
+		market_stock = Market.roll_stock()
+		market_restock_left = Market.RESTOCK_SECONDS
+		market_changed.emit()
+	var arrived: Array = []
+	for dv in deliveries:
+		dv.left = maxf(0.0, dv.left - delta)
+		if dv.left <= 0.0:
+			var need := Market.crates_for(dv.cart)
+			if crates.size() + need <= crate_capacity():
+				arrived.append(dv)
+			elif not dv.waiting:
+				dv.waiting = true
+				deliveries_changed.emit()
+	for dv in arrived:
+		deliveries.erase(dv)
+		crates.append_array(Market.split_crates(dv.cart))
+		delivery_arrived.emit(dv.cart)
+	if not arrived.is_empty():
+		deliveries_changed.emit()
+
+
+## The manager claims a crate: its ingredients go into the kitchen.
+func claim_crate(i: int) -> Dictionary:
+	if i < 0 or i >= crates.size():
+		return {}
+	var c: Dictionary = crates[i]
+	crates.remove_at(i)
+	add_ingredient(c.ing, int(c.n))
+	deliveries_changed.emit()
+	return c
 
 
 ## Customer patience drain multiplier: slower while a Lv 10 Waiter is on staff.

@@ -99,7 +99,7 @@ const LESSONS := [
 		"level": 3, "title": "Loops", "concept": "while, do/while and for",
 		"pages": [
 			{"title": "Why loops?",
-			"text": "Pressing Run for every customer gets tiring. A [b]loop[/b] repeats a block of code, so a few lines can serve a whole day of customers.\n\nNew kitchen functions:\n• [b]has_order()[/b] returns 1 while a customer is waiting for someone to take their order.\n• [b]post_order(DISH)[/b] and [b]check_counter()[/b] let two staff work as a team (see \"Teamwork: waiter and cook\").\n• [b]stock(INGREDIENT)[/b] returns how many are left.\n• [b]doneness()[/b] returns 0-100 (how cooked your food is), and [b]flip()[/b] flips it at the GRILL.",
+			"text": "Pressing Run for every customer gets tiring. A [b]loop[/b] repeats a block of code, so a few lines can serve a whole day of customers.\n\nNew kitchen functions:\n• [b]has_order()[/b] returns 1 while a customer is waiting for someone to take their order.\n• [b]post_order(DISH)[/b] and [b]check_counter()[/b] let two staff work as a team (see \"Teamwork: waiter and cook\").\n• [b]stock(INGREDIENT)[/b] returns how many the kitchen has left (buy more at the Market).\n• [b]doneness()[/b] returns 0-100 (how cooked your food is), and [b]flip()[/b] flips it at the GRILL.",
 			"code": "", "w3": "c_while_loop.php"},
 			{"title": "The while loop",
 			"text": "A [b]while[/b] loop repeats its block [b]as long as[/b] its condition is true.\n\n1. Check the condition.\n2. If true: run the block, then go back to step 1.\n3. If false: skip to the code after the loop.\n\nThe condition is checked [b]first[/b], so if it starts false the block never runs.",
