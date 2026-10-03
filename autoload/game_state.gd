@@ -382,6 +382,8 @@ func upgrade_restaurant() -> bool:
 	money -= level_data().upgrade_cost
 	# New, bigger restaurant: seating starts over at 1 table / 1 chair.
 	table_chairs = START_SEATING.duplicate()
+	# The new level's goals start from zero: profit and dish counts reset.
+	level_sales[str(restaurant_level + 1)] = {"dishes": {}, "profit": 0}
 	restaurant_level += 1
 	seating_changed.emit()
 	return true

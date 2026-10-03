@@ -329,6 +329,8 @@ func _ready() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	_report(GameState.restaurant_level == 2, "Upgrade Board (chalkboard) + confirm -> Restaurant Level 2")
+	_report(GameState.sales_at(2).profit == 0 and GameState.sales_at(2).dishes.is_empty() and GameState.sales_at(1).profit > 0,
+		"After the upgrade, Level 2 profit starts at 0 (Level 1 kept %d)" % GameState.sales_at(1).profit)
 	for lv in range(2, 6):
 		GameState.restaurant_level = lv
 		await get_tree().process_frame
