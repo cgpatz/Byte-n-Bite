@@ -1,0 +1,36 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scenes/game/game.gd" id="1_game"]
+[ext_resource type="PackedScene" path="res://scenes/characters/manager/Manager.tscn" id="3_manager"]
+[ext_resource type="PackedScene" path="res://scenes/characters/staff/Staff.tscn" id="4_staff"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hud/HUD.tscn" id="5_hud"]
+[ext_resource type="PackedScene" path="res://scenes/ui/programming_panel/ProgrammingPanel.tscn" id="6_panel"]
+[ext_resource type="PackedScene" path="res://scenes/ui/upgrade_panel/UpgradePanel.tscn" id="7_upgrade"]
+[ext_resource type="PackedScene" path="res://scenes/ui/admin_panel/AdminPanel.tscn" id="8_admin"]
+
+[node name="Game" type="Node2D"]
+script = ExtResource("1_game")
+
+[node name="RestaurantHolder" type="Node2D" parent="."]
+
+[node name="Tables" type="Node2D" parent="."]
+
+[node name="Characters" type="Node2D" parent="."]
+
+[node name="Staff" type="Node2D" parent="Characters"]
+
+[node name="Jane" parent="Characters/Staff" instance=ExtResource("4_staff")]
+
+[node name="Manager" parent="Characters" instance=ExtResource("3_manager")]
+
+[node name="Camera2D" type="Camera2D" parent="."]
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="HUD" parent="UI" instance=ExtResource("5_hud")]
+
+[node name="ProgrammingPanel" parent="UI" instance=ExtResource("6_panel")]
+
+[node name="UpgradePanel" parent="UI" instance=ExtResource("7_upgrade")]
+
+[node name="AdminPanel" parent="UI" instance=ExtResource("8_admin")]

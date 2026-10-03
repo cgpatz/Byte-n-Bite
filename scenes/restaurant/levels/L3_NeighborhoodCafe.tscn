@@ -1,0 +1,374 @@
+[gd_scene format=3 uid="uid://byvb31dfh3enx"]
+
+[ext_resource type="Script" uid="uid://dap3vol4wt1wf" path="res://scenes/restaurant/restaurant.gd" id="1_layout"]
+[ext_resource type="Script" uid="uid://bfg1jx4mcl8og" path="res://scenes/restaurant/art_background.gd" id="2_q8ykm"]
+[ext_resource type="PackedScene" path="res://scenes/stations/Station.tscn" id="2_station"]
+[ext_resource type="TileSet" path="res://assets/tiles/restaurant_tileset.tres" id="3_1j8ya"]
+[ext_resource type="Script" uid="uid://bfo7ekkr1k6lp" path="res://scenes/restaurant/grid_overlay.gd" id="3_grid"]
+
+[node name="L3_NeighborhoodCafe" type="Node2D" unique_id=877823523]
+script = ExtResource("1_layout")
+level_name = "Neighborhood Cafe"
+grid_size = Vector2i(16, 14)
+
+[node name="Floor" type="Node2D" parent="." unique_id=1988819052]
+
+[node name="DiningFloor" type="ColorRect" parent="Floor" unique_id=1071458578]
+offset_left = 64.0
+offset_top = 64.0
+offset_right = 960.0
+offset_bottom = 832.0
+mouse_filter = 2
+color = Color(0.5, 0.35, 0.24, 1)
+
+[node name="KitchenFloor" type="ColorRect" parent="Floor" unique_id=1158523692]
+offset_left = 64.0
+offset_top = 64.0
+offset_right = 768.0
+offset_bottom = 320.0
+mouse_filter = 2
+color = Color(0.72, 0.72, 0.74, 1)
+
+[node name="DeliveryFloor" type="ColorRect" parent="Floor" unique_id=1263631817]
+offset_left = 832.0
+offset_top = 64.0
+offset_right = 960.0
+offset_bottom = 192.0
+mouse_filter = 2
+color = Color(0.5, 0.5, 0.52, 1)
+
+[node name="DeliveryDoorFloor" type="ColorRect" parent="Floor" unique_id=2107877011]
+offset_left = 768.0
+offset_top = 128.0
+offset_right = 832.0
+offset_bottom = 192.0
+mouse_filter = 2
+color = Color(0.5, 0.5, 0.52, 1)
+
+[node name="EntranceFloor" type="ColorRect" parent="Floor" unique_id=1746743039]
+offset_left = 448.0
+offset_top = 832.0
+offset_right = 576.0
+offset_bottom = 896.0
+mouse_filter = 2
+color = Color(0.5, 0.35, 0.24, 1)
+
+[node name="Art" type="Node2D" parent="." unique_id=614160737]
+
+[node name="Background" type="Sprite2D" parent="Art" unique_id=1179445230]
+script = ExtResource("2_q8ykm")
+fit_size = Vector2(1024, 896)
+
+[node name="Tiles" type="TileMapLayer" parent="Art" unique_id=2009801848]
+tile_set = ExtResource("3_1j8ya")
+
+[node name="Props" type="Node2D" parent="Art" unique_id=1599046705]
+y_sort_enabled = true
+
+[node name="Walls" type="Node2D" parent="." unique_id=1836200763]
+
+[node name="WallTop" parent="Walls" unique_id=1029886031 instance=ExtResource("2_station")]
+position = Vector2(512, 32)
+collision_mask = 0
+station_id = ""
+display_name = ""
+size = Vector2(1024, 64)
+color = Color(0.33, 0.23, 0.16, 1)
+show_label = false
+interactable = false
+
+[node name="WallBottomLeft" parent="Walls" unique_id=672161154 instance=ExtResource("2_station")]
+position = Vector2(224, 864)
+collision_mask = 0
+station_id = ""
+display_name = ""
+size = Vector2(448, 64)
+color = Color(0.33, 0.23, 0.16, 1)
+show_label = false
+interactable = false
+
+[node name="WallBottomRight" parent="Walls" unique_id=1345115644 instance=ExtResource("2_station")]
+position = Vector2(800, 864)
+collision_mask = 0
+station_id = ""
+display_name = ""
+size = Vector2(448, 64)
+color = Color(0.33, 0.23, 0.16, 1)
+show_label = false
+interactable = false
+
+[node name="WallLeft" parent="Walls" unique_id=1131381193 instance=ExtResource("2_station")]
+position = Vector2(32, 448)
+collision_mask = 0
+station_id = ""
+display_name = ""
+size = Vector2(64, 768)
+color = Color(0.33, 0.23, 0.16, 1)
+show_label = false
+interactable = false
+
+[node name="WallRightUpper" parent="Walls" unique_id=1515050997 instance=ExtResource("2_station")]
+position = Vector2(992, 96)
+collision_mask = 0
+station_id = ""
+display_name = ""
+size = Vector2(64, 64)
+color = Color(0.33, 0.23, 0.16, 1)
+show_label = false
+interactable = false
+
+[node name="WallRightLower" parent="Walls" unique_id=163312714 instance=ExtResource("2_station")]
+position = Vector2(992, 512)
+collision_mask = 0
+station_id = ""
+display_name = ""
+size = Vector2(64, 640)
+color = Color(0.33, 0.23, 0.16, 1)
+show_label = false
+interactable = false
+
+[node name="DeliveryWallLeft" parent="Walls" unique_id=1394006885 instance=ExtResource("2_station")]
+position = Vector2(800, 96)
+collision_mask = 0
+station_id = ""
+display_name = ""
+size = Vector2(64, 64)
+color = Color(0.33, 0.23, 0.16, 1)
+show_label = false
+interactable = false
+
+[node name="DeliveryWallBottom" parent="Walls" unique_id=1506230186 instance=ExtResource("2_station")]
+position = Vector2(864, 224)
+collision_mask = 0
+station_id = ""
+display_name = ""
+size = Vector2(192, 64)
+color = Color(0.33, 0.23, 0.16, 1)
+show_label = false
+interactable = false
+
+[node name="BackDoor" parent="Walls" unique_id=1600254972 instance=ExtResource("2_station")]
+position = Vector2(992, 160)
+collision_mask = 0
+station_id = "BACK_DOOR"
+display_name = "Back Door"
+size = Vector2(64, 64)
+color = Color(0.35, 0.55, 0.35, 1)
+info_text = "Back door: delivery drivers drop ingredients here."
+
+[node name="Stations" type="Node2D" parent="." unique_id=682297391]
+
+[node name="Grill" parent="Stations" unique_id=672432108 instance=ExtResource("2_station")]
+position = Vector2(256, 96)
+collision_mask = 0
+size = Vector2(120, 56)
+color = Color(0.35, 0.35, 0.38, 1)
+info_text = "Grill: cooks patties and meat."
+
+[node name="Fryer" parent="Stations" unique_id=1194496042 instance=ExtResource("2_station")]
+position = Vector2(384, 96)
+collision_mask = 0
+station_id = "FRYER"
+display_name = "Fryer"
+size = Vector2(120, 56)
+color = Color(0.75, 0.6, 0.25, 1)
+info_text = "Fryer: makes fries."
+
+[node name="PrepBoard" parent="Stations" unique_id=758521107 instance=ExtResource("2_station")]
+position = Vector2(512, 96)
+collision_mask = 0
+station_id = "PREP_BOARD"
+display_name = "Prep"
+size = Vector2(120, 56)
+color = Color(0.72, 0.55, 0.35, 1)
+info_text = "Prep Board: chop and prepare ingredients."
+
+[node name="Fridge" parent="Stations" unique_id=1898562065 instance=ExtResource("2_station")]
+position = Vector2(660, 96)
+collision_mask = 0
+station_id = "FRIDGE"
+display_name = "Fridge"
+size = Vector2(88, 56)
+color = Color(0.75, 0.82, 0.88, 1)
+info_text = "Fridge: staff take ingredients from here."
+
+[node name="Trash" parent="Stations" unique_id=994528057 instance=ExtResource("2_station")]
+position = Vector2(736, 96)
+collision_mask = 0
+station_id = "TRASH"
+display_name = "Trash"
+size = Vector2(56, 56)
+color = Color(0.3, 0.4, 0.3, 1)
+info_text = "Trash: throw away burnt food."
+
+[node name="Assembly" parent="Stations" unique_id=1596532173 instance=ExtResource("2_station")]
+position = Vector2(416, 224)
+collision_mask = 0
+station_id = "ASSEMBLY"
+display_name = "Assembly"
+size = Vector2(312, 56)
+color = Color(0.8, 0.7, 0.5, 1)
+info_text = "Assembly: combine components into a dish."
+
+[node name="ServingCounter" parent="Stations" unique_id=302885893 instance=ExtResource("2_station")]
+position = Vector2(448, 352)
+collision_mask = 0
+station_id = "SERVING_COUNTER"
+display_name = "Serving Counter"
+size = Vector2(504, 56)
+color = Color(0.85, 0.62, 0.35, 1)
+info_text = "Serving Counter: finished dishes go here."
+
+[node name="DeliveryRoom" parent="Stations" unique_id=333645428 instance=ExtResource("2_station")]
+position = Vector2(896, 128)
+collision_layer = 2
+collision_mask = 0
+station_id = "RECEIVING"
+display_name = "Deliveries"
+size = Vector2(118, 118)
+color = Color(0.95, 0.8, 0.3, 1)
+solid = false
+info_text = "Delivery room: no deliveries yet. Buy ingredients from the store first."
+
+[node name="CounterStools" type="Node2D" parent="Stations" unique_id=1876058593]
+
+[node name="Stool1" parent="Stations/CounterStools" unique_id=957173580 instance=ExtResource("2_station")]
+position = Vector2(256, 403.2)
+collision_layer = 2
+collision_mask = 0
+station_id = ""
+display_name = ""
+size = Vector2(28, 28)
+color = Color(0.75, 0.2, 0.18, 1)
+show_label = false
+solid = false
+interactable = false
+
+[node name="Stool2" parent="Stations/CounterStools" unique_id=761615355 instance=ExtResource("2_station")]
+position = Vector2(384, 403.2)
+collision_layer = 2
+collision_mask = 0
+station_id = ""
+display_name = ""
+size = Vector2(28, 28)
+color = Color(0.75, 0.2, 0.18, 1)
+show_label = false
+solid = false
+interactable = false
+
+[node name="Stool3" parent="Stations/CounterStools" unique_id=1737262441 instance=ExtResource("2_station")]
+position = Vector2(512, 403.2)
+collision_layer = 2
+collision_mask = 0
+station_id = ""
+display_name = ""
+size = Vector2(28, 28)
+color = Color(0.75, 0.2, 0.18, 1)
+show_label = false
+solid = false
+interactable = false
+
+[node name="Stool4" parent="Stations/CounterStools" unique_id=1475160949 instance=ExtResource("2_station")]
+position = Vector2(640, 403.2)
+collision_layer = 2
+collision_mask = 0
+station_id = ""
+display_name = ""
+size = Vector2(28, 28)
+color = Color(0.75, 0.2, 0.18, 1)
+show_label = false
+solid = false
+interactable = false
+
+[node name="Decor" type="Node2D" parent="Stations" unique_id=944322436]
+
+[node name="Chalkboard" parent="Stations/Decor" instance=ExtResource("2_station")]
+position = Vector2(928, 352)
+station_id = ""
+display_name = "Upgrade Board"
+size = Vector2(48, 40)
+color = Color(0.2, 0.25, 0.22, 1)
+opens = "upgrades"
+
+[node name="Shelves" parent="Stations/Decor" unique_id=441653382 instance=ExtResource("2_station")]
+position = Vector2(96, 160)
+collision_mask = 0
+station_id = ""
+display_name = ""
+size = Vector2(56, 184)
+color = Color(0.45, 0.3, 0.2, 1)
+show_label = false
+interactable = false
+
+[node name="PlantBottomLeft" parent="Stations/Decor" unique_id=938369839 instance=ExtResource("2_station")]
+position = Vector2(96, 800)
+collision_mask = 0
+station_id = ""
+display_name = ""
+size = Vector2(56, 56)
+color = Color(0.3, 0.5, 0.25, 1)
+show_label = false
+interactable = false
+
+[node name="PlantsBottomRight" parent="Stations/Decor" unique_id=229540478 instance=ExtResource("2_station")]
+position = Vector2(896, 800)
+collision_mask = 0
+station_id = ""
+display_name = ""
+size = Vector2(120, 56)
+color = Color(0.3, 0.5, 0.25, 1)
+show_label = false
+interactable = false
+
+[node name="Booth" parent="Stations/Decor" unique_id=1907715827 instance=ExtResource("2_station")]
+position = Vector2(928, 576)
+collision_mask = 0
+station_id = ""
+display_name = ""
+size = Vector2(56, 120)
+color = Color(0.7, 0.25, 0.2, 1)
+show_label = false
+interactable = false
+
+[node name="TableSlots" type="Node2D" parent="." unique_id=920929227]
+
+[node name="TableSlot1" type="Marker2D" parent="TableSlots" unique_id=1627422983]
+position = Vector2(160, 544)
+
+[node name="TableSlot2" type="Marker2D" parent="TableSlots" unique_id=773750677]
+position = Vector2(352, 544)
+
+[node name="TableSlot3" type="Marker2D" parent="TableSlots" unique_id=953310269]
+position = Vector2(704, 544)
+metadata/family = true
+
+[node name="TableSlot4" type="Marker2D" parent="TableSlots" unique_id=1298973280]
+position = Vector2(160, 736)
+
+[node name="TableSlot5" type="Marker2D" parent="TableSlots" unique_id=1264755195]
+position = Vector2(352, 736)
+
+[node name="TableSlot6" type="Marker2D" parent="TableSlots" unique_id=994481565]
+position = Vector2(704, 736)
+metadata/family = true
+
+[node name="Spawns" type="Node2D" parent="." unique_id=631528355]
+
+[node name="ManagerSpawn" type="Marker2D" parent="Spawns" unique_id=1708645620]
+position = Vector2(512, 736)
+
+[node name="StaffSpawn1" type="Marker2D" parent="Spawns" unique_id=1206765839]
+position = Vector2(224, 160)
+
+[node name="StaffSpawn2" type="Marker2D" parent="Spawns" unique_id=735847581]
+position = Vector2(608, 160)
+
+[node name="StaffSpawn3" type="Marker2D" parent="Spawns" unique_id=1496088832]
+position = Vector2(160, 288)
+
+[node name="GridOverlay" type="Node2D" parent="." unique_id=980820275]
+script = ExtResource("3_grid")
+grid_size = Vector2i(16, 14)
+
+[node name="Foreground" type="Node2D" parent="." unique_id=682284117]
+z_index = 10

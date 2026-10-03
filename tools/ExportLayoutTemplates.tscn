@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://tools/export_layout_templates.gd" id="1_tpl"]
+
+[node name="ExportLayoutTemplates" type="Node"]
+script = ExtResource("1_tpl")

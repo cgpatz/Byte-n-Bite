@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="RestaurantLevelData" format=3 uid="uid://bgue1ppioslf5"]
+
+[ext_resource type="Script" uid="uid://bcdtjncl60ugf" path="res://data/levels/restaurant_level_data.gd" id="1_data"]
+[ext_resource type="PackedScene" path="res://scenes/restaurant/levels/L5_GrandRestaurant.tscn" id="2_layout"]
+
+[resource]
+script = ExtResource("1_data")
+level = 5
+display_name = "Grand Restaurant"
+layout_scene = ExtResource("2_layout")
+c_focus = "Functions + everything combined"
+table_cap = 14
+max_chairs_per_table = 4

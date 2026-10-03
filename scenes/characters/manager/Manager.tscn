@@ -1,0 +1,46 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scenes/characters/manager/manager.gd" id="1_manager"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_body"]
+radius = 20.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_reach"]
+radius = 95.0
+
+[node name="Manager" type="CharacterBody2D"]
+collision_mask = 1
+motion_mode = 1
+script = ExtResource("1_manager")
+
+[node name="Body" type="Polygon2D" parent="."]
+color = Color(0.98, 0.78, 0.3, 1)
+polygon = PackedVector2Array(0, -30, 24, 0, 0, 30, -24, 0)
+
+[node name="Outline" type="Line2D" parent="."]
+points = PackedVector2Array(0, -30, 24, 0, 0, 30, -24, 0)
+closed = true
+width = 4.0
+default_color = Color(0.35, 0.2, 0.05, 1)
+
+[node name="Sprite" type="Sprite2D" parent="."]
+
+[node name="NameLabel" type="Label" parent="."]
+offset_left = -60.0
+offset_top = 34.0
+offset_right = 60.0
+offset_bottom = 60.0
+theme_override_font_sizes/font_size = 18
+text = "Manager"
+horizontal_alignment = 1
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_body")
+
+[node name="InteractionArea" type="Area2D" parent="."]
+collision_layer = 0
+collision_mask = 3
+monitorable = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="InteractionArea"]
+shape = SubResource("CircleShape2D_reach")

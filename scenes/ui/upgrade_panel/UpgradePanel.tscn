@@ -1,0 +1,139 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scenes/ui/upgrade_panel/upgrade_panel.gd" id="1_upgrade"]
+
+[node name="UpgradePanel" type="Control"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_upgrade")
+
+[node name="Dim" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.45)
+
+[node name="Panel" type="PanelContainer" parent="."]
+custom_minimum_size = Vector2(760, 0)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -380.0
+offset_top = -330.0
+offset_right = 380.0
+offset_bottom = 330.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_type_variation = &"WoodPanel"
+
+[node name="VBox" type="VBoxContainer" parent="Panel"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Header" type="Label" parent="Panel/VBox"]
+layout_mode = 2
+theme_type_variation = &"HeaderLabel"
+text = "Upgrades"
+horizontal_alignment = 1
+
+[node name="RestaurantTitle" type="Label" parent="Panel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.86, 0.52, 1)
+theme_override_font_sizes/font_size = 28
+text = "Restaurant"
+
+[node name="LevelInfo" type="Label" parent="Panel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Level 1: Tiny Stall"
+autowrap_mode = 3
+
+[node name="UpgradeButton" type="Button" parent="Panel/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 64)
+layout_mode = 2
+theme_type_variation = &"StartButton"
+theme_override_font_sizes/font_size = 26
+text = "Upgrade to Small Diner (300 coins)"
+
+[node name="SeatingTitle" type="Label" parent="Panel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.86, 0.52, 1)
+theme_override_font_sizes/font_size = 28
+text = "Seating"
+
+[node name="SeatingInfo" type="Label" parent="Panel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Tables: 1 / 2  ·  Seats: 2"
+
+[node name="SeatingRow" type="HBoxContainer" parent="Panel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="TableButton" type="Button" parent="Panel/VBox/SeatingRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 24
+text = "Add Table (40)"
+
+[node name="ChairButton" type="Button" parent="Panel/VBox/SeatingRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 24
+text = "Add Chair (15)"
+
+[node name="CafeTitle" type="Label" parent="Panel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.86, 0.52, 1)
+theme_override_font_sizes/font_size = 28
+text = "Café"
+
+[node name="CafeInfo" type="Label" parent="Panel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "The Café opens at Restaurant Level 5."
+autowrap_mode = 3
+
+[node name="CafeButton" type="Button" parent="Panel/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Unlock the Café (2500)"
+
+[node name="Note" type="Label" parent="Panel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.82, 0.66, 1)
+theme_override_constants/outline_size = 0
+theme_override_font_sizes/font_size = 20
+text = "Level challenges will also be required once the Challenge Board is built."
+autowrap_mode = 3
+
+[node name="CloseButton" type="Button" parent="Panel/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 60)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_font_sizes/font_size = 24
+text = "Close"

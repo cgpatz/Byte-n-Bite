@@ -1,0 +1,127 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scenes/ui/programming_panel/programming_panel.gd" id="1_panel"]
+[ext_resource type="Texture2D" uid="uid://1pm8aj1dflag" path="res://assets/ui/icons/start_dark.png" id="ic_start"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_code"]
+content_margin_left = 12.0
+content_margin_top = 10.0
+content_margin_right = 12.0
+content_margin_bottom = 10.0
+bg_color = Color(0.1, 0.08, 0.07, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.4, 0.25, 0.14, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[node name="ProgrammingPanel" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_panel")
+
+[node name="Panel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 11
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -840.0
+offset_top = 24.0
+offset_right = -24.0
+offset_bottom = -24.0
+grow_horizontal = 0
+grow_vertical = 2
+theme_type_variation = &"WoodPanel"
+
+[node name="VBox" type="VBoxContainer" parent="Panel"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="HeaderRow" type="HBoxContainer" parent="Panel/VBox"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Panel/VBox/HeaderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"HeaderLabel"
+theme_override_font_sizes/font_size = 36
+text = "Program: Jane"
+
+[node name="CloseButton" type="Button" parent="Panel/VBox/HeaderRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 56)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Close"
+
+[node name="Hint" type="Label" parent="Panel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.82, 0.66, 1)
+theme_override_constants/outline_size = 0
+theme_override_font_sizes/font_size = 20
+text = "Write real C for this staff member. Supported: variables, if / else if / else, for / while, functions."
+autowrap_mode = 3
+
+[node name="CodeEdit" type="CodeEdit" parent="Panel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.92, 0.9, 0.85, 1)
+theme_override_colors/background_color = Color(0.1, 0.08, 0.07, 1)
+theme_override_colors/current_line_color = Color(1, 1, 1, 0.05)
+theme_override_colors/line_number_color = Color(0.55, 0.47, 0.38, 1)
+theme_override_styles/normal = SubResource("StyleBoxFlat_code")
+theme_override_styles/focus = SubResource("StyleBoxFlat_code")
+highlight_current_line = true
+draw_tabs = true
+gutters_draw_line_numbers = true
+indent_automatic = true
+auto_brace_completion_enabled = true
+auto_brace_completion_highlight_matching = true
+
+[node name="OutputLabel" type="Label" parent="Panel/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Output"
+
+[node name="Console" type="RichTextLabel" parent="Panel/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 150)
+layout_mode = 2
+theme_override_colors/default_color = Color(0.75, 0.9, 0.65, 1)
+theme_override_font_sizes/normal_font_size = 18
+theme_override_styles/normal = SubResource("StyleBoxFlat_code")
+bbcode_enabled = true
+scroll_following = true
+
+[node name="ButtonRow" type="HBoxContainer" parent="Panel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 16
+alignment = 1
+
+[node name="RunButton" type="Button" parent="Panel/VBox/ButtonRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(240, 80)
+layout_mode = 2
+theme_type_variation = &"StartButton"
+theme_override_font_sizes/font_size = 30
+text = "Run"
+icon = ExtResource("ic_start")
+
+[node name="StopButton" type="Button" parent="Panel/VBox/ButtonRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(240, 80)
+layout_mode = 2
+theme_override_font_sizes/font_size = 30
+text = "Stop"

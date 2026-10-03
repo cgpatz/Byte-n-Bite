@@ -1,0 +1,10 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scenes/restaurant/table/table.gd" id="1_table"]
+
+[node name="Table" type="StaticBody2D"]
+script = ExtResource("1_table")
+station_id = "TABLE_1"
+display_name = "Table 1"
+size = Vector2(64, 64)
+color = Color(0.6, 0.4, 0.25, 1)

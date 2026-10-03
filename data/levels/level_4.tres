@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="RestaurantLevelData" format=3]
+
+[ext_resource type="Script" path="res://data/levels/restaurant_level_data.gd" id="1_data"]
+[ext_resource type="PackedScene" path="res://scenes/restaurant/levels/L4_BusyEatery.tscn" id="2_layout"]
+
+[resource]
+script = ExtResource("1_data")
+level = 4
+display_name = "Busy Eatery"
+layout_scene = ExtResource("2_layout")
+c_focus = "Arrays"
+table_cap = 8
+max_chairs_per_table = 4
+upgrade_cost = 1600

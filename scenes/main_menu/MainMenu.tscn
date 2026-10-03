@@ -1,0 +1,170 @@
+[gd_scene format=3 uid="uid://t8307lyxohsq"]
+
+[ext_resource type="Script" uid="uid://dh7lfjrxrt0h5" path="res://scenes/main_menu/main_menu.gd" id="2_script"]
+[ext_resource type="Texture2D" uid="uid://cukutf2dqoshj" path="res://assets/ui/logo/logo.png" id="3_logo"]
+[ext_resource type="Texture2D" uid="uid://2jpgdv0x8cal" path="res://assets/backgrounds/main_menu_bg.png" id="bg_tex"]
+[ext_resource type="VideoStream" uid="uid://bw28ggnyuiha5" path="res://assets/backgrounds/main_menu_bg.ogv" id="bg_video"]
+[ext_resource type="Texture2D" uid="uid://co1ynuno66u2l" path="res://assets/ui/icons/burger.png" id="ic_burger"]
+[ext_resource type="Texture2D" uid="uid://c00axfkcsl1nj" path="res://assets/ui/icons/exit.png" id="ic_exit"]
+[ext_resource type="Texture2D" uid="uid://duc4o30ouos77" path="res://assets/ui/icons/load_game.png" id="ic_load"]
+[ext_resource type="Texture2D" uid="uid://vkuuu6ij0lcf" path="res://assets/ui/icons/new_game.png" id="ic_new"]
+[ext_resource type="Texture2D" uid="uid://cetj7e768diq4" path="res://assets/ui/icons/settings.png" id="ic_settings"]
+[ext_resource type="Texture2D" uid="uid://1pm8aj1dflag" path="res://assets/ui/icons/start_dark.png" id="ic_start"]
+
+[sub_resource type="Gradient" id="Gradient_overlay"]
+offsets = PackedFloat32Array(0, 0.4, 0.7)
+colors = PackedColorArray(0, 0, 0, 0.62, 0, 0, 0, 0.3, 0, 0, 0, 0)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_overlay"]
+gradient = SubResource("Gradient_overlay")
+width = 256
+height = 16
+
+[node name="MainMenu" type="Control" unique_id=60686527]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("2_script")
+
+[node name="Background" type="TextureRect" parent="." unique_id=1487867504]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("bg_tex")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="BackgroundVideo" type="VideoStreamPlayer" parent="." unique_id=2094412617]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+stream = ExtResource("bg_video")
+autoplay = true
+expand = true
+loop = true
+
+[node name="Overlay" type="TextureRect" parent="." unique_id=891494266]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = SubResource("GradientTexture2D_overlay")
+expand_mode = 1
+
+[node name="MenuColumn" type="VBoxContainer" parent="." unique_id=1990715131]
+layout_mode = 0
+offset_left = 200.0
+offset_top = 60.0
+offset_right = 720.0
+offset_bottom = 1020.0
+theme_override_constants/separation = 14
+
+[node name="Logo" type="TextureRect" parent="MenuColumn" unique_id=725686930]
+custom_minimum_size = Vector2(520, 420)
+layout_mode = 2
+texture = ExtResource("3_logo")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="LogoPlaceholder" type="Label" parent="MenuColumn/Logo" unique_id=228932604]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_type_variation = &"TitleLabel"
+text = "Byte
+n' Bite"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Spacer" type="Control" parent="MenuColumn" unique_id=1961529803]
+custom_minimum_size = Vector2(0, 10)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Buttons" type="VBoxContainer" parent="MenuColumn" unique_id=1859532029]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="StartButton" type="Button" parent="MenuColumn/Buttons" unique_id=2022179856]
+custom_minimum_size = Vector2(400, 80)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_type_variation = &"StartButton"
+text = "Start"
+icon = ExtResource("ic_start")
+
+[node name="Burger" type="TextureRect" parent="MenuColumn/Buttons/StartButton" unique_id=1123327774]
+layout_mode = 1
+anchors_preset = 6
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -68.0
+offset_top = -23.0
+offset_right = -28.0
+offset_bottom = 15.0
+grow_horizontal = 0
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("ic_burger")
+
+[node name="NewGameButton" type="Button" parent="MenuColumn/Buttons" unique_id=173813658]
+custom_minimum_size = Vector2(400, 80)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "New Game"
+icon = ExtResource("ic_new")
+
+[node name="LoadGameButton" type="Button" parent="MenuColumn/Buttons" unique_id=117069824]
+custom_minimum_size = Vector2(400, 80)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Load Game"
+icon = ExtResource("ic_load")
+
+[node name="SettingsButton" type="Button" parent="MenuColumn/Buttons" unique_id=1252108256]
+custom_minimum_size = Vector2(400, 80)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Settings"
+icon = ExtResource("ic_settings")
+
+[node name="ExitButton" type="Button" parent="MenuColumn/Buttons" unique_id=424551121]
+custom_minimum_size = Vector2(400, 80)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Exit"
+icon = ExtResource("ic_exit")
+
+[node name="AdminRunButton" type="Button" parent="." unique_id=324799775]
+visible = false
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = -76.0
+offset_right = 264.0
+offset_bottom = -24.0
+grow_vertical = 0
+tooltip_text = "Editor-only test run with the admin panel (F10)."
+theme_override_font_sizes/font_size = 22
+text = "Admin Run"

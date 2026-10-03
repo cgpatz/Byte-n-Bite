@@ -1,0 +1,145 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scenes/ui/settings/settings_menu.gd" id="1_script"]
+
+[node name="Settings" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="Dim" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.55)
+
+[node name="Panel" type="PanelContainer" parent="."]
+custom_minimum_size = Vector2(820, 0)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -410.0
+offset_top = -310.0
+offset_right = 410.0
+offset_bottom = 310.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_type_variation = &"WoodPanel"
+
+[node name="VBox" type="VBoxContainer" parent="Panel"]
+layout_mode = 2
+theme_override_constants/separation = 24
+
+[node name="Header" type="Label" parent="Panel/VBox"]
+layout_mode = 2
+theme_type_variation = &"HeaderLabel"
+text = "Settings"
+horizontal_alignment = 1
+
+[node name="Grid" type="GridContainer" parent="Panel/VBox"]
+layout_mode = 2
+theme_override_constants/h_separation = 32
+theme_override_constants/v_separation = 22
+columns = 2
+
+[node name="MasterLabel" type="Label" parent="Panel/VBox/Grid"]
+layout_mode = 2
+text = "Master Volume"
+
+[node name="MasterSlider" type="HSlider" parent="Panel/VBox/Grid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(380, 32)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+max_value = 1.0
+step = 0.05
+value = 1.0
+
+[node name="MusicLabel" type="Label" parent="Panel/VBox/Grid"]
+layout_mode = 2
+text = "Music"
+
+[node name="MusicSlider" type="HSlider" parent="Panel/VBox/Grid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(380, 32)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+max_value = 1.0
+step = 0.05
+value = 0.8
+
+[node name="SfxLabel" type="Label" parent="Panel/VBox/Grid"]
+layout_mode = 2
+text = "Sound Effects"
+
+[node name="SfxSlider" type="HSlider" parent="Panel/VBox/Grid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(380, 32)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+max_value = 1.0
+step = 0.05
+value = 0.8
+
+[node name="FullscreenLabel" type="Label" parent="Panel/VBox/Grid"]
+layout_mode = 2
+text = "Fullscreen"
+
+[node name="FullscreenCheck" type="CheckBox" parent="Panel/VBox/Grid"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "On"
+
+[node name="CodeSizeLabel" type="Label" parent="Panel/VBox/Grid"]
+layout_mode = 2
+text = "Code Text Size"
+
+[node name="CodeSizeRow" type="HBoxContainer" parent="Panel/VBox/Grid"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="CodeSizeSlider" type="HSlider" parent="Panel/VBox/Grid/CodeSizeRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(300, 32)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+min_value = 14.0
+max_value = 36.0
+step = 2.0
+value = 20.0
+
+[node name="CodeSizeValue" type="Label" parent="Panel/VBox/Grid/CodeSizeRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(56, 0)
+layout_mode = 2
+text = "20"
+horizontal_alignment = 2
+
+[node name="CodePreview" type="Label" parent="Panel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.9, 0.62, 1)
+theme_override_constants/outline_size = 0
+text = "if (is_cooked(PATTY)) { serve(); }"
+horizontal_alignment = 1
+
+[node name="BackButton" type="Button" parent="Panel/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(400, 80)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Back"

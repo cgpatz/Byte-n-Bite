@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scenes/characters/staff/staff.gd" id="1_staff"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_body"]
+radius = 22.0
+
+[node name="Staff" type="CharacterBody2D"]
+motion_mode = 1
+script = ExtResource("1_staff")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_body")

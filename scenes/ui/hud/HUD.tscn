@@ -1,0 +1,102 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scenes/ui/hud/hud.gd" id="1_hud"]
+
+[node name="HUD" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_hud")
+
+[node name="StatsPlank" type="PanelContainer" parent="."]
+layout_mode = 0
+offset_left = 24.0
+offset_top = 20.0
+offset_right = 404.0
+offset_bottom = 84.0
+theme_type_variation = &"WoodPlank"
+
+[node name="StatsRow" type="HBoxContainer" parent="StatsPlank"]
+layout_mode = 2
+theme_override_constants/separation = 28
+
+[node name="MoneyLabel" type="Label" parent="StatsPlank/StatsRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "Coins: 100"
+
+[node name="LevelLabel" type="Label" parent="StatsPlank/StatsRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "Restaurant Lv 1"
+
+[node name="ControlsHint" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -520.0
+offset_top = 24.0
+offset_right = -24.0
+offset_bottom = 60.0
+grow_horizontal = 0
+theme_override_font_sizes/font_size = 20
+text = "WASD move  ·  E interact / buy upgrades  ·  Esc / P pause"
+horizontal_alignment = 2
+
+[node name="Prompt" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -220.0
+offset_top = -110.0
+offset_right = 220.0
+offset_bottom = -50.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_type_variation = &"WoodPlank"
+
+[node name="PromptLabel" type="Label" parent="Prompt"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "[E]  Program Jane"
+horizontal_alignment = 1
+
+[node name="Toast" type="Label" parent="."]
+unique_name_in_owner = true
+modulate = Color(1, 1, 1, 0)
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -500.0
+offset_top = 110.0
+offset_right = 500.0
+offset_bottom = 150.0
+grow_horizontal = 2
+theme_override_font_sizes/font_size = 26
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="AdminBadge" type="Label" parent="."]
+visible = false
+layout_mode = 0
+offset_left = 28.0
+offset_top = 92.0
+offset_right = 428.0
+offset_bottom = 124.0
+theme_override_colors/font_color = Color(1, 0.45, 0.35, 1)
+theme_override_font_sizes/font_size = 22
+text = "ADMIN RUN  ·  F10 admin panel"

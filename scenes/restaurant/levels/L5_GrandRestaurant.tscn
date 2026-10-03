@@ -1,0 +1,735 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scenes/restaurant/restaurant.gd" id="1_layout"]
+[ext_resource type="PackedScene" path="res://scenes/stations/Station.tscn" id="2_station"]
+[ext_resource type="Script" path="res://scenes/restaurant/grid_overlay.gd" id="3_grid"]
+
+[ext_resource type="Script" path="res://scenes/restaurant/art_background.gd" id="90_artbg"]
+[ext_resource type="TileSet" path="res://assets/tiles/restaurant_tileset.tres" id="91_tiles"]
+
+[node name="L5_GrandRestaurant" type="Node2D"]
+script = ExtResource("1_layout")
+level_name = "Grand Restaurant"
+grid_size = Vector2i(49, 14)
+
+[node name="Floor" type="Node2D" parent="."]
+
+[node name="CafeFloor" type="ColorRect" parent="Floor"]
+offset_left = 64
+offset_top = 64
+offset_right = 1024
+offset_bottom = 832
+mouse_filter = 2
+color = Color(0.6, 0.43, 0.28, 1)
+
+[node name="DinerFloor" type="ColorRect" parent="Floor"]
+offset_left = 1088
+offset_top = 64
+offset_right = 2048
+offset_bottom = 832
+mouse_filter = 2
+color = Color(0.5, 0.35, 0.24, 1)
+
+[node name="KitchenFloor" type="ColorRect" parent="Floor"]
+offset_left = 2112
+offset_top = 64
+offset_right = 3072
+offset_bottom = 832
+mouse_filter = 2
+color = Color(0.72, 0.72, 0.74, 1)
+
+[node name="CafeDinerDoorFloor" type="ColorRect" parent="Floor"]
+offset_left = 1024
+offset_top = 576
+offset_right = 1088
+offset_bottom = 704
+mouse_filter = 2
+color = Color(0.6, 0.43, 0.28, 1)
+
+[node name="DinerKitchenDoorFloor" type="ColorRect" parent="Floor"]
+offset_left = 2048
+offset_top = 640
+offset_right = 2112
+offset_bottom = 768
+mouse_filter = 2
+color = Color(0.72, 0.72, 0.74, 1)
+
+[node name="EntranceFloor" type="ColorRect" parent="Floor"]
+offset_left = 1472
+offset_top = 832
+offset_right = 1600
+offset_bottom = 896
+mouse_filter = 2
+color = Color(0.5, 0.35, 0.24, 1)
+
+[node name="LoungeRug" type="ColorRect" parent="Floor"]
+offset_left = 128
+offset_top = 320
+offset_right = 448
+offset_bottom = 704
+mouse_filter = 2
+color = Color(0.42, 0.5, 0.3, 1)
+
+[node name="CounterRug" type="ColorRect" parent="Floor"]
+offset_left = 384
+offset_top = 320
+offset_right = 576
+offset_bottom = 512
+mouse_filter = 2
+color = Color(0.75, 0.5, 0.25, 1)
+
+[node name="CafeRugRight" type="ColorRect" parent="Floor"]
+offset_left = 768
+offset_top = 512
+offset_right = 1024
+offset_bottom = 704
+mouse_filter = 2
+color = Color(0.42, 0.5, 0.3, 1)
+
+[node name="DinerRedRug" type="ColorRect" parent="Floor"]
+offset_left = 1152
+offset_top = 320
+offset_right = 1984
+offset_bottom = 512
+mouse_filter = 2
+color = Color(0.6, 0.2, 0.18, 1)
+
+[node name="EntranceMat" type="ColorRect" parent="Floor"]
+offset_left = 1408
+offset_top = 576
+offset_right = 1664
+offset_bottom = 768
+mouse_filter = 2
+color = Color(0.65, 0.18, 0.15, 1)
+
+[node name="DeliveryFloor" type="ColorRect" parent="Floor"]
+offset_left = 2816
+offset_top = 576
+offset_right = 3008
+offset_bottom = 832
+mouse_filter = 2
+color = Color(0.5, 0.5, 0.52, 1)
+
+[node name="DeliveryDoorFloor" type="ColorRect" parent="Floor"]
+offset_left = 2752
+offset_top = 640
+offset_right = 2816
+offset_bottom = 704
+mouse_filter = 2
+color = Color(0.5, 0.5, 0.52, 1)
+
+[node name="Art" type="Node2D" parent="."]
+
+
+[node name="BackgroundCafe" type="Sprite2D" parent="Art"]
+position = Vector2(0, 0)
+centered = false
+script = ExtResource("90_artbg")
+fit_size = Vector2(1088, 896)
+
+[node name="BackgroundDiner" type="Sprite2D" parent="Art"]
+position = Vector2(1024, 0)
+centered = false
+script = ExtResource("90_artbg")
+fit_size = Vector2(1088, 896)
+
+[node name="BackgroundKitchen" type="Sprite2D" parent="Art"]
+position = Vector2(2048, 0)
+centered = false
+script = ExtResource("90_artbg")
+fit_size = Vector2(1088, 896)
+
+[node name="Tiles" type="TileMapLayer" parent="Art"]
+tile_set = ExtResource("91_tiles")
+
+[node name="Props" type="Node2D" parent="Art"]
+y_sort_enabled = true
+
+[node name="Walls" type="Node2D" parent="."]
+
+[node name="WallTop" parent="Walls" instance=ExtResource("2_station")]
+position = Vector2(1568, 32)
+station_id = ""
+display_name = ""
+size = Vector2(3136, 64)
+color = Color(0.33, 0.23, 0.16, 1)
+show_label = false
+interactable = false
+
+[node name="WallBottomLeft" parent="Walls" instance=ExtResource("2_station")]
+position = Vector2(736, 864)
+station_id = ""
+display_name = ""
+size = Vector2(1472, 64)
+color = Color(0.33, 0.23, 0.16, 1)
+show_label = false
+interactable = false
+
+[node name="WallBottomRight" parent="Walls" instance=ExtResource("2_station")]
+position = Vector2(2368, 864)
+station_id = ""
+display_name = ""
+size = Vector2(1536, 64)
+color = Color(0.33, 0.23, 0.16, 1)
+show_label = false
+interactable = false
+
+[node name="WallLeft" parent="Walls" instance=ExtResource("2_station")]
+position = Vector2(32, 448)
+station_id = ""
+display_name = ""
+size = Vector2(64, 768)
+color = Color(0.33, 0.23, 0.16, 1)
+show_label = false
+interactable = false
+
+[node name="WallRightUpper" parent="Walls" instance=ExtResource("2_station")]
+position = Vector2(3104, 384)
+station_id = ""
+display_name = ""
+size = Vector2(64, 640)
+color = Color(0.33, 0.23, 0.16, 1)
+show_label = false
+interactable = false
+
+[node name="WallRightLower" parent="Walls" instance=ExtResource("2_station")]
+position = Vector2(3104, 800)
+station_id = ""
+display_name = ""
+size = Vector2(64, 64)
+color = Color(0.33, 0.23, 0.16, 1)
+show_label = false
+interactable = false
+
+[node name="CafeDinerWallTop" parent="Walls" instance=ExtResource("2_station")]
+position = Vector2(1056, 320)
+station_id = ""
+display_name = ""
+size = Vector2(64, 512)
+color = Color(0.33, 0.23, 0.16, 1)
+show_label = false
+interactable = false
+
+[node name="CafeDinerWallBottom" parent="Walls" instance=ExtResource("2_station")]
+position = Vector2(1056, 768)
+station_id = ""
+display_name = ""
+size = Vector2(64, 128)
+color = Color(0.33, 0.23, 0.16, 1)
+show_label = false
+interactable = false
+
+[node name="CafeDoor" parent="Walls" instance=ExtResource("2_station")]
+position = Vector2(1056, 640)
+station_id = "CAFE_DOOR"
+display_name = "Café (locked)"
+size = Vector2(64, 128)
+color = Color(0.45, 0.18, 0.14, 1)
+info_text = "The Café is locked. Press E here to unlock it."
+
+[node name="DinerKitchenWallTop" parent="Walls" instance=ExtResource("2_station")]
+position = Vector2(2080, 192)
+station_id = ""
+display_name = ""
+size = Vector2(64, 256)
+color = Color(0.33, 0.23, 0.16, 1)
+show_label = false
+interactable = false
+
+[node name="DinerKitchenWallMiddle" parent="Walls" instance=ExtResource("2_station")]
+position = Vector2(2080, 576)
+station_id = ""
+display_name = ""
+size = Vector2(64, 128)
+color = Color(0.33, 0.23, 0.16, 1)
+show_label = false
+interactable = false
+
+[node name="DinerKitchenWallBottom" parent="Walls" instance=ExtResource("2_station")]
+position = Vector2(2080, 800)
+station_id = ""
+display_name = ""
+size = Vector2(64, 64)
+color = Color(0.33, 0.23, 0.16, 1)
+show_label = false
+interactable = false
+
+[node name="DeliveryWallTop" parent="Walls" instance=ExtResource("2_station")]
+position = Vector2(2912, 544)
+station_id = ""
+display_name = ""
+size = Vector2(320, 64)
+color = Color(0.33, 0.23, 0.16, 1)
+show_label = false
+interactable = false
+
+[node name="DeliveryWallLeftUpper" parent="Walls" instance=ExtResource("2_station")]
+position = Vector2(2784, 608)
+station_id = ""
+display_name = ""
+size = Vector2(64, 64)
+color = Color(0.33, 0.23, 0.16, 1)
+show_label = false
+interactable = false
+
+[node name="DeliveryWallLeftLower" parent="Walls" instance=ExtResource("2_station")]
+position = Vector2(2784, 768)
+station_id = ""
+display_name = ""
+size = Vector2(64, 128)
+color = Color(0.33, 0.23, 0.16, 1)
+show_label = false
+interactable = false
+
+[node name="BackDoor" parent="Walls" instance=ExtResource("2_station")]
+position = Vector2(3104, 736)
+station_id = "BACK_DOOR"
+display_name = "Back Door"
+size = Vector2(64, 64)
+color = Color(0.35, 0.55, 0.35, 1)
+info_text = "Back door: delivery drivers drop ingredients here."
+
+[node name="Stations" type="Node2D" parent="."]
+
+[node name="Blender" parent="Stations" instance=ExtResource("2_station")]
+position = Vector2(480, 96)
+station_id = "BLENDER"
+display_name = "Blender"
+size = Vector2(56, 56)
+color = Color(0.85, 0.55, 0.7, 1)
+info_text = "Blender: smoothies and milkshakes."
+
+[node name="DrinksDispenser" parent="Stations" instance=ExtResource("2_station")]
+position = Vector2(576, 96)
+station_id = "DRINKS_DISPENSER"
+display_name = "Drinks"
+size = Vector2(120, 56)
+color = Color(0.4, 0.6, 0.75, 1)
+info_text = "Drinks dispenser: iced tea, juice and soda."
+
+[node name="CoffeeMachine" parent="Stations" instance=ExtResource("2_station")]
+position = Vector2(512, 288)
+station_id = "COFFEE_MACHINE"
+display_name = "Coffee"
+size = Vector2(120, 56)
+color = Color(0.45, 0.3, 0.2, 1)
+info_text = "Coffee Machine: brews coffee."
+
+[node name="PastryCase" parent="Stations" instance=ExtResource("2_station")]
+position = Vector2(704, 288)
+station_id = "PASTRY_CASE"
+display_name = "Pastry Case"
+size = Vector2(248, 56)
+color = Color(0.9, 0.8, 0.65, 1)
+info_text = "Pastry Case: desserts are kept here."
+
+[node name="Fridge" parent="Stations" instance=ExtResource("2_station")]
+position = Vector2(2336, 128)
+station_id = "FRIDGE"
+display_name = "Fridge"
+size = Vector2(56, 120)
+color = Color(0.75, 0.82, 0.88, 1)
+info_text = "Fridge: staff take ingredients from here."
+
+[node name="Pantry" parent="Stations" instance=ExtResource("2_station")]
+position = Vector2(2432, 96)
+station_id = "PANTRY"
+display_name = "Pantry"
+size = Vector2(120, 56)
+color = Color(0.65, 0.5, 0.35, 1)
+info_text = "Pantry: dry goods like rice, flour and bread."
+
+[node name="Stove" parent="Stations" instance=ExtResource("2_station")]
+position = Vector2(2560, 96)
+station_id = "STOVE"
+display_name = "Stove"
+size = Vector2(120, 56)
+color = Color(0.3, 0.3, 0.34, 1)
+info_text = "Stove: boils soup."
+
+[node name="Oven" parent="Stations" instance=ExtResource("2_station")]
+position = Vector2(2688, 96)
+station_id = "OVEN"
+display_name = "Oven"
+size = Vector2(120, 56)
+color = Color(0.4, 0.3, 0.28, 1)
+info_text = "Oven: bakes pizza, lasagna and cakes."
+
+[node name="Freezer" parent="Stations" instance=ExtResource("2_station")]
+position = Vector2(2912, 128)
+station_id = "FREEZER"
+display_name = "Freezer"
+size = Vector2(56, 120)
+color = Color(0.7, 0.85, 0.95, 1)
+info_text = "Freezer: frozen patties, fries and ice cream."
+
+[node name="Grill" parent="Stations" instance=ExtResource("2_station")]
+position = Vector2(2144, 192)
+station_id = "GRILL"
+display_name = "Grill"
+size = Vector2(56, 120)
+color = Color(0.35, 0.35, 0.38, 1)
+info_text = "Grill: cooks patties and meat."
+
+[node name="Fryer" parent="Stations" instance=ExtResource("2_station")]
+position = Vector2(2144, 544)
+station_id = "FRYER"
+display_name = "Fryer"
+size = Vector2(56, 56)
+color = Color(0.75, 0.6, 0.25, 1)
+info_text = "Fryer: makes fries."
+
+[node name="PrepBoard" parent="Stations" instance=ExtResource("2_station")]
+position = Vector2(2304, 416)
+station_id = "PREP_BOARD"
+display_name = "Prep"
+size = Vector2(120, 184)
+color = Color(0.72, 0.55, 0.35, 1)
+info_text = "Prep Board: chop and prepare ingredients."
+
+[node name="Sink" parent="Stations" instance=ExtResource("2_station")]
+position = Vector2(2528, 352)
+station_id = "SINK"
+display_name = "Sink"
+size = Vector2(184, 56)
+color = Color(0.6, 0.7, 0.78, 1)
+info_text = "Sink: wash plates."
+
+[node name="Assembly" parent="Stations" instance=ExtResource("2_station")]
+position = Vector2(2528, 448)
+station_id = "ASSEMBLY"
+display_name = "Assembly"
+size = Vector2(184, 120)
+color = Color(0.8, 0.7, 0.5, 1)
+info_text = "Assembly: combine components into a dish."
+
+[node name="SpiceRack" parent="Stations" instance=ExtResource("2_station")]
+position = Vector2(2752, 416)
+station_id = "SPICE_RACK"
+display_name = "Spice & Sauce"
+size = Vector2(120, 184)
+color = Color(0.75, 0.45, 0.25, 1)
+info_text = "Spice and sauce station: season and add sauces."
+
+[node name="DishRack" parent="Stations" instance=ExtResource("2_station")]
+position = Vector2(3040, 256)
+station_id = "DISH_RACK"
+display_name = "Dishes"
+size = Vector2(56, 120)
+color = Color(0.8, 0.85, 0.9, 1)
+info_text = "Dish Rack: clean plates for serving."
+
+[node name="RiceCooker" parent="Stations" instance=ExtResource("2_station")]
+position = Vector2(3040, 416)
+station_id = "RICE_COOKER"
+display_name = "Rice"
+size = Vector2(56, 56)
+color = Color(0.92, 0.92, 0.85, 1)
+info_text = "Rice Cooker: rice for rice meals."
+
+[node name="Trash" parent="Stations" instance=ExtResource("2_station")]
+position = Vector2(2208, 800)
+station_id = "TRASH"
+display_name = "Trash"
+size = Vector2(56, 56)
+color = Color(0.3, 0.4, 0.3, 1)
+info_text = "Trash: throw away burnt food."
+
+[node name="ServingCounter" parent="Stations" instance=ExtResource("2_station")]
+position = Vector2(2080, 416)
+station_id = "SERVING_COUNTER"
+display_name = "Serving Counter"
+size = Vector2(56, 184)
+color = Color(0.85, 0.62, 0.35, 1)
+info_text = "Serving Counter: finished dishes go here."
+
+[node name="DeliveryRoom" parent="Stations" instance=ExtResource("2_station")]
+position = Vector2(2912, 704)
+station_id = "RECEIVING"
+display_name = "Deliveries"
+size = Vector2(182, 246)
+color = Color(0.95, 0.8, 0.3, 1)
+solid = false
+info_text = "Delivery room: no deliveries yet. Buy ingredients from the store first."
+
+[node name="Decor" type="Node2D" parent="Stations"]
+
+[node name="Chalkboard" parent="Stations/Decor" instance=ExtResource("2_station")]
+position = Vector2(1472, 96)
+station_id = ""
+display_name = "Upgrade Board"
+size = Vector2(48, 40)
+color = Color(0.2, 0.25, 0.22, 1)
+opens = "upgrades"
+
+[node name="TeaShelf" parent="Stations/Decor" instance=ExtResource("2_station")]
+position = Vector2(288, 96)
+station_id = ""
+display_name = ""
+size = Vector2(184, 56)
+color = Color(0.45, 0.3, 0.2, 1)
+show_label = false
+interactable = false
+
+[node name="MenuBoard" parent="Stations/Decor" instance=ExtResource("2_station")]
+position = Vector2(896, 96)
+station_id = ""
+display_name = "Café Menu Board"
+size = Vector2(120, 56)
+color = Color(0.2, 0.25, 0.22, 1)
+opens = "cafe_menu"
+
+[node name="CafePlant" parent="Stations/Decor" instance=ExtResource("2_station")]
+position = Vector2(96, 224)
+station_id = ""
+display_name = ""
+size = Vector2(56, 56)
+color = Color(0.3, 0.5, 0.25, 1)
+show_label = false
+interactable = false
+
+[node name="Sofa" parent="Stations/Decor" instance=ExtResource("2_station")]
+position = Vector2(288, 416)
+station_id = ""
+display_name = ""
+size = Vector2(184, 56)
+color = Color(0.7, 0.25, 0.2, 1)
+show_label = false
+interactable = false
+
+[node name="LoungeTable" parent="Stations/Decor" instance=ExtResource("2_station")]
+position = Vector2(288, 544)
+station_id = ""
+display_name = ""
+size = Vector2(56, 56)
+color = Color(0.55, 0.35, 0.2, 1)
+show_label = false
+interactable = false
+
+[node name="Armchair" parent="Stations/Decor" instance=ExtResource("2_station")]
+position = Vector2(160, 640)
+station_id = ""
+display_name = ""
+size = Vector2(56, 120)
+color = Color(0.7, 0.25, 0.2, 1)
+show_label = false
+interactable = false
+
+[node name="CafeArmchairRight" parent="Stations/Decor" instance=ExtResource("2_station")]
+position = Vector2(992, 608)
+station_id = ""
+display_name = ""
+size = Vector2(56, 56)
+color = Color(0.7, 0.25, 0.2, 1)
+show_label = false
+interactable = false
+
+[node name="CafePlantersLeft" parent="Stations/Decor" instance=ExtResource("2_station")]
+position = Vector2(256, 800)
+station_id = ""
+display_name = ""
+size = Vector2(248, 56)
+color = Color(0.3, 0.5, 0.25, 1)
+show_label = false
+interactable = false
+
+[node name="CafePlantersRight" parent="Stations/Decor" instance=ExtResource("2_station")]
+position = Vector2(704, 800)
+station_id = ""
+display_name = ""
+size = Vector2(248, 56)
+color = Color(0.3, 0.5, 0.25, 1)
+show_label = false
+interactable = false
+
+[node name="DinerPlantTopLeft" parent="Stations/Decor" instance=ExtResource("2_station")]
+position = Vector2(1120, 96)
+station_id = ""
+display_name = ""
+size = Vector2(56, 56)
+color = Color(0.3, 0.5, 0.25, 1)
+show_label = false
+interactable = false
+
+[node name="DinerPlantTopRight" parent="Stations/Decor" instance=ExtResource("2_station")]
+position = Vector2(2016, 96)
+station_id = ""
+display_name = ""
+size = Vector2(56, 56)
+color = Color(0.3, 0.5, 0.25, 1)
+show_label = false
+interactable = false
+
+[node name="DinerPlanterLeft" parent="Stations/Decor" instance=ExtResource("2_station")]
+position = Vector2(1280, 544)
+station_id = ""
+display_name = ""
+size = Vector2(248, 56)
+color = Color(0.3, 0.5, 0.25, 1)
+show_label = false
+interactable = false
+
+[node name="DinerPlanterRight" parent="Stations/Decor" instance=ExtResource("2_station")]
+position = Vector2(1856, 544)
+station_id = ""
+display_name = ""
+size = Vector2(248, 56)
+color = Color(0.3, 0.5, 0.25, 1)
+show_label = false
+interactable = false
+
+[node name="DinerPlanterBottomLeft" parent="Stations/Decor" instance=ExtResource("2_station")]
+position = Vector2(1248, 800)
+station_id = ""
+display_name = ""
+size = Vector2(184, 56)
+color = Color(0.3, 0.5, 0.25, 1)
+show_label = false
+interactable = false
+
+[node name="DinerPlanterBottomRight" parent="Stations/Decor" instance=ExtResource("2_station")]
+position = Vector2(1888, 800)
+station_id = ""
+display_name = ""
+size = Vector2(184, 56)
+color = Color(0.3, 0.5, 0.25, 1)
+show_label = false
+interactable = false
+
+[node name="StaffDoor" parent="Stations/Decor" instance=ExtResource("2_station")]
+position = Vector2(2144, 96)
+station_id = ""
+display_name = ""
+size = Vector2(56, 56)
+color = Color(0.45, 0.3, 0.2, 1)
+show_label = false
+interactable = false
+
+[node name="KitchenPlant" parent="Stations/Decor" instance=ExtResource("2_station")]
+position = Vector2(2976, 96)
+station_id = ""
+display_name = ""
+size = Vector2(56, 56)
+color = Color(0.3, 0.5, 0.25, 1)
+show_label = false
+interactable = false
+
+[node name="KitchenShelves" parent="Stations/Decor" instance=ExtResource("2_station")]
+position = Vector2(2400, 800)
+station_id = ""
+display_name = ""
+size = Vector2(184, 56)
+color = Color(0.5, 0.45, 0.4, 1)
+show_label = false
+interactable = false
+
+[node name="KitchenPlanters" parent="Stations/Decor" instance=ExtResource("2_station")]
+position = Vector2(2592, 800)
+station_id = ""
+display_name = ""
+size = Vector2(184, 56)
+color = Color(0.3, 0.5, 0.25, 1)
+show_label = false
+interactable = false
+
+[node name="TableSlots" type="Node2D" parent="."]
+
+[node name="TableSlot1" type="Marker2D" parent="TableSlots"]
+position = Vector2(1184, 224)
+
+[node name="TableSlot2" type="Marker2D" parent="TableSlots"]
+position = Vector2(1376, 224)
+
+[node name="TableSlot3" type="Marker2D" parent="TableSlots"]
+position = Vector2(1568, 224)
+
+[node name="TableSlot4" type="Marker2D" parent="TableSlots"]
+position = Vector2(1760, 224)
+
+[node name="TableSlot5" type="Marker2D" parent="TableSlots"]
+position = Vector2(1952, 224)
+
+[node name="TableSlot6" type="Marker2D" parent="TableSlots"]
+position = Vector2(1280, 416)
+metadata/family = true
+
+[node name="TableSlot7" type="Marker2D" parent="TableSlots"]
+position = Vector2(1568, 416)
+
+[node name="TableSlot8" type="Marker2D" parent="TableSlots"]
+position = Vector2(1856, 416)
+metadata/family = true
+
+[node name="TableSlot9" type="Marker2D" parent="TableSlots"]
+position = Vector2(1312, 672)
+
+[node name="TableSlot10" type="Marker2D" parent="TableSlots"]
+position = Vector2(1824, 672)
+
+[node name="TableSlot11" type="Marker2D" parent="TableSlots"]
+position = Vector2(608, 416)
+
+[node name="TableSlot12" type="Marker2D" parent="TableSlots"]
+position = Vector2(864, 416)
+
+[node name="TableSlot13" type="Marker2D" parent="TableSlots"]
+position = Vector2(608, 608)
+
+[node name="TableSlot14" type="Marker2D" parent="TableSlots"]
+position = Vector2(864, 608)
+
+[node name="Spawns" type="Node2D" parent="."]
+
+[node name="ManagerSpawn" type="Marker2D" parent="Spawns"]
+position = Vector2(1536, 742.4)
+
+[node name="StaffSpawn1" type="Marker2D" parent="Spawns"]
+position = Vector2(2240, 288)
+
+[node name="StaffSpawn2" type="Marker2D" parent="Spawns"]
+position = Vector2(2656, 288)
+
+[node name="StaffSpawn3" type="Marker2D" parent="Spawns"]
+position = Vector2(2848, 416)
+
+[node name="StaffSpawn4" type="Marker2D" parent="Spawns"]
+position = Vector2(2400, 672)
+
+[node name="StaffSpawn5" type="Marker2D" parent="Spawns"]
+position = Vector2(2592, 672)
+
+[node name="Rooms" type="Node2D" parent="."]
+
+[node name="Cafe" type="ReferenceRect" parent="Rooms"]
+offset_left = 0
+offset_top = 0
+offset_right = 1088
+offset_bottom = 896
+mouse_filter = 2
+border_color = Color(0.3, 0.8, 1, 1)
+border_width = 4.0
+
+[node name="Diner" type="ReferenceRect" parent="Rooms"]
+offset_left = 1024
+offset_top = 0
+offset_right = 2112
+offset_bottom = 896
+mouse_filter = 2
+border_color = Color(0.3, 0.8, 1, 1)
+border_width = 4.0
+
+[node name="Kitchen" type="ReferenceRect" parent="Rooms"]
+offset_left = 2048
+offset_top = 0
+offset_right = 3136
+offset_bottom = 896
+mouse_filter = 2
+border_color = Color(0.3, 0.8, 1, 1)
+border_width = 4.0
+
+[node name="GridOverlay" type="Node2D" parent="."]
+script = ExtResource("3_grid")
+grid_size = Vector2i(49, 14)
+
+[node name="Foreground" type="Node2D" parent="."]
+z_index = 10

@@ -1,0 +1,13 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+
+# Update archives and working folders (not part of the game)
+/_*.tar.gz
+/_to_delete/
+/Claude outputs/
+
+# OS clutter
+.DS_Store
+Thumbs.db
+desktop.ini
