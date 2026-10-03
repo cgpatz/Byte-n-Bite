@@ -14,6 +14,8 @@ var code_font_size := 20  # used by the programming panel later
 var code_window := Rect2()
 ## Floating windows (Lessons, Recipe Book, Library, Stats): name -> [x, y, scale].
 var windows := {}
+## Goals & Challenges list on the HUD: open or closed.
+var goals_open := true
 
 
 const MUSIC_PLAYER := preload("res://autoload/music_player.gd")
@@ -39,6 +41,7 @@ func load_settings() -> void:
 	code_font_size = cfg.get_value("editor", "code_font_size", code_font_size)
 	code_window = cfg.get_value("editor", "code_window", code_window)
 	windows = cfg.get_value("editor", "windows", windows)
+	goals_open = cfg.get_value("editor", "goals_open", goals_open)
 
 
 func save_settings() -> void:
@@ -50,6 +53,7 @@ func save_settings() -> void:
 	cfg.set_value("editor", "code_font_size", code_font_size)
 	cfg.set_value("editor", "code_window", code_window)
 	cfg.set_value("editor", "windows", windows)
+	cfg.set_value("editor", "goals_open", goals_open)
 	cfg.save(PATH)
 
 

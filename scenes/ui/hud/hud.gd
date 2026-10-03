@@ -20,6 +20,7 @@ var _exp_bar: ProgressBar
 var _special: Button
 ## Goals + challenges checklist (top left).
 var _goals: PanelContainer
+var _goals_toggle: Button
 var _chal_label: RichTextLabel
 const LevelChallenges := preload("res://systems/challenges/level_challenges.gd")
 const LevelGoals := preload("res://systems/goals/level_goals.gd")
@@ -38,7 +39,7 @@ func _ready() -> void:
 	_build_challenges()
 	var hint := get_node_or_null("ControlsHint") as Label
 	if hint:
-		hint.text = "WASD move  ·  E interact / buy upgrades  ·  T lessons  ·  R recipes  ·  L library  ·  Tab stats  ·  Esc / P pause"
+		hint.text = "WASD move  ·  E interact / buy upgrades  ·  T lessons  ·  R recipes  ·  L library  ·  Tab stats  ·  G goals  ·  Esc / P pause"
 		hint.offset_left = -1100
 	_add_icon(money_label, "coin")
 	_add_icon(level_label, "restaurant")
@@ -156,11 +157,42 @@ func _build_challenges() -> void:
 	_chal_label.add_theme_font_size_override("normal_font_size", 18)
 	_chal_label.add_theme_font_size_override("bold_font_size", 20)
 	_chal_label.mouse_filter = Control.MOUSE_FILTER_PASS
-	_goals.add_child(_chal_label)
+	# Header button: click (or press G) to open / close the list.
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 4)
+	_goals.add_child(box)
+	_goals_toggle = Button.new()
+	_goals_toggle.flat = true
+	_goals_toggle.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_goals_toggle.focus_mode = Control.FOCUS_NONE
+	_goals_toggle.add_theme_font_size_override("font_size", 20)
+	_goals_toggle.add_theme_color_override("font_color", Color(1, 0.85, 0.54))
+	_goals_toggle.add_theme_color_override("font_hover_color", Color(1, 0.93, 0.7))
+	_goals_toggle.tooltip_text = "Show / hide goals and challenges (G)"
+	_goals_toggle.pressed.connect(toggle_goals)
+	box.add_child(_goals_toggle)
+	box.add_child(_chal_label)
 	GameState.challenge_completed.connect(func(_l, _i): _refresh_challenges())
 	GameState.goal_reached.connect(func(_l, _i): _refresh_challenges())
 	GameState.stats_changed.connect(_refresh_challenges)
 	_refresh_challenges()
+
+
+## Opens / closes the goals and challenges list (remembered between games).
+func toggle_goals() -> void:
+	SettingsManager.goals_open = not SettingsManager.goals_open
+	SettingsManager.save_settings()
+	_refresh_challenges()
+
+
+func _unhandled_key_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_G \
+			and _goals != null and _goals.visible:
+		var f := get_viewport().gui_get_focus_owner()
+		if f is TextEdit or f is LineEdit:
+			return
+		get_viewport().set_input_as_handled()
+		toggle_goals()
 
 
 func _refresh_challenges() -> void:
@@ -194,6 +226,10 @@ func _refresh_challenges() -> void:
 	if lv < GameState.MAX_RESTAURANT_LEVEL and GameState.goals_left(lv).is_empty() and GameState.challenges_left(lv).is_empty():
 		t += "[color=#9fd18a]All done: upgrade at the chalkboard![/color]"
 	_chal_label.text = t.strip_edges()
+	var open: bool = SettingsManager.goals_open
+	var left: int = GameState.goals_left(lv).size() + GameState.challenges_left(lv).size()
+	_goals_toggle.text = "%s  Goals & Challenges  (%d left)" % ["▾" if open else "▸", left]
+	_chal_label.visible = open
 	_goals.tooltip_text = "\n\n".join(tips) if not tips.is_empty() else "Goals count dishes sold and coins earned at this level."
 	_goals.reset_size()
 
