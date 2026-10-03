@@ -42,6 +42,8 @@ var food_coming := false
 ## Someone took the order (take_order()): the bubble shows the dish and
 ## patience drains at half speed (being seen calms customers down).
 var order_taken := false
+## A staff member is cooking this order right now (patience paused).
+var being_made := false
 const TAKEN_PATIENCE_RATE := 0.5
 var game: Node
 
@@ -98,7 +100,10 @@ func _process(delta: float) -> void:
 		State.WALK_IN, State.WALK_OUT:
 			_walk(delta)
 		State.WAITING:
-			if not food_coming:
+			# Patience pauses while the food is carried over or a staff member is
+			# making this order; after ordering it drains at half speed.
+			being_made = game != null and game.is_being_made(self)
+			if not food_coming and not being_made:
 				waited += delta * (TAKEN_PATIENCE_RATE if order_taken else 1.0)
 			var m := Mood.HAPPY if waited < patience * 0.28 else (Mood.OKAY if waited < patience * 0.56 else Mood.ANNOYED)
 			if m != mood:
@@ -229,7 +234,8 @@ func _draw_order_bubble(center: Vector2) -> void:
 	# Patience left.
 	var left := clampf(1.0 - waited / patience, 0.0, 1.0)
 	var bar := Rect2(box.position + Vector2(4, box.size.y - 7), Vector2((box.size.x - 8) * left, 4))
-	draw_rect(bar, edge)
+	# Blue bar = paused: a staff member is making this order.
+	draw_rect(bar, Color(0.35, 0.65, 0.95) if being_made or food_coming else edge)
 
 
 ## Before anyone takes the order: a "?" bubble (they want to order).

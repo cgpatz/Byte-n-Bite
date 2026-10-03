@@ -433,6 +433,38 @@ func claim_serving(staff: Staff, dish: String) -> Dictionary:
 	return order
 
 
+## True while a staff member is making this customer's order (they took it,
+## or took its ticket, and haven't served it yet). The customer waits calmly:
+## their patience is paused so they don't walk out mid-cooking.
+func is_being_made(customer: Node) -> bool:
+	for o in orders:
+		if o.customer == customer:
+			return o.taken and o.claimed_by != null and not o.posted
+	return false
+
+
+## Today's Special (Level 1): a Run makes the dish for the customer who has
+## waited longest, so that customer is reserved for this staff member.
+func reserve_special_order(staff: Node) -> void:
+	if not GameState.special_active():
+		return
+	for o in orders:
+		if o.claimed_by == staff:
+			return
+	for o in orders:
+		if o.taken and o.claimed_by == null and not o.posted:
+			o.claimed_by = staff
+			return
+
+
+## A staff program ended or stopped: orders it was making but never served
+## go back to waiting (their customers' patience runs again).
+func release_claims(staff: Node) -> void:
+	for o in orders:
+		if o.claimed_by == staff and o.get("serving") == null:
+			o.claimed_by = null
+
+
 ## The staff member stopped before handing it over.
 func unclaim_serving(order: Dictionary) -> void:
 	order.serving = null

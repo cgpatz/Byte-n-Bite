@@ -341,6 +341,29 @@ func _ready() -> void:
 				b = c
 		_report(b != null and game.nav.find_path(game.manager.global_position, Rect2(b.global_position - b.size / 2.0, b.size), 60.0).ok,
 			"Restaurant Lv %d: the manager can walk to the Upgrade Board" % lv)
+	# A customer whose order is being made doesn't walk out mid-cooking.
+	GameState.restaurant_level = 2
+	await get_tree().process_frame
+	await get_tree().process_frame
+	jane = game.get_node("Characters/Staff/Jane")
+	game.customers_enabled = false
+	var patient = game.spawn_customer("EGSILOG")
+	var wf := 0
+	while patient and patient.state != 1 and wf < 600:
+		await get_tree().process_frame
+		wf += 1
+	var lost_b := GameState.customers_lost
+	Engine.time_scale = 8.0
+	jane.program_source = "void main() {\n    int order = take_order();\n    wait(3);\n%s}" % CodeSets.dish_steps("EGSILOG", "    ")
+	jane.run_program()
+	while is_instance_valid(patient) and not patient.order_taken:
+		await get_tree().process_frame
+	patient.waited = patient.patience - 0.5   # nearly out of patience
+	while jane.is_running():
+		await get_tree().process_frame
+	Engine.time_scale = 1.0
+	_report(GameState.customers_lost == lost_b and is_instance_valid(patient) and patient.state == 2,
+		"Customer waits while their order is being made, then gets served")
 	# Level challenges 2-5, each finished by its Code Sets program.
 	GameState.challenges_done = []
 	Engine.time_scale = 8.0

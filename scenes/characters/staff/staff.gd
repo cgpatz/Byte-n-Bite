@@ -297,7 +297,11 @@ func run_program() -> void:
 	plate_items = {}
 	_interp = interp
 	running_changed.emit(true)
+	if world and world.has_method("reserve_special_order"):
+		world.reserve_special_order(self)
 	await interp.run()
+	if world and world.has_method("release_claims"):
+		world.release_claims(self)
 	_path.clear()
 	busy_text = ""
 	if _stop_requested:
