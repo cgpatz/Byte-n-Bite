@@ -1,0 +1,164 @@
+---
+title: "Byte n' Bite · Class Diagram (main systems) · UML v1.8"
+---
+classDiagram
+    direction LR
+
+    class GameState {
+        <<autoload>>
+        +money: int
+        +restaurant_level: int
+        +player_level: int
+        +inventory: Dictionary
+        +market_stock: Dictionary
+        +deliveries: Array
+        +crates: Array
+        +staff_levels: Dictionary
+        +challenges_done: Array
+        +goals_reached: Array
+        +record_sale(dish, price)
+        +add_exp(amount)
+        +take_ingredient(ing) bool
+        +buy_from_market(cart, express) String
+        +tick_market(delta)
+        +claim_crate(i) Dictionary
+        +upgrade_restaurant() bool
+        +upgrade_staff(name, role) bool
+        +complete_challenge(level, id) bool
+        +to_save() Dictionary
+        +from_save(d)
+    }
+    class SaveManager {
+        <<autoload>>
+        +save_game(slot, state, meta) bool
+        +load_state(slot) Dictionary
+        +most_recent_slot() int
+    }
+    class Game {
+        +orders: Array
+        +in_market: bool
+        +place_order(customer, dish)
+        +deliver_order(order, staff) int
+        +post_order(staff, dish) int
+        +check_counter(staff) int
+        +spawn_customer() Customer
+        +go_to_market()
+        +return_from_market()
+        +offer_staff_upgrade(name)
+        +check_challenges(staff)
+    }
+    class Restaurant {
+        +level_name: String
+        +grid_size: Vector2i
+        +get_station(id) Station
+        +get_bounds() Rect2
+    }
+    class Station {
+        +station_id: String
+        +opens: String
+        +interact(by) String
+        +get_prompt() String
+    }
+    class Table {
+        +table_index: int
+        +chairs: int
+    }
+    class Manager {
+        +speed: float
+        +set_display_name(text)
+        -_update_focus()  E interacts with it
+    }
+    class Staff {
+        +staff_name: String
+        +program_source: String
+        +level: int
+        +specialization: String
+        +run_program()
+        +stop_program()
+        +run_builtin(name, args) Dictionary
+    }
+    class Customer {
+        +dish: String
+        +patience: float
+        +order_taken: bool
+        +receive_dish()
+    }
+    class CInterpreter {
+        +stats: Dictionary
+        +compile(source, library) bool
+        +run() bool
+        +stop()
+    }
+    class CLexer
+    class CParser
+    class CBuiltins {
+        <<data>>
+        +unlocked(level) Array
+    }
+    class KitchenRules {
+        <<data>>
+        +DISHES
+        +INGREDIENTS
+        +COOKING
+        +available(name, level, cafe) String
+    }
+    class MarketRules {
+        <<data>>
+        +STALLS
+        +PRICES
+        +roll_stock() Dictionary
+        +delivery_seconds(items, express) float
+    }
+    class Progression {
+        <<data>>
+        +EXP_TO_NEXT
+        +STAFF_UPGRADE_COST
+        +staff_for(rlevel, plevel) Array
+    }
+    class LevelGoals {
+        <<data>>
+        +progress(goal, sales) int
+    }
+    class LevelChallenges {
+        <<data>>
+        +met(level, trace) Array
+    }
+    class Market {
+        +stalls: Dictionary
+        +arrival_point() Vector2
+    }
+    class HUD
+    class ProgrammingPanel
+    class ShopWindow
+    class FridgeWindow
+
+    Game "1" *-- "1" Restaurant : loads current level
+    Game "1" *-- "1" Market
+    Game "1" *-- "1" Manager
+    Game "1" *-- "1..5" Staff
+    Game "1" o-- "0..*" Customer
+    Restaurant "1" *-- "many" Station
+    Table --|> Station
+    Game "1" o-- "0..*" Table
+    Market "1" *-- "5" Station : stall tents
+    Staff "1" --> "1" CInterpreter : runs program with
+    CInterpreter ..> CLexer
+    CInterpreter ..> CParser
+    CInterpreter ..> CBuiltins
+    CInterpreter ..> Staff : host.run_builtin()
+    Staff ..> KitchenRules
+    Staff ..> Game : world (orders, paths)
+    Customer ..> Game : place_order()
+    Game ..> GameState
+    Staff ..> GameState : take_ingredient()
+    GameState ..> SaveManager
+    GameState ..> MarketRules
+    GameState ..> Progression
+    GameState ..> LevelGoals
+    Game ..> LevelChallenges
+    Game *-- HUD
+    Game *-- ProgrammingPanel
+    Game *-- ShopWindow
+    Game *-- FridgeWindow
+    ProgrammingPanel ..> Staff : edits program_source
+    ShopWindow ..> GameState : buy_from_market()

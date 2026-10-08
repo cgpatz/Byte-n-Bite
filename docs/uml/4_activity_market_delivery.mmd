@@ -1,0 +1,32 @@
+---
+title: "Byte n' Bite · Activity: buying ingredients and deliveries · UML v1.8"
+---
+flowchart TD
+    start((●)) --> A{"How does the manager<br/>go to the Market?"}
+    A -- "E at the back door" --> B["Teleport to the Night Market"]
+    A -- "M key / HUD button" --> B
+    B --> C["Walk to a stall tent, press E"]
+    C --> D{"Stall open?"}
+    D -- "No (Café Supplies before the Café)" --> C
+    D -- Yes --> E["Choose amounts with − / +<br/>(capped at random Market stock)"]
+    E --> F{"Express?"}
+    F -- "Yes (+15 coins)" --> G["Delivery time ÷ 2"]
+    F -- No --> H["Delivery time = 15 s + 3 s per item (max 90 s)"]
+    G --> I
+    H --> I{"Order OK?<br/>coins · stock · unlocked ·<br/>crates ≤ delivery-area size"}
+    I -- No --> J["Vendor explains why"] --> E
+    I -- Yes --> K["Pay coins, Market stock − amount,<br/>delivery timer starts on the HUD"]
+    K --> L["Return: step on the teleport pad or M"]
+    L --> M{"Timer done?"}
+    M -- No --> M
+    M -- Yes --> N{"Room in the delivery area?"}
+    N -- "No: truck waits ('Full!')" --> O["Manager claims old crates"] --> N
+    N -- Yes --> P["'Delivery arrived!'<br/>crates appear in the delivery area"]
+    P --> Q["Manager presses E on each crate"]
+    Q --> R["Ingredients added to the fridge (inventory)"]
+    R --> S["Staff pick_up() uses one each;<br/>stock() returns the count"]
+    S --> stop((◉))
+
+    subgraph BG["Runs in the background every frame"]
+        T["Market restock timer (2 min)"] --> U["New random stock:<br/>some items sold out,<br/>rice and eggs never"]
+    end

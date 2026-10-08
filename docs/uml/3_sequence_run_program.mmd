@@ -1,0 +1,49 @@
+---
+title: "Byte n' Bite · Sequence: write code → staff cooks and serves · UML v1.8"
+---
+sequenceDiagram
+    autonumber
+    actor P as Player
+    participant M as Manager
+    participant PP as ProgrammingPanel
+    participant S as Staff
+    participant CI as CInterpreter
+    participant G as Game
+    participant GS as GameState
+    participant C as Customer
+
+    P->>M: walk up to staff, press E
+    M->>PP: open(staff)
+    P->>PP: type C code, press Run
+    PP->>S: program_source = code, then run_program()
+    S->>CI: compile(code, Library)
+    alt syntax error
+        CI-->>S: error (line, message)
+        S-->>PP: show error + highlight line
+    else compiled
+        S->>CI: run()
+        loop each statement
+            CI-->>PP: line_changed (yellow highlight)
+            CI->>S: run_builtin("take_order")
+            S->>G: reserve_order_to_take()
+            G->>C: order_taken = true
+            CI->>S: run_builtin("go_to", FRIDGE)
+            S->>G: find_path() then walk
+            CI->>S: run_builtin("pick_up", EGG)
+            S->>GS: take_ingredient(EGG)
+            alt out of stock
+                GS-->>S: false
+                S-->>PP: "Out of Egg! Buy more at the Market"
+            else in stock
+                GS-->>S: true (inventory - 1)
+            end
+            CI->>S: cook(), plate(), assemble(DISH)
+            CI->>S: run_builtin("serve")
+            S->>G: claim_serving() and deliver_order()
+            G->>C: receive_dish()
+            G->>GS: record_sale(), money += price × staff bonus, add EXP
+            G->>G: check_challenges(staff)
+        end
+        CI-->>S: finished
+        S-->>PP: running = false
+    end

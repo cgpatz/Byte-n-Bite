@@ -1,0 +1,50 @@
+---
+title: "Byte n' Bite · Use Case Diagram · UML v1.8"
+---
+flowchart LR
+    Player@{ shape: circle, label: "🧑 Player<br/>(Learner)" }
+    Admin@{ shape: circle, label: "🛠 Developer<br/>(Admin Run)" }
+
+    subgraph SYS["Byte n' Bite (single-player PC game)"]
+        direction TB
+        subgraph G1["Game session"]
+            UC1(["Start a new game<br/>(game name + manager name)"])
+            UC2(["Load / continue a saved game"])
+            UC3(["Move the manager (WASD)"])
+        end
+        subgraph G2["Programming"]
+            UC4(["Write C code for a staff member"])
+            UC5(["Run / stop a staff program"])
+            UC6(["Debug with errors and line highlight"])
+            UC7(["Save functions in the Library"])
+            UC8(["Read lessons and the Recipe Book"])
+        end
+        subgraph G3["Restaurant"]
+            UC9(["Serve customers' orders"])
+            UC10(["Buy ingredients at the Market"])
+            UC11(["Claim delivery crates"])
+            UC12(["Check the fridge"])
+        end
+        subgraph G4["Progression"]
+            UC13(["Complete goals and challenges"])
+            UC14(["Upgrade the restaurant"])
+            UC15(["Buy tables and chairs"])
+            UC16(["Upgrade staff (Lv 10 role)"])
+            UC17(["Unlock the Café"])
+            UC18(["View stats"])
+        end
+        UC19(["Use the Admin panel<br/>and Code Sets"])
+    end
+
+    Player --- UC1 & UC2 & UC3
+    Player --- UC4 & UC5 & UC7 & UC8
+    Player --- UC9 & UC10 & UC11 & UC12
+    Player --- UC13 & UC14 & UC15 & UC16 & UC17 & UC18
+    Admin --- UC19
+
+    UC5 -. "«include»" .-> UC4
+    UC6 -. "«extend»" .-> UC5
+    UC9 -. "«include»" .-> UC5
+    UC11 -. "«include»" .-> UC10
+    UC14 -. "«include»" .-> UC13
+    UC17 -. "«extend»" .-> UC14
