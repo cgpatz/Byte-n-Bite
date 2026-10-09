@@ -15,6 +15,10 @@ To re-export: `mmdc -i 2_class_diagram.mmd -o 2_class_diagram.png -s 3`
 (Mermaid CLI), or paste the file into https://mermaid.live.
 
 ## Change log
+- **v1.9 (Oct 2026):** matches SRS v1.9. No structural change: the Market
+  random stock, inventory (pick_up uses one, out-of-stock stop) and the Fridge
+  window were already covered by the class and activity diagrams; only the
+  version labels changed.
 - **v1.8 (Oct 2026):** first version. Covers the C interpreter, staff
   programs, orders (waiter/cook tickets), customers, goals and challenges,
   restaurant/staff upgrades (Lv 10 roles), the Night Market with random stock,
