@@ -59,6 +59,8 @@ func _ready() -> void:
 	close_button.pressed.connect(close)
 	SettingsManager.changed.connect(_apply_font_size)
 	code_edit.text_changed.connect(_on_code_changed)
+	code_edit.gui_input.connect(_on_code_zoom_input)
+	code_edit.tooltip_text = "Ctrl + mouse wheel: bigger / smaller code (Ctrl+0 resets)"
 	_build_library_drawer()
 	_setup_floating()
 	_build_upgrade_button()
@@ -121,6 +123,74 @@ func _setup_editor() -> void:
 
 func _apply_font_size() -> void:
 	code_edit.add_theme_font_size_override("font_size", SettingsManager.code_font_size)
+
+
+## Code text size: Ctrl + mouse wheel (or Ctrl + = / Ctrl + - , Ctrl + 0 resets).
+## Saved in Settings like the Code font size slider.
+const CODE_SIZE_MIN := 10
+const CODE_SIZE_MAX := 36
+const CODE_SIZE_DEFAULT := 16
+var _zoom_label: Label
+var _zoom_tween: Tween
+
+
+func _on_code_zoom_input(e: InputEvent) -> void:
+	var step := 0
+	if e is InputEventMouseButton and e.pressed and e.ctrl_pressed:
+		if e.button_index == MOUSE_BUTTON_WHEEL_UP:
+			step = 1
+		elif e.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			step = -1
+	elif e is InputEventKey and e.pressed and e.ctrl_pressed and not e.shift_pressed:
+		match e.keycode:
+			KEY_EQUAL, KEY_PLUS, KEY_KP_ADD:
+				step = 1
+			KEY_MINUS, KEY_KP_SUBTRACT:
+				step = -1
+			KEY_0, KEY_KP_0:
+				_set_code_size(CODE_SIZE_DEFAULT)
+				code_edit.accept_event()
+				return
+	if step == 0:
+		return
+	code_edit.accept_event()
+	_set_code_size(SettingsManager.code_font_size + step)
+
+
+func _set_code_size(v: int) -> void:
+	v = clampi(v, CODE_SIZE_MIN, CODE_SIZE_MAX)
+	if v != SettingsManager.code_font_size:
+		SettingsManager.code_font_size = v
+		SettingsManager.save_settings()
+		SettingsManager.changed.emit()
+	_show_zoom(v)
+
+
+func _show_zoom(v: int) -> void:
+	if _zoom_label == null:
+		_zoom_label = Label.new()
+		_zoom_label.add_theme_font_size_override("font_size", 16)
+		_zoom_label.add_theme_color_override("font_color", Color(1, 0.88, 0.6))
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0, 0, 0, 0.7)
+		sb.set_corner_radius_all(6)
+		sb.content_margin_left = 10
+		sb.content_margin_right = 10
+		sb.content_margin_top = 4
+		sb.content_margin_bottom = 4
+		_zoom_label.add_theme_stylebox_override("normal", sb)
+		_zoom_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		code_edit.add_child(_zoom_label)
+	_zoom_label.text = "Code size %d  (Ctrl+0 resets)" % v
+	_zoom_label.reset_size()
+	_zoom_label.position = Vector2(code_edit.size.x - _zoom_label.size.x - 24, 8)
+	_zoom_label.modulate.a = 1.0
+	_zoom_label.show()
+	if _zoom_tween:
+		_zoom_tween.kill()
+	_zoom_tween = create_tween()
+	_zoom_tween.tween_interval(1.0)
+	_zoom_tween.tween_property(_zoom_label, "modulate:a", 0.0, 0.4)
 
 
 func open(for_staff: Staff) -> void:

@@ -117,9 +117,9 @@ custom_minimum_size = Vector2(300, 32)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
-min_value = 14.0
+min_value = 10.0
 max_value = 36.0
-step = 2.0
+step = 1.0
 value = 20.0
 
 [node name="CodeSizeValue" type="Label" parent="Panel/VBox/Grid/CodeSizeRow"]
