@@ -29,7 +29,7 @@ var _lib_panel: PanelContainer
 var _lib_list: VBoxContainer
 var _lib_toggle: Button
 var _exec_line := -1
-const MIN_SIZE := Vector2(460, 380)
+const MIN_SIZE := Vector2(600, 380)
 const LIB_WIDTH := 420.0
 const GRIP := 30.0
 var _panel: PanelContainer
@@ -421,7 +421,7 @@ func _setup_floating() -> void:
 
 func _default_rect() -> Rect2:
 	var vs := size
-	return Rect2(vs.x - 724.0, 24.0, 700.0, minf(vs.y - 48.0, 860.0))
+	return Rect2(vs.x - 824.0, 24.0, 800.0, minf(vs.y - 48.0, 860.0))
 
 
 func _current_rect() -> Rect2:
@@ -537,6 +537,7 @@ func _build_library_drawer() -> void:
 	var head: HBoxContainer = $Panel/VBox/HeaderRow
 	head.add_child(_lib_toggle)
 	head.move_child(_lib_toggle, close_button.get_index())
+	_build_opacity_button(head)
 
 	_lib_panel = PanelContainer.new()
 	_lib_panel.theme_type_variation = &"WoodPanel"
@@ -669,3 +670,65 @@ func _copy_slot_code(slot_index: int, _use: CheckBox) -> void:
 	code_edit.insert_text_at_caret(code)
 	_log("[color=#ffd27a]Copied \"%s\" into this program. This copy is used instead of the Library version, so you can change it freely.[/color]" % slot.name)
 	code_edit.grab_focus()
+
+
+# --- Opacity control (beside the Library button) -----------------------------------
+
+var _opacity_btn: Button
+var _opacity_pop: PopupPanel
+var _opacity_slider: HSlider
+
+
+## "◐ 100%" button in the title row: opens a small slider that makes the editor
+## (and Library drawer) see-through, 30%-100%, so the kitchen shows behind it.
+## The value is saved with the other settings.
+func _build_opacity_button(head: HBoxContainer) -> void:
+	_opacity_btn = Button.new()
+	_opacity_btn.custom_minimum_size = Vector2(96, 40)
+	_opacity_btn.focus_mode = Control.FOCUS_NONE
+	_opacity_btn.add_theme_font_size_override("font_size", 17)
+	_opacity_btn.tooltip_text = "Editor opacity"
+	head.add_child(_opacity_btn)
+	head.move_child(_opacity_btn, _lib_toggle.get_index())
+	_opacity_pop = PopupPanel.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.17, 0.11, 0.08, 0.98)
+	sb.border_color = Color(0.93, 0.72, 0.38)
+	sb.set_border_width_all(3)
+	sb.set_corner_radius_all(8)
+	sb.content_margin_left = 14
+	sb.content_margin_right = 14
+	sb.content_margin_top = 10
+	sb.content_margin_bottom = 10
+	_opacity_pop.add_theme_stylebox_override("panel", sb)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	_opacity_pop.add_child(v)
+	var l := Label.new()
+	l.text = "Editor opacity"
+	l.add_theme_font_size_override("font_size", 16)
+	l.add_theme_color_override("font_color", Color(1, 0.86, 0.52))
+	v.add_child(l)
+	_opacity_slider = HSlider.new()
+	_opacity_slider.custom_minimum_size = Vector2(220, 28)
+	_opacity_slider.min_value = 0.3
+	_opacity_slider.max_value = 1.0
+	_opacity_slider.step = 0.05
+	_opacity_slider.value = SettingsManager.code_opacity
+	v.add_child(_opacity_slider)
+	_opacity_slider.value_changed.connect(func(val: float):
+		SettingsManager.code_opacity = val
+		_apply_opacity()
+		_update_opacity_btn())
+	_opacity_pop.popup_hide.connect(SettingsManager.save_settings)
+	add_child(_opacity_pop)
+	_opacity_btn.pressed.connect(func():
+		_opacity_slider.value = SettingsManager.code_opacity
+		var r := _opacity_btn.get_global_rect()
+		_opacity_pop.popup(Rect2i(Vector2i(int(r.position.x), int(r.end.y) + 4), Vector2i(250, 0))))
+	_update_opacity_btn()
+
+
+func _update_opacity_btn() -> void:
+	if _opacity_btn:
+		_opacity_btn.text = "◐ %d%%" % roundi(SettingsManager.code_opacity * 100)
