@@ -66,6 +66,7 @@ var _output_chars := 0
 ## "array2d", "user_call", "user_call_args", "user_return", "library_call",
 ## and "fn:<kitchen function>" counts.
 var stats := {}
+var _loop_depth := 0
 var _library_names := {}
 
 
@@ -333,6 +334,7 @@ func _exec(n: Dictionary) -> int:
 						_fail("%s is a single %s, so it can't hold a whole array. Use one item, like list[0]." % [v.name, n.type], n.line)
 						return Flow.ABORT
 				scope[v.name] = {"type": n.type, "v": _coerce(n.type, value)}
+				_tick("decl:" + str(n.type))
 			return Flow.NORMAL
 		"expr":
 			await _step(n.line)
@@ -343,8 +345,11 @@ func _exec(n: Dictionary) -> int:
 			var c = await _eval(n.cond)
 			if _halted():
 				return Flow.ABORT
+			_tick("if")
 			if n.else_s != null:
 				_tick("if_else")
+				if n.else_s is Dictionary and n.else_s.get("k", "") == "if":
+					_tick("else_if")
 			if _truthy(c):
 				return await _exec(n.then_s)
 			elif n.else_s != null:
@@ -359,7 +364,12 @@ func _exec(n: Dictionary) -> int:
 				if not _truthy(c):
 					break
 				_tick("loop")
+				_tick("while")
+				_loop_depth += 1
+				if _loop_depth > 1:
+					_tick("nested")
 				var flow: int = await _exec(n.body)
+				_loop_depth -= 1
 				if flow == Flow.BREAK:
 					break
 				if flow == Flow.RETURN or flow == Flow.ABORT:
@@ -368,7 +378,12 @@ func _exec(n: Dictionary) -> int:
 		"do":
 			while true:
 				_tick("loop")
+				_tick("do_while")
+				_loop_depth += 1
+				if _loop_depth > 1:
+					_tick("nested")
 				var flow: int = await _exec(n.body)
+				_loop_depth -= 1
 				if flow == Flow.BREAK:
 					break
 				if flow == Flow.RETURN or flow == Flow.ABORT:
@@ -393,7 +408,11 @@ func _exec(n: Dictionary) -> int:
 						break
 				_tick("loop")
 				_tick("for")
+				_loop_depth += 1
+				if _loop_depth > 1:
+					_tick("nested")
 				var flow: int = await _exec(n.body)
+				_loop_depth -= 1
 				if flow == Flow.BREAK:
 					break
 				if flow == Flow.RETURN or flow == Flow.ABORT:
@@ -440,8 +459,10 @@ func _exec(n: Dictionary) -> int:
 			_frames[-1].pop_back()
 			return result
 		"break":
+			_tick("break")
 			return Flow.BREAK
 		"continue":
+			_tick("continue")
 			return Flow.CONTINUE
 	_fail("Internal: unknown statement '%s'." % n.k, n.get("line", 0))
 	return Flow.ABORT
@@ -490,6 +511,7 @@ func _eval(n: Dictionary):
 				_fail("%s holds one value, not a whole array. Use one item, like list[0]." % n.name, n.line)
 				return 0
 			if n.op != "=":
+				_tick("compound")
 				value = _binop(n.op.substr(0, 1), cell.v, value, n.line)
 				if _halted():
 					return 0
@@ -506,6 +528,7 @@ func _eval(n: Dictionary):
 				_fail("%s is an array. Use %s on one item, like %s[0]%s" % [n.name, n.op, n.name, n.op], n.line)
 				return 0
 			var old = cell.v
+			_tick("incdec")
 			cell.v = _coerce(cell.type, old + (1 if n.op == "++" else -1))
 			cell.changed = true
 			return cell.v if n.prefix else old
@@ -524,6 +547,10 @@ func _eval(n: Dictionary):
 			var a = await _eval(n.a)
 			if _halted():
 				return 0
+			if n.op in ["&&", "||"]:
+				_tick("logic")
+			elif n.op in ["==", "!=", "<", ">", "<=", ">="]:
+				_tick("compare")
 			if n.op == "&&":
 				if not _truthy(a):
 					return 0
@@ -537,8 +564,11 @@ func _eval(n: Dictionary):
 			var b = await _eval(n.b)
 			if _halted():
 				return 0
+			if n.op in ["+", "-", "*", "/", "%"]:
+				_tick("math")
 			return _binop(n.op, a, b, n.line)
 		"ternary":
+			_tick("ternary")
 			var c = await _eval(n.cond)
 			if _truthy(c):
 				return await _eval(n.a)

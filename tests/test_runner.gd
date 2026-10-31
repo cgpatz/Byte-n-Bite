@@ -175,6 +175,10 @@ func _run_all() -> void:
 			if pg.code != "":
 				codes.append({"id": "%s: %s" % [l.title, pg.title], "example": pg.code})
 		codes.append({"id": l.title + " practice", "example": l.practice.code})
+	for lv in preload("res://data/help/miso_quests.gd").QUESTS:
+		for q in preload("res://data/help/miso_quests.gd").QUESTS[lv]:
+			var qc: String = q.example if q.example.contains("void main") else "void main() {\n" + q.example + "\n}"
+			codes.append({"id": "Miso quest: " + q.topic, "example": qc})
 	for e in preload("res://data/help/c_reference.gd").entries() + codes:
 		var host := FakeHost.new()
 		host.tree = get_tree()

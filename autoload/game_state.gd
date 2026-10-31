@@ -77,6 +77,8 @@ var lesson_stars: Array = []
 var lesson_pages_done: Array = []
 ## Gameplay walkthroughs (RPG tutorial) already finished, by restaurant level.
 var guides_done: Array = []
+## Chef Miso's C coding quests finished per restaurant level: {"1": 3} = first 3 done.
+var quest_progress := {}
 ## Level challenges finished, e.g. ["1:count", "1:receipt"] (systems/challenges/level_challenges.gd).
 var challenges_done: Array = []
 signal challenge_completed(level: int, id: String)
@@ -157,6 +159,7 @@ func reset() -> void:
 	lesson_stars = []
 	lesson_pages_done = []
 	guides_done = []
+	quest_progress = {}
 	challenges_done = []
 	level_sales = {}
 	goals_reached = []
@@ -196,7 +199,7 @@ func to_save() -> Dictionary:
 		"inventory": inventory, "market_stock": market_stock, "market_restock_left": market_restock_left,
 		"deliveries": deliveries, "crates": crates,
 		"cafe_step": cafe_step, "customers_lost": customers_lost,
-		"tutorials_seen": tutorials_seen, "lesson_stars": lesson_stars, "lesson_pages_done": lesson_pages_done, "guides_done": guides_done, "challenges_done": challenges_done, "level_sales": level_sales, "goals_reached": goals_reached, "todays_special": todays_special,
+		"tutorials_seen": tutorials_seen, "lesson_stars": lesson_stars, "lesson_pages_done": lesson_pages_done, "guides_done": guides_done, "quest_progress": quest_progress, "challenges_done": challenges_done, "level_sales": level_sales, "goals_reached": goals_reached, "todays_special": todays_special,
 	}
 
 
@@ -244,6 +247,7 @@ func from_save(d: Dictionary) -> void:
 	guides_done = []
 	for t in d.get("guides_done", d.get("tutorials_seen", [])):
 		guides_done.append(int(t))
+	quest_progress = Dictionary(d.get("quest_progress", {})).duplicate()
 	library_slots = new_library()
 	if d.has("library_slots"):
 		var saved: Array = d.library_slots

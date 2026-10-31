@@ -326,6 +326,7 @@ func run_program() -> void:
 	if _speech:
 		_speech.clear()
 	run_trace = {"served": 0, "printfs": [], "stats": interp.stats, "dishes": {}, "tickets": 0}
+	run_count += 1
 	interp.line_changed.connect(func(l: int):
 		_current_line = l
 		line_changed.emit(l))
@@ -453,6 +454,8 @@ func _log(text: String, newline := true) -> void:
 ## For cook_station(): a station in this restaurant that cooks the ingredient.
 ## What this Run has done so far, for level challenges (systems/challenges/level_challenges.gd).
 var run_trace := {"served": 0, "printfs": [], "stats": {}, "dishes": {}, "tickets": 0}
+## How many times Run was pressed (Chef Miso's coding quests only count new runs).
+var run_count := 0
 
 
 ## Called by the interpreter after each printf.

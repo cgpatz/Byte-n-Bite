@@ -16,6 +16,7 @@ extends CanvasLayer
 signal finished
 
 const MENTOR := "res://assets/ui/windows/tutorial/mentor.png"
+const MisoQuests := preload("res://data/help/miso_quests.gd")
 const BOX_W := 1040.0
 ## Put in an empty editor for the "Press Run" quest (a program that surely runs).
 const STARTER := "// Chef Miso's first program for you\nvoid main() {\n    printf(\"Hi, I'm %s! Off to the fridge.\\n\");\n    go_to(FRIDGE);\n}\n"
@@ -30,6 +31,7 @@ var _ran := false
 var _zoom_before := 0
 var _win_before := Transform2D()
 var _rect_before := Rect2()
+var _runs_before := {}   # staff name -> run_count when a coding quest started
 var _said_before := {}   # staff name -> what their thought bubble said at step start
 var _start_pos := Vector2.ZERO
 var _time := 0.0
@@ -76,6 +78,15 @@ func run(level: int) -> void:
 	_start_pos = game.manager.global_position
 	_root.show()
 	_i = -1
+	# Coming back to a level whose coding quests were started: skip the tour
+	# and continue with the next unfinished quest.
+	var done_q := int(GameState.quest_progress.get(str(level), 0))
+	if done_q > 0:
+		_i = _steps.size() - 2  # all quests done: just the closing line
+		for k in _steps.size():
+			if _steps[k].get("quest_index", -1) == done_q:
+				_i = k - 1
+				break
 	_next_step()
 	await finished
 
@@ -106,21 +117,28 @@ func _next_step() -> void:
 			_rect_before = game.programming_panel._current_rect()
 		if st.get("until") == "talked":
 			_said_before = _speech_texts()
+		if String(st.get("until")).begins_with("code:"):
+			_runs_before = {}
+			for s in game.staff_root.get_children():
+				if "run_count" in s:
+					_runs_before[s.staff_name] = s.run_count
 		if st.get("until") == "ran":
 			_ran = false
 			var ce: CodeEdit = game.programming_panel.code_edit
 			if ce.text.strip_edges() == "":
 				ce.text = STARTER % _first_staff()
 		_quest.show()
-		_quest_text.text = "[b]Quest:[/b] " + st.do
+		_quest_text.text = ("[b]C Quest:[/b] " if String(st.until).begins_with("code:") else "[b]Quest:[/b] ") + st.do
 		_pop(_quest)
 	else:
 		_quest.hide()
+	_show_example(st.get("example", ""))
 	_type(st.get("say", st.get("do", "")))
 	_more.text = "▼ Click or press Space" if _waiting_click else "Do the quest to continue"
 
 
 func _end() -> void:
+	_show_example("")
 	if not GameState.guides_done.has(_level):
 		GameState.guides_done.append(_level)
 	_i = -1
@@ -140,12 +158,18 @@ func _process(delta: float) -> void:
 		_next_step()
 		return
 	_place_box()
+	_place_example()
 	_target_rect = _target(_point)
 	_arrow.visible = _target_rect.size != Vector2.ZERO or _target_rect.position != Vector2.ZERO
 	_arrow.queue_redraw()
 
 
 func _met(cond: String) -> bool:
+	if cond.begins_with("code:"):
+		if _code_quest_met(cond.substr(5)):
+			_quest_done()
+			return true
+		return false
 	match cond:
 		"moved":
 			return game.manager.global_position.distance_to(_start_pos) > 140.0
@@ -174,6 +198,8 @@ func _met(cond: String) -> bool:
 			return game.in_market
 		"back":
 			return not game.in_market
+		"lessons_closed":
+			return not game.tutorial_window.visible
 		"lessons":
 			return game.tutorial_window.visible
 		"recipe_book":
@@ -190,6 +216,8 @@ func _target(id: String) -> Rect2:
 	if id == "":
 		return Rect2()
 	var hud = game.hud
+	if id == "editor":
+		id = "code" if game.programming_panel.visible else "staff"
 	if id.begins_with("hud:"):
 		var b: Control = hud.window_buttons.get(id.substr(4))
 		return b.get_global_rect() if b and b.is_visible_in_tree() else Rect2()
@@ -461,7 +489,37 @@ func _first_staff() -> String:
 	return "your cook"
 
 
+## A coding quest is met when any staff member's NEW run (Run pressed after
+## the quest started) uses the C idea (data/help/miso_quests.gd).
+func _code_quest_met(check: String) -> bool:
+	for s in game.staff_root.get_children():
+		if not ("run_count" in s):
+			continue
+		if s.run_count > int(_runs_before.get(s.staff_name, 0)) and MisoQuests.met(check, s.run_trace):
+			return true
+	return false
+
+
+## The level's tour, then Chef Miso's hands-on coding quest for each new C topic.
 func steps_for(level: int) -> Array:
+	var steps := _walkthrough(level)
+	var quests: Array = MisoQuests.for_level(level)
+	if quests.is_empty():
+		return steps
+	var who := _first_staff()
+	steps.append({"do": "Close the Lessons window when you're ready to code.", "say": "Now let's [b]practise[/b]! For each new C idea I'll give you a small coding quest. Close the Lessons window when you're ready ([b]T[/b] opens it again any time).", "until": "lessons_closed"})
+	for k in quests.size():
+		var q: Dictionary = quests[k]
+		steps.append({"quest_index": k, "example": q.example, "point": "editor",
+			"say": "[b]C Quest %d of %d: %s[/b]\n%s Here's an example (write it inside [b]main()[/b]):" % [k + 1, quests.size(), q.topic, q.say]})
+		steps.append({"quest_index_do": k, "example": q.example, "point": "editor",
+			"do": q.do.replace("{who}", who), "until": "code:" + q.check,
+			"say": "Open a staff member's program ([b]E[/b]), write it your way and press [b]Run[/b]. I'll check your code while it runs."})
+	steps.append({"say": "Every C quest for this level is done. Great coding, chef! ★"})
+	return steps
+
+
+func _walkthrough(level: int) -> Array:
 	var who := _first_staff()
 	match level:
 		1:
@@ -527,3 +585,81 @@ func steps_for(level: int) -> Array:
 				{"do": "Press [b]T[/b] for Lesson 5: Functions.", "say": "Tick a slot's [b]Use[/b] box to share it. Now press [b]T[/b] for the last lesson!", "until": "lessons", "point": "hud:tutorial"},
 			]
 	return []
+
+
+# --- Coding quests: example card and progress -------------------------------------
+
+var _example_card: PanelContainer
+var _example_text: RichTextLabel
+var _example_code := ""
+
+
+## Saves the quest progress and cheers when a coding quest is done.
+func _quest_done() -> void:
+	var st: Dictionary = _steps[_i]
+	var k := int(st.get("quest_index_do", -1))
+	if k >= 0:
+		GameState.quest_progress[str(_level)] = k + 1
+		if game.hud.has_method("show_toast"):
+			game.hud.show_toast("★ C Quest complete!")
+
+
+## The example code for the current coding quest, above the dialogue box,
+## with a Copy button.
+func _show_example(code: String) -> void:
+	_example_code = code
+	if _example_card == null:
+		_example_card = PanelContainer.new()
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0.1, 0.08, 0.07, 0.97)
+		sb.border_color = Color(0.93, 0.72, 0.38)
+		sb.set_border_width_all(3)
+		sb.set_corner_radius_all(10)
+		sb.content_margin_left = 16
+		sb.content_margin_right = 16
+		sb.content_margin_top = 10
+		sb.content_margin_bottom = 10
+		_example_card.add_theme_stylebox_override("panel", sb)
+		var v := VBoxContainer.new()
+		v.add_theme_constant_override("separation", 6)
+		_example_card.add_child(v)
+		var head := HBoxContainer.new()
+		v.add_child(head)
+		var t := Label.new()
+		t.text = "Example"
+		t.add_theme_font_size_override("font_size", 18)
+		t.add_theme_color_override("font_color", Color(1, 0.8, 0.45))
+		t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		head.add_child(t)
+		var copy := Button.new()
+		copy.text = "Copy"
+		copy.focus_mode = Control.FOCUS_NONE
+		copy.add_theme_font_size_override("font_size", 16)
+		copy.pressed.connect(func():
+			DisplayServer.clipboard_set(_example_code)
+			copy.text = "Copied!"
+			get_tree().create_timer(1.2).timeout.connect(func(): copy.text = "Copy"))
+		head.add_child(copy)
+		_example_text = RichTextLabel.new()
+		_example_text.bbcode_enabled = false
+		_example_text.fit_content = true
+		_example_text.autowrap_mode = TextServer.AUTOWRAP_OFF
+		_example_text.scroll_active = false
+		_example_text.custom_minimum_size = Vector2(380, 0)
+		_example_text.add_theme_font_override("normal_font", preload("res://scenes/ui/common/ui_art.gd").mono())
+		_example_text.add_theme_font_size_override("normal_font_size", 17)
+		_example_text.add_theme_color_override("default_color", Color(0.85, 0.95, 0.78))
+		v.add_child(_example_text)
+		_root.add_child(_example_card)
+	_example_card.visible = code != ""
+	if code != "":
+		_example_text.text = code
+		_example_card.reset_size()
+
+
+func _place_example() -> void:
+	if _example_card == null or not _example_card.visible:
+		return
+	_example_card.reset_size()
+	var q_top := _quest.position.y if _quest.visible else _box.position.y
+	_example_card.position = Vector2(_box.position.x + BOX_W - _example_card.size.x - 10, q_top - _example_card.size.y - 10)
