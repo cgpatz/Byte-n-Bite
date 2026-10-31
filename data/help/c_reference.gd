@@ -97,7 +97,7 @@ const BASICS := [
 		"id": "functions", "title": "Your own functions", "syntax": "void name(int item) {\n    ...\n}\n\nint twice(int x) {\n    return x * 2;\n}",
 		"about": "A function is a named group of steps you can call many times. Parameters (int item) pass values in, return sends a value back. Save useful ones in your Library (L) so every staff member can call them.",
 		"steps": ["Write the return type (void if nothing comes back), a name and the parameters.", "Put the steps in { }; use return to give back a value.", "Call it from main(): fetch_and_cook(EGG);"],
-		"example": "void fetch_and_cook(int item) {\n    go_to(FRIDGE);\n    pick_up(item);\n    go_to(GRILL);\n    cook();\n    go_to(ASSEMBLY);\n    plate();\n}\n\nvoid main() {\n    fetch_and_cook(RICE);\n    fetch_and_cook(EGG);\n    assemble(EGGSILOG);\n}",
+		"example": "void fetch_and_cook(int item, int station) {\n    go_to(FRIDGE);\n    pick_up(item);\n    go_to(station);\n    cook();\n    go_to(ASSEMBLY);\n    plate();\n}\n\nvoid main() {\n    fetch_and_cook(RICE, RICE_COOKER);\n    fetch_and_cook(EGG, GRILL);\n    assemble(EGGSILOG);\n}",
 	},
 	{
 		"id": "params", "title": "Parameters and return", "syntax": "int add(int a, int b) {\n    return a + b;\n}\n\nint sum = add(2, 3);",
@@ -160,7 +160,7 @@ const KITCHEN := {
 		"related": ["go_to", "holding", "plate"],
 	},
 	"cook": {
-		"about": "Cooks the raw ingredient being held, at the current station. Each station cooks certain things: GRILL (rice, egg, hotdog, tocino, bread, patty), STOVE (noodles, egg, chocolate), FRYER (chicken), RICE_COOKER (rice), COFFEE_MACHINE brews COFFEE and MATCHA, OVEN bakes DOUGH. Fresh ingredients (LETTUCE, TOMATO, CHEESE, MILK...) don't need cooking. The staff member stays busy while it cooks.",
+		"about": "Cooks the raw ingredient being held, at the current station. Each station cooks certain things: RICE_COOKER (rice, and only rice: rice can't be cooked anywhere else), GRILL (egg, hotdog, tocino, bread, patty), STOVE (noodles, egg, chocolate), FRYER (chicken), COFFEE_MACHINE brews COFFEE and MATCHA, OVEN bakes DOUGH. Fresh ingredients (LETTUCE, TOMATO, CHEESE, MILK...) don't need cooking. The staff member stays busy while it cooks.",
 		"steps": ["Hold a raw ingredient that needs cooking.", "go_to() a station that cooks it (the Recipe Book lists where).", "cook(); then go_to(ASSEMBLY); and plate();"],
 		"example": "void main() {\n    go_to(FRIDGE);\n    pick_up(EGG);\n    go_to(STOVE);\n    cook();\n    go_to(ASSEMBLY);\n    plate();\n}",
 		"mistakes": ["Cooking at the wrong station (the error names the right one).", "Cooking something fresh like LETTUCE: just plate() it.", "Cooking twice: it's already cooked."],

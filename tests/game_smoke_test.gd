@@ -576,7 +576,7 @@ func _order_program() -> String:
 	return """void main() {
     int order = take_order();
     if (order == TOCILOG) {
-        go_to(FRIDGE); pick_up(RICE); go_to(GRILL); cook(); go_to(ASSEMBLY); plate();
+        go_to(FRIDGE); pick_up(RICE); go_to(RICE_COOKER); cook(); go_to(ASSEMBLY); plate();
         go_to(FRIDGE); pick_up(EGG); go_to(GRILL); cook(); go_to(ASSEMBLY); plate();
         go_to(FRIDGE); pick_up(TOCINO); go_to(GRILL); cook(); go_to(ASSEMBLY); plate();
         assemble(TOCILOG);

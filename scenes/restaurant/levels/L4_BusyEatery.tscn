@@ -201,6 +201,14 @@ size = Vector2(88, 56)
 color = Color(0.75, 0.82, 0.88, 1)
 info_text = "Fridge: staff take ingredients from here."
 
+[node name="RiceCooker" parent="Stations" instance=ExtResource("2_station")]
+position = Vector2(608, 96)
+station_id = "RICE_COOKER"
+display_name = "Rice"
+size = Vector2(56, 56)
+color = Color(0.92, 0.92, 0.85, 1)
+info_text = "Rice Cooker: the only place to cook rice."
+
 [node name="PrepBoard" parent="Stations" instance=ExtResource("2_station")]
 position = Vector2(1024, 96)
 station_id = "PREP_BOARD"

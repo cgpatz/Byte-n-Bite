@@ -31,7 +31,11 @@ const DEFAULT_LIBRARY := """// My Library: functions written here can be called
 void fetch_and_cook(int item) {
     go_to(FRIDGE);
     pick_up(item);
-    go_to(GRILL);
+    if (item == RICE) {
+        go_to(RICE_COOKER);   // rice cooks only in the rice cooker
+    } else {
+        go_to(GRILL);
+    }
     cook();
     go_to(ASSEMBLY);
     plate();

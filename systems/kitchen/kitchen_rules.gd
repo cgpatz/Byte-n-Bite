@@ -92,10 +92,10 @@ const STORAGE := {
 }
 ## cook(): which station cooks which ingredient.
 const COOKING := {
-	"GRILL": ["RICE", "EGG", "HOTDOG", "TOCINO", "BREAD", "PATTY"],
+	"GRILL": ["EGG", "HOTDOG", "TOCINO", "BREAD", "PATTY"],
 	"FRYER": ["CHICKEN"],
 	"STOVE": ["NOODLES", "EGG", "CHOCOLATE"],
-	"RICE_COOKER": ["RICE"],
+	"RICE_COOKER": ["RICE"],  # rice is cooked ONLY here (every level has one)
 	"COFFEE_MACHINE": ["COFFEE", "MATCHA"],
 	"OVEN": ["DOUGH"],
 }
