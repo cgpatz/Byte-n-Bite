@@ -28,6 +28,7 @@ func _ready() -> void:
 	sfx_slider.value_changed.connect(_on_sfx_changed)
 	fullscreen_check.toggled.connect(_on_fullscreen_toggled)
 	code_size_slider.value_changed.connect(_on_code_size_changed)
+	_build_opacity_row()
 	back_button.pressed.connect(close)
 
 	master_slider.grab_focus()
@@ -73,3 +74,40 @@ func close() -> void:
 	SettingsManager.save_settings()
 	closed.emit()
 	queue_free()
+
+
+## Code Editor Opacity: how see-through the code editor window is (30%-100%).
+var _opacity_value: Label
+
+
+func _build_opacity_row() -> void:
+	var grid: GridContainer = code_size_slider.get_parent().get_parent()
+	var label := Label.new()
+	label.text = "Code Editor Opacity"
+	grid.add_child(label)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 16)
+	grid.add_child(row)
+	var slider := HSlider.new()
+	slider.name = "CodeOpacitySlider"
+	slider.custom_minimum_size = Vector2(300, 32)
+	slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	slider.min_value = 0.3
+	slider.max_value = 1.0
+	slider.step = 0.05
+	slider.value = SettingsManager.code_opacity
+	row.add_child(slider)
+	_opacity_value = Label.new()
+	_opacity_value.custom_minimum_size = Vector2(56, 0)
+	_opacity_value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	row.add_child(_opacity_value)
+	_opacity_value.text = "%d%%" % roundi(SettingsManager.code_opacity * 100)
+	slider.value_changed.connect(func(v: float):
+		SettingsManager.code_opacity = v
+		_opacity_value.text = "%d%%" % roundi(v * 100)
+		SettingsManager.changed.emit())
+	# Room for the extra row.
+	var panel: Control = $Panel
+	panel.offset_top -= 30
+	panel.offset_bottom += 30

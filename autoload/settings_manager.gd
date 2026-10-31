@@ -10,6 +10,8 @@ var music_volume := 0.8
 var sfx_volume := 0.8
 var fullscreen := false
 var code_font_size := 16  # code editor font size (Settings)
+## Code editor window opacity (Settings): 0.3 = see-through, 1.0 = solid.
+var code_opacity := 1.0
 ## Where the floating code window was left (position + size). Empty = default.
 var code_window := Rect2()
 ## Floating windows (Lessons, Recipe Book, Library, Stats): name -> [x, y, scale].
@@ -39,6 +41,7 @@ func load_settings() -> void:
 	sfx_volume = cfg.get_value("audio", "sfx", sfx_volume)
 	fullscreen = cfg.get_value("display", "fullscreen", fullscreen)
 	code_font_size = cfg.get_value("editor", "code_font_size", code_font_size)
+	code_opacity = cfg.get_value("editor", "code_opacity", code_opacity)
 	code_window = cfg.get_value("editor", "code_window", code_window)
 	windows = cfg.get_value("editor", "windows", windows)
 	goals_open = cfg.get_value("editor", "goals_open", goals_open)
@@ -58,6 +61,7 @@ func save_settings() -> void:
 	cfg.set_value("audio", "sfx", sfx_volume)
 	cfg.set_value("display", "fullscreen", fullscreen)
 	cfg.set_value("editor", "code_font_size", code_font_size)
+	cfg.set_value("editor", "code_opacity", code_opacity)
 	cfg.set_value("editor", "code_window", code_window)
 	cfg.set_value("editor", "windows", windows)
 	cfg.set_value("editor", "goals_open", goals_open)

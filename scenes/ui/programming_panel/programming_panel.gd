@@ -71,6 +71,7 @@ func _ready() -> void:
 	_build_library_drawer()
 	_setup_floating()
 	_build_upgrade_button()
+	_apply_opacity()
 
 
 ## "Upgrade" in the title row: buys this staff member's next level.
@@ -130,6 +131,32 @@ func _setup_editor() -> void:
 
 func _apply_font_size() -> void:
 	code_edit.add_theme_font_size_override("font_size", SettingsManager.code_font_size)
+	_apply_opacity()
+
+
+## Settings > Code Editor Opacity: the window and code backgrounds become
+## see-through so the kitchen shows behind; the text stays fully readable.
+var _code_styles := {}
+
+
+func _apply_opacity() -> void:
+	var o := clampf(SettingsManager.code_opacity, 0.3, 1.0)
+	if _panel:
+		_panel.self_modulate.a = o
+	if _lib_panel:
+		_lib_panel.self_modulate.a = o
+	for pair in [[code_edit, "normal"], [code_edit, "focus"], [console, "normal"]]:
+		var c: Control = pair[0]
+		var key: String = c.name + pair[1]
+		if not _code_styles.has(key):
+			var base := c.get_theme_stylebox(pair[1])
+			if base is StyleBoxFlat:
+				_code_styles[key] = base.duplicate()
+				c.add_theme_stylebox_override(pair[1], _code_styles[key])
+		var sb: StyleBoxFlat = _code_styles.get(key)
+		if sb:
+			sb.bg_color.a = o
+	code_edit.add_theme_color_override("background_color", Color(0.1, 0.08, 0.07, 0.0 if o < 1.0 else 1.0))
 
 
 ## Code text size: Ctrl + mouse wheel (or Ctrl + = / Ctrl + - , Ctrl + 0 resets).
