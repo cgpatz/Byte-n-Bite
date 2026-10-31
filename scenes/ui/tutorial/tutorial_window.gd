@@ -467,15 +467,21 @@ func _example(code: String) -> Control:
 	h.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(h)
 	var tip := Label.new()
-	tip.text = "Press Try it to watch it run   "
+	tip.text = "Edit the code, then press Try it   "
 	tip.add_theme_font_size_override("font_size", 18)
 	tip.add_theme_color_override("font_color", Art.INK_SOFT)
 	head.add_child(tip)
 	var try_it := Art.button(head, "▶ Try it", Rect2(0, 0, 170, 52), true, 22)
 	try_it.custom_minimum_size = Vector2(170, 52)
-	try_it.tooltip_text = "Run this example here. Kitchen commands are only shown, not done."
+	try_it.tooltip_text = "Run the code here. Kitchen commands are only shown, not done."
+	var reset := Art.button(head, "↺ Reset", Rect2(0, 0, 150, 52), false, 22)
+	reset.custom_minimum_size = Vector2(150, 52)
+	reset.tooltip_text = "Put the original example back"
+	head.move_child(reset, try_it.get_index())
 	v.add_child(head)
-	v.add_child(_code_card(code))
+	var card := _code_card(code, true)
+	var ce: CodeEdit = card.get_child(0)
+	v.add_child(card)
 	var out := RichTextLabel.new()
 	out.bbcode_enabled = true
 	out.fit_content = true
@@ -497,7 +503,15 @@ func _example(code: String) -> Control:
 	outbox.add_child(out)
 	out.visible = true
 	v.add_child(outbox)
-	try_it.pressed.connect(_try_code.bind(code, out, outbox, try_it))
+	try_it.pressed.connect(func(): _try_code(ce.text, out, outbox, try_it))
+	reset.disabled = true
+	ce.text_changed.connect(func(): reset.disabled = ce.text == code)
+	reset.pressed.connect(func():
+		_run_id += 1
+		ce.text = code
+		reset.disabled = true
+		outbox.visible = false
+		try_it.disabled = false)
 	return v
 
 
@@ -652,7 +666,9 @@ func _rich(bbcode: String, fs: int) -> RichTextLabel:
 	return r
 
 
-func _code_card(code: String) -> Control:
+## Code on the dark code card. editable: players can change it and run it with
+## Try it (Reset puts the example back).
+func _code_card(code: String, editable := false) -> Control:
 	var card := PanelContainer.new()
 	card.add_theme_stylebox_override("panel", Art.style("recipe_book/code_card.png", [4, 4, 4, 4], Vector4(22, 16, 18, 22)))
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -673,6 +689,24 @@ func _code_card(code: String) -> Control:
 		ce.add_theme_stylebox_override(k, empty)
 	ce.syntax_highlighter = Art.c_highlighter(PANEL_SCRIPT.C_KEYWORDS, PANEL_SCRIPT.C_UNSUPPORTED)
 	ce.mouse_filter = Control.MOUSE_FILTER_PASS
+	if editable:
+		ce.editable = true
+		ce.indent_automatic = true
+		ce.auto_brace_completion_enabled = true
+		ce.indent_use_spaces = true
+		ce.indent_size = 4
+		ce.caret_blink = true
+		ce.add_theme_color_override("caret_color", Color(1, 0.85, 0.4))
+		ce.add_theme_color_override("current_line_color", Color(1, 1, 1, 0.05))
+		ce.add_theme_color_override("selection_color", Color(0.4, 0.5, 0.8, 0.5))
+		ce.mouse_default_cursor_shape = Control.CURSOR_IBEAM
+		ce.tooltip_text = "Click to edit this code"
+		var focus_line := StyleBoxFlat.new()
+		focus_line.draw_center = false
+		focus_line.border_color = Color(1, 0.8, 0.35, 0.8)
+		focus_line.set_border_width_all(2)
+		focus_line.set_corner_radius_all(4)
+		ce.add_theme_stylebox_override("focus", focus_line)
 	card.add_child(ce)
 	return card
 
