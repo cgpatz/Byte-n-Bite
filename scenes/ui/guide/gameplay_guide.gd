@@ -28,6 +28,7 @@ var _level := 0
 var _waiting_click := false
 var _ran := false
 var _zoom_before := 0
+var _win_before := Transform2D()
 var _rect_before := Rect2()
 var _said_before := {}   # staff name -> what their thought bubble said at step start
 var _start_pos := Vector2.ZERO
@@ -96,6 +97,8 @@ func _next_step() -> void:
 	if st.has("until"):
 		if st.get("until") == "moved":
 			_start_pos = game.manager.global_position
+		if st.get("until") in ["win_moved", "win_resized"]:
+			_win_before = Transform2D(0.0, game.tutorial_window.frame.scale, 0.0, game.tutorial_window.frame.position)
 		if st.get("until") == "zoomed":
 			_zoom_before = SettingsManager.code_font_size
 		if st.get("until") == "resized":
@@ -147,6 +150,10 @@ func _met(cond: String) -> bool:
 			return game.manager.global_position.distance_to(_start_pos) > 140.0
 		"panel_open":
 			return game.programming_panel.visible
+		"win_moved":
+			return game.tutorial_window.frame.position.distance_to(_win_before.origin) > 30.0
+		"win_resized":
+			return absf(game.tutorial_window.frame.scale.x - _win_before.get_scale().x) > 0.04
 		"zoomed":
 			return SettingsManager.code_font_size != _zoom_before
 		"resized":
@@ -192,6 +199,12 @@ func _target(id: String) -> Rect2:
 			for s in game.staff_root.get_children():
 				if s is Node2D and s.visible:
 					return _world_rect(s, Vector2(0, -60))
+		"win_grip":
+			var wg: Control = game.tutorial_window._grip
+			return wg.get_global_rect() if wg and wg.is_visible_in_tree() else Rect2()
+		"rb_grip":
+			var rg: Control = game.recipe_book._grip
+			return rg.get_global_rect() if rg and rg.is_visible_in_tree() else Rect2()
 		"grip":
 			var gp: Control = game.programming_panel._grip
 			return gp.get_global_rect() if gp and gp.is_visible_in_tree() else Rect2()
@@ -463,6 +476,10 @@ func steps_for(level: int) -> Array:
 				{"say": "Your [b]goals[/b] are at the top left. Finish them, then upgrade the restaurant at the [b]chalkboard[/b]. Every new level teaches new C, and I'll show you what's new.", "point": "goals"},
 				{"say": "One challenge is [b]Talk to the customer[/b]: after serve(), use printf so %s says the dish with [b]%%s[/b] and its price with [b]%%.2f[/b], like [b]printf(\"Here's your %%s, for a price of %%.2f\\n\", dish, price);[/b]" % who, "point": "goals"},
 				{"do": "Press [b]T[/b] to open your first C lesson.", "say": "Last thing: your first C lesson! Press [b]T[/b] or click the cap icon.", "until": "lessons", "point": "hud:tutorial"},
+				{"say": "This is a [b]window[/b]. Every window (Lessons, Recipe Book, Library, Stats and the code editor) can be moved and resized, so you can set up your screen your way."},
+				{"do": "Drag the Lessons window (hold on its wooden frame) to move it.", "say": "Hold the mouse on the window's [b]wooden frame[/b] (not on a button) and [b]drag[/b] it somewhere else.", "until": "win_moved"},
+				{"do": "Drag the [b]corner grip[/b] (bottom right) to resize the Lessons window.", "say": "Now drag the [b]corner grip[/b] at the bottom right of the window to make it [b]bigger or smaller[/b].", "until": "win_resized", "point": "win_grip"},
+				{"say": "The [b]Recipe Book (R)[/b], [b]Library (L)[/b], [b]Stats (Tab)[/b] and the [b]code editor[/b] work the same way, and the game remembers where you put them."},
 				{"say": "Read a page, press [b]Try it[/b] to run the example, and answer the quick check to earn a [b]star[/b]. Have fun, chef!"},
 			]
 		2:
@@ -471,6 +488,7 @@ func steps_for(level: int) -> Array:
 				{"say": "New customers show a [b]?[/b] bubble. Someone has to ask first: [b]take_order()[/b] walks over and returns the dish they want. Then use [b]if / else[/b] to cook the right one."},
 				{"say": "Food can [b]burn[/b] now. [b]is_burnt()[/b] tells you, and [b]trash()[/b] throws it away at the TRASH."},
 				{"do": "Open the Recipe Book ([b]R[/b]) to see the new dishes.", "say": "There are new dishes to learn. Open the [b]Recipe Book[/b] with [b]R[/b].", "until": "recipe_book", "point": "hud:recipe_book"},
+				{"say": "Tip: like every window, the Recipe Book moves when you drag its frame and resizes with the [b]corner grip[/b].", "point": "rb_grip"},
 				{"do": "Press [b]T[/b] for Lesson 2: Making Decisions.", "say": "Every dish lists its ingredients and where to cook them. Now press [b]T[/b] for your next lesson.", "until": "lessons", "point": "hud:tutorial"},
 			]
 		3:
