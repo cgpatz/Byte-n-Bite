@@ -44,6 +44,11 @@ var _w3: Button
 var _copy: Button
 var _w3_url := ""
 var _run_id := 0          # cancels an older "Try it" run when the page changes
+## A lesson page must be finished before Next unlocks: its example run with
+## Try it and its quick check answered correctly (when the page has them).
+var _need_try := false
+var _need_quiz := false
+var _gate: Label
 
 # Kitchen Functions
 var _entries: Array = []
@@ -168,7 +173,7 @@ func _build_lessons() -> void:
 	root.add_child(_progress)
 	_scroll = ScrollContainer.new()
 	_scroll.position = Vector2(700, 276)
-	_scroll.size = Vector2(1010, 628)
+	_scroll.size = Vector2(1010, 600)
 	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	root.add_child(_scroll)
 	_body = VBoxContainer.new()
@@ -184,6 +189,7 @@ func _build_lessons() -> void:
 	_prev.pressed.connect(func(): _show_lesson(_lesson, _page - 1))
 	_next = Art.button(root, "Next", Rect2(1530, 924, 190, 64), true, 24)
 	_next.pressed.connect(_on_next)
+	_gate = Art.label(root, "", Vector2(1040, 880), 18, Color(0.6, 0.22, 0.1), false, 680, HORIZONTAL_ALIGNMENT_RIGHT)
 
 
 ## Opens the lesson for a restaurant level, from its first page.
@@ -246,6 +252,8 @@ func _show_lesson(i: int, page: int) -> void:
 		_body.add_child(_card("How", "1. Press [b]Copy practice code[/b].\n2. Walk up to a staff member and press [b]E[/b].\n3. Paste with [b]Ctrl+V[/b], fill in the missing steps and press [b]Run[/b].", Color(0.86, 0.92, 0.78)))
 		_body.add_child(_code_card(l.practice.code))
 		_w3_url = ""
+		_need_try = false
+		_need_quiz = false
 	else:
 		var p: Dictionary = pages[_page]
 		_title.text = p.title
@@ -254,9 +262,12 @@ func _show_lesson(i: int, page: int) -> void:
 		_body.add_child(_miso_says(parts[0], false))
 		if parts[1] != "":
 			_body.add_child(_card("Key points", parts[1], Color(0.98, 0.93, 0.8)))
+		var quiz: Dictionary = Quizzes.for_page(p.title)
+		var done: bool = GameState.lesson_pages_done.has(p.title)
+		_need_try = p.code != "" and not done
+		_need_quiz = not quiz.is_empty() and not done
 		if p.code != "":
 			_body.add_child(_example(p.code))
-		var quiz: Dictionary = Quizzes.for_page(p.title)
 		if not quiz.is_empty():
 			_body.add_child(_quiz_card(p.title, quiz))
 		_w3_url = Lessons.W3 + p.w3 if p.get("w3", "") != "" else ""
@@ -269,8 +280,28 @@ func _show_lesson(i: int, page: int) -> void:
 		_next.text = "Next lesson"
 	_scroll.scroll_vertical = 0
 	_progress.queue_redraw()
+	_update_gate()
 	if practice and not GameState.tutorials_seen.has(l.level):
 		GameState.tutorials_seen.append(l.level)
+
+
+## Locks Next until this page's Try it and quick check are done.
+func _update_gate() -> void:
+	var left: Array = []
+	if _need_try:
+		left.append("press ▶ Try it")
+	if _need_quiz:
+		left.append("answer the quick check")
+	var pages: Array = Lessons.LESSONS[_lesson].pages
+	if left.is_empty():
+		_gate.text = ""
+		_next.disabled = false
+		if _page < pages.size() and not GameState.lesson_pages_done.has(pages[_page].title):
+			GameState.lesson_pages_done.append(pages[_page].title)
+	else:
+		_gate.text = "To continue: " + " and ".join(left) + "."
+		_next.disabled = true
+	_next.tooltip_text = _gate.text
 
 
 func _style_lesson_buttons() -> void:
@@ -322,6 +353,8 @@ func _split_text(text: String) -> Array:
 
 
 func _on_next() -> void:
+	if _next.disabled:
+		return
 	var pages: Array = Lessons.LESSONS[_lesson].pages
 	if _page < pages.size():
 		_show_lesson(_lesson, _page + 1)
@@ -510,6 +543,9 @@ func _try_code(code: String, out: RichTextLabel, box: Control, btn: Button) -> v
 	else:
 		out.append_text("[color=#9fd67a]✔ Done![/color]\n")
 	btn.disabled = false
+	if my_id == _run_id and _mode == Mode.LESSONS and _need_try:
+		_need_try = false
+		_update_gate()
 
 
 ## Multiple-choice quick check; a right answer earns this page's star.
@@ -558,6 +594,9 @@ func _quiz_card(title: String, quiz: Dictionary) -> Control:
 				for b2 in buttons:
 					b2.disabled = true
 				feedback.text = "[color=#2f6a1f][b]Correct![/b][/color] " + quiz.why
+				if _mode == Mode.LESSONS and _need_quiz:
+					_need_quiz = false
+					_update_gate()
 				if not GameState.lesson_stars.has(title):
 					GameState.lesson_stars.append(title)
 					h.text = "Quick check  ★  +1 star!"

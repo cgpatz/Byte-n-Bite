@@ -69,6 +69,8 @@ const SPECIAL_UNTIL_LEVEL := 2
 var tutorials_seen: Array = []
 ## Lesson quick-check answers: page titles answered correctly (a star each).
 var lesson_stars: Array = []
+## Lesson pages finished (Try it run + quick check right); Next unlocks on these.
+var lesson_pages_done: Array = []
 ## Gameplay walkthroughs (RPG tutorial) already finished, by restaurant level.
 var guides_done: Array = []
 ## Level challenges finished, e.g. ["1:count", "1:receipt"] (systems/challenges/level_challenges.gd).
@@ -149,6 +151,7 @@ func reset() -> void:
 	customers_lost = 0
 	tutorials_seen = []
 	lesson_stars = []
+	lesson_pages_done = []
 	guides_done = []
 	challenges_done = []
 	level_sales = {}
@@ -189,7 +192,7 @@ func to_save() -> Dictionary:
 		"inventory": inventory, "market_stock": market_stock, "market_restock_left": market_restock_left,
 		"deliveries": deliveries, "crates": crates,
 		"cafe_step": cafe_step, "customers_lost": customers_lost,
-		"tutorials_seen": tutorials_seen, "lesson_stars": lesson_stars, "guides_done": guides_done, "challenges_done": challenges_done, "level_sales": level_sales, "goals_reached": goals_reached, "todays_special": todays_special,
+		"tutorials_seen": tutorials_seen, "lesson_stars": lesson_stars, "lesson_pages_done": lesson_pages_done, "guides_done": guides_done, "challenges_done": challenges_done, "level_sales": level_sales, "goals_reached": goals_reached, "todays_special": todays_special,
 	}
 
 
@@ -233,6 +236,7 @@ func from_save(d: Dictionary) -> void:
 	for t in d.get("tutorials_seen", []):
 		tutorials_seen.append(int(t))
 	lesson_stars = Array(d.get("lesson_stars", [])).duplicate()
+	lesson_pages_done = Array(d.get("lesson_pages_done", [])).duplicate()
 	guides_done = []
 	for t in d.get("guides_done", d.get("tutorials_seen", [])):
 		guides_done.append(int(t))

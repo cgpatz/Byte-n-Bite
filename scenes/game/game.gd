@@ -236,10 +236,14 @@ func _show_new_lesson(force := false) -> void:
 		return
 	while _modal_open() or (guide and guide.is_running()):
 		await get_tree().create_timer(0.3).timeout
-	if guide and not GameState.guides_done.has(lv):
-		await guide.run(lv)
-		if not is_inside_tree() or GameState.restaurant_level != lv:
-			return
+	# Guides go in order: an unfinished earlier level's guide comes first.
+	if guide:
+		for g in range(1, lv + 1):
+			if GameState.guides_done.has(g):
+				continue
+			await guide.run(g)
+			if not is_inside_tree() or GameState.restaurant_level != lv:
+				return
 	if Lessons.for_level(lv).is_empty() or tutorial_window.visible:
 		return
 	if not force and GameState.tutorials_seen.has(lv):

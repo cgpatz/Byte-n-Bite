@@ -6,7 +6,8 @@ extends CanvasLayer
 ##
 ## Runs on a new game (Level 1, the full walkthrough) and after every
 ## restaurant upgrade (a short tour of what is new). Finished guides are
-## remembered in GameState.guides_done; "Skip" ends the current one.
+## remembered in GameState.guides_done. There is no skipping: every quest must
+## be done, and a level's guide only starts after the previous level's guide.
 ##
 ## Step: {"say": BBCode} waits for a click / Space / Enter.
 ##       {"do": quest text, "say": BBCode, "until": condition id, "point": target id}
@@ -58,7 +59,7 @@ func is_running() -> bool:
 	return _i >= 0
 
 
-## Plays the guide for a restaurant level; returns when it ends (or is skipped).
+## Plays the guide for a restaurant level; returns when every step is done.
 func run(level: int) -> void:
 	_steps = steps_for(level)
 	if _steps.is_empty():
@@ -113,11 +114,6 @@ func _end() -> void:
 	_point = ""
 	_root.hide()
 	finished.emit()
-
-
-func skip() -> void:
-	if _i >= 0:
-		_end()
 
 
 # --- Each frame: quest checks, arrow, box placement ---------------------------------
@@ -293,12 +289,6 @@ func _build_box() -> void:
 	_step_label.add_theme_font_size_override("font_size", 18)
 	_step_label.add_theme_color_override("font_color", Color(0.75, 0.65, 0.55))
 	head.add_child(_step_label)
-	var skip_b := Button.new()
-	skip_b.text = "Skip tutorial"
-	skip_b.focus_mode = Control.FOCUS_NONE
-	skip_b.add_theme_font_size_override("font_size", 18)
-	skip_b.pressed.connect(skip)
-	head.add_child(skip_b)
 	_text = RichTextLabel.new()
 	_text.bbcode_enabled = true
 	_text.fit_content = false
