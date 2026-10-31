@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://db1qr5pp8bsvv"
-path="res://.godot/imported/egsilog.png-656b2c7c50b235020a3546cdd3732365.ctex"
+uid="uid://dvfrn5iiovh5n"
+path="res://.godot/imported/stats.png-4ecdb6f5fc7db2025737aa518b7e4967.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/food/dishes/egsilog.png"
-dest_files=["res://.godot/imported/egsilog.png-656b2c7c50b235020a3546cdd3732365.ctex"]
+source_file="res://assets/ui/icons/stats.png"
+dest_files=["res://.godot/imported/stats.png-4ecdb6f5fc7db2025737aa518b7e4967.ctex"]
 
 [params]
 

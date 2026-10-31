@@ -19,6 +19,8 @@ var _anim_time := 0.0
 var can_move := true
 var _nearby: Array[Node] = []
 var _focus: Node = null
+## Thought bubble with the E prompt (replaces the old prompt bar).
+var _bubble: Node2D
 
 @onready var interaction_area: Area2D = $InteractionArea
 
@@ -33,6 +35,11 @@ func _ready() -> void:
 		$NameLabel.position.y = FEET_Y + 4
 	$Body.visible = not has_art
 	$Outline.visible = not has_art
+	_bubble = Node2D.new()
+	_bubble.name = "PromptBubble"
+	_bubble.set_script(preload("res://scenes/characters/manager/prompt_bubble.gd"))
+	_bubble.position = Vector2(14, -86)
+	add_child(_bubble)
 	interaction_area.body_entered.connect(_on_body_entered)
 	interaction_area.body_exited.connect(_on_body_exited)
 
@@ -120,3 +127,6 @@ func _update_focus() -> void:
 	if best != _focus:
 		_focus = best
 		focus_changed.emit(_focus)
+	var want: String = _focus.get_prompt() if _focus != null and is_instance_valid(_focus) else ""
+	if _bubble and _bubble.text != want:
+		_bubble.text = want

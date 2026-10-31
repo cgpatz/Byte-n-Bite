@@ -16,6 +16,7 @@ const STATS_SCENE := preload("res://scenes/ui/stats_panel/StatsPanel.tscn")
 const RECIPE_SCENE := preload("res://scenes/ui/recipe_book/RecipeBook.tscn")
 const LIBRARY_SCENE := preload("res://scenes/ui/library_panel/LibraryPanel.tscn")
 const TUTORIAL_SCENE := preload("res://scenes/ui/tutorial/TutorialWindow.tscn")
+const GUIDE_SCRIPT := preload("res://scenes/ui/guide/gameplay_guide.gd")
 const Lessons := preload("res://data/help/lessons.gd")
 ## Extra keys: R = Recipe Book, L = Library, Tab = Stats.
 const EXTRA_KEYS := {"recipe_book": KEY_R, "library": KEY_L, "stats": KEY_TAB, "tutorial": KEY_T, "market": KEY_M}
@@ -43,6 +44,8 @@ var code_sets_window: Control
 var recipe_book: Control
 var library_panel: Control
 var tutorial_window: Control
+## Chef Miso's RPG-style gameplay tutorial (new game and every new level).
+var guide: CanvasLayer
 ## Open Chef Miso's lesson when a new C concept unlocks (tests turn this off).
 var tutorials_enabled := true
 const TABLE_SCENE := preload("res://scenes/restaurant/table/Table.tscn")
@@ -114,7 +117,9 @@ func _ready() -> void:
 	ticket_rail.name = "TicketRail"
 	ticket_rail.set_script(preload("res://scenes/game/ticket_rail.gd"))
 	ticket_rail.game = self
+	ticket_rail.visible = false  # orders now show on the HUD Order board
 	add_child(ticket_rail)
+	hud.game = self
 	manager.focus_changed.connect(hud.show_prompt_for)
 	manager.interacted.connect(_on_manager_interacted)
 	for staff in staff_root.get_children():
@@ -122,6 +127,10 @@ func _ready() -> void:
 			_hook_staff(staff)
 	_add_windows()
 	_setup_market()
+	guide = CanvasLayer.new()
+	guide.set_script(GUIDE_SCRIPT)
+	guide.game = self
+	add_child(guide)
 	programming_panel.closed.connect(_on_panel_closed)
 	upgrade_panel.closed.connect(_on_panel_closed)
 	admin_panel.closed.connect(_on_panel_closed)
@@ -215,16 +224,25 @@ func _on_level_changed(level: int) -> void:
 	_show_new_lesson(upgraded)
 
 
-## Opens the lesson for the current level: always after a restaurant upgrade
-## (force), otherwise only if the player hasn't seen it yet (new game, load).
+## A new level (or a new game): first Chef Miso's gameplay guide shows what's
+## new (once per level), then that level's C lesson opens: always after a
+## restaurant upgrade (force), otherwise only if the player hasn't seen it yet.
 func _show_new_lesson(force := false) -> void:
 	var lv: int = GameState.restaurant_level
-	if not tutorials_enabled or Lessons.for_level(lv).is_empty():
-		return
-	if not force and GameState.tutorials_seen.has(lv):
+	if not tutorials_enabled:
 		return
 	await get_tree().create_timer(0.8).timeout
 	if not tutorials_enabled or not is_inside_tree() or GameState.restaurant_level != lv:
+		return
+	while _modal_open() or (guide and guide.is_running()):
+		await get_tree().create_timer(0.3).timeout
+	if guide and not GameState.guides_done.has(lv):
+		await guide.run(lv)
+		if not is_inside_tree() or GameState.restaurant_level != lv:
+			return
+	if Lessons.for_level(lv).is_empty() or tutorial_window.visible:
+		return
+	if not force and GameState.tutorials_seen.has(lv):
 		return
 	while _modal_open():
 		await get_tree().create_timer(0.3).timeout
@@ -1083,6 +1101,9 @@ func _add_windows() -> void:
 func _open_window(which: String) -> void:
 	if _modal_open():
 		return
+	if which == "pause":
+		ui.add_child(PAUSE_SCENE.instantiate())
+		return
 	if which == "market":
 		if in_market:
 			return_from_market()
@@ -1214,7 +1235,9 @@ func _market_interaction(target: Node) -> bool:
 		var c: Dictionary = GameState.claim_crate(target.crate_index)
 		if not c.is_empty():
 			hud.show_toast("+%d %s in the kitchen (now %d)." % [c.n, Market.title(c.ing), GameState.stock_of(c.ing)])
-			_out_of_stock_said.erase(c.ing)
+			for k in _out_of_stock_said.keys():
+				if str(k).ends_with("|" + c.ing):
+					_out_of_stock_said.erase(k)
 		return true
 	if not target is Station:
 		return false
@@ -1293,6 +1316,10 @@ func _spawn_crates() -> void:
 		cr.setup(i, GameState.crates[i])
 		cr.position = r.position + Vector2((i % cols + 0.5) * step.x, (i / cols + 0.5) * step.y + 8)
 		crates_root.add_child(cr)
+		# Crates from a truck that is still driving in stay hidden until it unloads.
+		if _hide_crates_from >= 0 and i >= _hide_crates_from:
+			cr.visible = false
+			cr.interactable = false
 	manager.clear_interactions()
 
 
@@ -1302,15 +1329,98 @@ func _on_deliveries_changed() -> void:
 
 
 func _on_delivery_arrived(cart: Dictionary) -> void:
-	hud.show_delivery_arrived(Market.crates_for(cart))
+	var n := Market.crates_for(cart)
+	hud.show_delivery_arrived(n)
+	if _hide_crates_from < 0:
+		_hide_crates_from = GameState.crates.size() - n
+	_drive_truck()
+
+
+## Index of the first crate still on the truck (-1 = none).
+var _hide_crates_from := -1
+var _truck: Sprite2D
+
+## The delivery truck drives in through the back door to the delivery area,
+## opens up, the crates pop out, and it drives away.
+func _drive_truck() -> void:
+	var area := get_station("RECEIVING")
+	var door := get_station("BACK_DOOR")
+	var sheet := PixelArt.find(["res://assets/delivery/delivery_truck_drive_sheet.png"])
+	if area == null or sheet == null or _truck != null:
+		if _truck == null:
+			_unload_crates()
+		return
+	var from: Vector2 = door.global_position if door else area.global_position + Vector2(-260, 0)
+	var to: Vector2 = area.global_position
+	if from.distance_to(to) < 40.0:
+		from = to + Vector2(-260, 0)
+	_truck = Sprite2D.new()
+	_truck.texture = sheet
+	_truck.hframes = 2
+	_truck.scale = Vector2(2, 2)
+	_truck.z_index = 4
+	_truck.flip_h = to.x < from.x
+	_truck.global_position = from
+	_truck.modulate.a = 0.0
+	add_child(_truck)
+	var anim := create_tween().set_loops(10)
+	anim.tween_callback(func():
+		if is_instance_valid(_truck) and _truck.hframes == 2:
+			_truck.frame = 1 - _truck.frame).set_delay(0.12)
+	var tw := create_tween()
+	tw.tween_property(_truck, "modulate:a", 1.0, 0.25)
+	tw.parallel().tween_property(_truck, "global_position", to, 1.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_callback(func():
+		anim.kill()
+		_truck.hframes = 1
+		_truck.frame = 0
+		_truck.texture = PixelArt.find(["res://assets/delivery/delivery_truck_open.png"]) if PixelArt.find(["res://assets/delivery/delivery_truck_open.png"]) else sheet
+		_unload_crates())
+	tw.tween_interval(1.1)
+	tw.tween_callback(func():
+		_truck.texture = sheet
+		_truck.hframes = 2
+		_truck.flip_h = not _truck.flip_h)
+	tw.tween_property(_truck, "global_position", from, 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tw.parallel().tween_property(_truck, "modulate:a", 0.0, 1.0)
+	tw.tween_callback(func():
+		_truck.queue_free()
+		_truck = null)
+
+
+## Shows the crates that were on the truck with a little drop-in bounce.
+func _unload_crates() -> void:
+	var first := _hide_crates_from
+	_hide_crates_from = -1
+	if first < 0:
+		return
+	for c in crates_root.get_children():
+		if c.is_queued_for_deletion() or c.visible:
+			continue
+		c.visible = true
+		c.interactable = true
+		var target: Vector2 = c.position
+		c.position = target + Vector2(0, -40)
+		c.modulate.a = 0.0
+		var tw := c.create_tween()
+		tw.tween_interval(0.12 * (c.crate_index - first))
+		tw.tween_property(c, "modulate:a", 1.0, 0.1)
+		tw.parallel().tween_property(c, "position", target, 0.35).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+	manager.clear_interactions()
 
 
 ## A staff member ran out of an ingredient (one toast per ingredient until restocked).
-func note_out_of_stock(ing: String) -> void:
-	if _out_of_stock_said.has(ing):
+## A notification card pops up (once per staff member and ingredient until the
+## ingredient is restocked or 20 seconds pass).
+func note_out_of_stock(ing: String, who := "") -> void:
+	var key := "%s|%s" % [who, ing]
+	var now := Time.get_ticks_msec()
+	if _out_of_stock_said.has(key) and now - int(_out_of_stock_said[key]) < 20000:
 		return
-	_out_of_stock_said[ing] = true
-	hud.show_toast("Out of %s! Buy more at the Market (back door or M)." % Market.title(ing))
+	_out_of_stock_said[key] = now
+	var title := "%s is out of %s!" % [who, Market.title(ing)] if who != "" else "Out of %s!" % Market.title(ing)
+	hud.notify(title, "Buy more at the Market (back door or M), then claim the crates in the delivery area.",
+		PixelArt.food_icon(ing, false, false), Color(0.85, 0.3, 0.2))
 
 
 ## MARKET sign above the back door, and a glow when the manager is next to it.

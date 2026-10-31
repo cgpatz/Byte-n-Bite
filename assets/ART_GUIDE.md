@@ -144,7 +144,7 @@ level's `Art/Props` node as Sprite2D nodes (set Scale to 4, 4).
 - **Cooked versions** (`<name>_cooked.png`): `rice_cooked` (fried rice),
   `egg_cooked`, `hotdog_cooked`, `tocino_cooked`, `bread_cooked` (toast),
   `patty_cooked`, `chicken_cooked`, `noodles_cooked`.
-- **Dishes** (`food/dishes/`): `egsilog`, `hotsilog`, `tocilog`,
+- **Dishes** (`food/dishes/`): `eggsilog`, `hotsilog`, `tocilog`,
   `grilled_cheese`, `hamburger`, `fried_chicken_meal`, `garden_salad`,
   `cheeseburger`, `pancit_canton`, `chicken_sandwich`,
   `double_cheeseburger`, `silog_platter`, `signature_bowl`.
@@ -167,7 +167,7 @@ level's `Art/Props` node as Sprite2D nodes (set Scale to 4, 4).
 - [ ] Level 1 background (`L1.png`, trace `L1_TinyStall_16px.png`)
 - [ ] L1 stations: grill, assembly, fridge, serving counter (64×16), back door, delivery area
 - [ ] Table and chair
-- [ ] Level 1 food: rice, egg, hotdog (raw and cooked); dishes egsilog, hotsilog
+- [ ] Level 1 food: rice, egg, hotdog (raw and cooked); dishes eggsilog, hotsilog
 - [ ] Top-bar icons: coin, restaurant, manager level, EXP
 - [ ] Main menu: background, logo, 5 button icons
 - [ ] Choose a pixel font (a free one is fine; it gets set in `game_theme.tres`)

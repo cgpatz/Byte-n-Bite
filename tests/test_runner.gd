@@ -93,8 +93,8 @@ func _run_all() -> void:
 	await check("prototype then definition", 'int twice(int x);\nvoid main(){ printf("%d\\n", twice(21)); }\nint twice(int x){ return x * 2; }', "42\n")
 	await check("globals + scopes", 'int total = 10;\nvoid add(int n){ total += n; }\nvoid main(){ add(5); int total2 = total; { int x = 1; total2 += x; } printf("%d %d\\n", total, total2); }', "15 16\n")
 	await check("printf width + %s kitchen name", 'void main(){ printf("[%5d][%-3d][%s]\\n", 42, 7, GRILL); }', "[   42][7  ][GRILL]\n")
-	await check("kitchen calls in order", 'void main(){ move_to(FRIDGE); pick_up(RICE); if (holding() == RICE) { move_to(GRILL); cook(); } assemble(EGSILOG); }', "", "", 1, ["move_to(1)", "pick_up(101)", "holding()", "move_to(4)", "cook()", "assemble(201)"])
-	await check("dish names print", 'void main(){ printf("%s %s\\n", EGSILOG, SIGNATURE_BOWL); }', "EGSILOG SIGNATURE_BOWL\n")
+	await check("kitchen calls in order", 'void main(){ move_to(FRIDGE); pick_up(RICE); if (holding() == RICE) { move_to(GRILL); cook(); } assemble(EGGSILOG); }', "", "", 1, ["move_to(1)", "pick_up(101)", "holding()", "move_to(4)", "cook()", "assemble(201)"])
+	await check("dish names print", 'void main(){ printf("%s %s\\n", EGGSILOG, SIGNATURE_BOWL); }', "EGGSILOG SIGNATURE_BOWL\n")
 	# --- Library (shared functions) ---
 	await check("library function", 'void main(){ printf("%d\\n", twice(21)); }', "42\n", "", 1, [], "int twice(int x) { return x * 2; }")
 	await check("program overrides library", 'int twice(int x){ return 0; }\nvoid main(){ printf("%d\\n", twice(21)); }', "0\n", "", 1, [], "int twice(int x) { return x * 2; }")
@@ -119,7 +119,7 @@ func _run_all() -> void:
 	await check("switch picks a case", 'void main(){ int d = 2; switch (d) { case 1: printf("one"); break; case 2: printf("two"); break; default: printf("?"); } printf("\\n"); }', "two\n")
 	await check("switch default", 'void main(){ switch (9) { case 1: printf("one"); break; default: printf("other"); } }', "other")
 	await check("switch falls through without break", 'void main(){ switch (1) { case 1: printf("a"); case 2: printf("b"); break; case 3: printf("c"); } }', "ab")
-	await check("switch on kitchen names", 'void main(){ int o = HOTSILOG; switch (o) { case EGSILOG: case HOTSILOG: printf("silog"); break; default: printf("no"); } }', "silog")
+	await check("switch on kitchen names", 'void main(){ int o = HOTSILOG; switch (o) { case EGGSILOG: case HOTSILOG: printf("silog"); break; default: printf("no"); } }', "silog")
 	await check("switch inside loop: continue", 'void main(){ for (int i = 0; i < 3; i++) { switch (i) { case 1: continue; default: printf("%d", i); } } }', "02")
 	await check("case outside switch", "void main(){ case 1: ; }", "", "only works inside a switch")
 	await check("case needs colon", "void main(){ switch (1) { case 1 printf(\"x\"); } }", "", "needs a colon")
@@ -142,7 +142,7 @@ func _run_all() -> void:
 	await check("index on non-array", 'void main(){ int x = 1; x[0] = 2; }', "", "not an array")
 	await check("orders() with an empty counter", "void main(){ int list[5]; int n = orders(list); printf(\"%d %d\", n, list[0] == NOTHING); }", "0 1", "", 4)
 	await check("orders() locked before Level 4", "void main(){ int list[5]; orders(list); }", "", "unlocks at Restaurant Level 4", 3)
-	await check("post_order() locked at Level 2", "void main(){ post_order(EGSILOG); }", "", "unlocks at Restaurant Level 3", 2)
+	await check("post_order() locked at Level 2", "void main(){ post_order(EGGSILOG); }", "", "unlocks at Restaurant Level 3", 2)
 	# Level challenges checker (systems/challenges/level_challenges.gd).
 	var LG = preload("res://systems/challenges/level_challenges.gd")
 	var tr := {"served": 1, "printfs": [{"served_before": 1, "items": [

@@ -13,7 +13,7 @@ const FUNCS := {
 	"pick_up": {"level": 1, "args": 1, "sig": "pick_up(INGREDIENT)", "desc": "Take an ingredient from the FRIDGE."},
 	"cook": {"level": 1, "args": 0, "sig": "cook()", "desc": "Cook what you're holding (GRILL, FRYER, STOVE...)."},
 	"plate": {"level": 1, "args": 0, "sig": "plate()", "desc": "At ASSEMBLY: put what you're holding on your plate."},
-	"assemble": {"level": 1, "args": 1, "sig": "assemble(DISH)", "desc": "At ASSEMBLY: turn your plate into a dish, e.g. assemble(EGSILOG)."},
+	"assemble": {"level": 1, "args": 1, "sig": "assemble(DISH)", "desc": "At ASSEMBLY: turn your plate into a dish, e.g. assemble(EGGSILOG)."},
 	"serve": {"level": 1, "args": 0, "sig": "serve()", "desc": "Carry the dish you're holding to the customer who ordered it."},
 	"wait": {"level": 1, "args": 1, "sig": "wait(seconds)", "desc": "Stand still for some seconds."},
 	"holding": {"level": 1, "args": 0, "sig": "holding()", "desc": "Returns what you're holding, or NOTHING."},

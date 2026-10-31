@@ -180,6 +180,12 @@ func run() -> bool:
 ## Asks the running program to stop at the next step.
 func stop() -> void:
 	stopped = true
+	paused = false
+
+
+## Pause/continue: the program waits before its next statement while paused
+## (the code editor's Stop and Continue buttons).
+var paused := false
 
 
 # --- Helpers ------------------------------------------------------------------------
@@ -204,6 +210,8 @@ func _level() -> int:
 ## Called once per statement: highlights the line, counts steps, yields a frame now and then.
 func _step(line: int) -> void:
 	line_changed.emit(line)
+	while paused and not stopped and host:
+		await host.get_tree().process_frame
 	_steps += 1
 	_since_yield += 1
 	if _steps > MAX_STEPS_WITHOUT_ACTION:
@@ -737,11 +745,11 @@ func _builtin_recipe(args: Array, line: int) -> int:
 	var dish = args[0]
 	if dish is Array or dish is String or not Kitchen.is_dish(int(dish)):
 		var nm := Kitchen.name_of(int(dish)) if not (dish is Array or dish is String) else ""
-		_fail("recipe() needs a dish like EGSILOG first, but got %s." % (nm if nm != "" else str(dish)), line)
+		_fail("recipe() needs a dish like EGGSILOG first, but got %s." % (nm if nm != "" else str(dish)), line)
 		return 0
 	var arr = args[1]
 	if not (arr is Array):
-		_fail("recipe() needs an array second, like:  int items[8];  recipe(EGSILOG, items);", line)
+		_fail("recipe() needs an array second, like:  int items[8];  recipe(EGGSILOG, items);", line)
 		return 0
 	if arr.size() > 0 and arr[0] is Array:
 		_fail("recipe() fills a 1D array. Pass one row, like grid[0], or use int items[8];", line)

@@ -10,7 +10,7 @@ extends RefCounted
 const GOALS := {
 	1: [
 		{"id": "hotsilog", "title": "Make 10 Hotsilog", "dish": "HOTSILOG", "n": 10, "coins": 30, "exp": 40},
-		{"id": "egsilog", "title": "Make 10 Egsilog", "dish": "EGSILOG", "n": 10, "coins": 30, "exp": 40},
+		{"id": "eggsilog", "title": "Make 10 Eggsilog", "dish": "EGGSILOG", "n": 10, "coins": 30, "exp": 40},
 		{"id": "profit", "title": "Earn 300 profit", "profit": true, "n": 300, "coins": 50, "exp": 60},
 	],
 	2: [

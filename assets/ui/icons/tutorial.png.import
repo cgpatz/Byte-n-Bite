@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bh2kd22nfgy2m"
-path="res://.godot/imported/dish_egsilog.png-145a5e498b8581664aa2b472512f04bc.ctex"
+uid="uid://400o6dlxiyv6"
+path="res://.godot/imported/tutorial.png-41a9fac1c98e175ab5a4b45e4b89b2d7.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/ui/windows/recipe_book/dish_egsilog.png"
-dest_files=["res://.godot/imported/dish_egsilog.png-145a5e498b8581664aa2b472512f04bc.ctex"]
+source_file="res://assets/ui/icons/tutorial.png"
+dest_files=["res://.godot/imported/tutorial.png-41a9fac1c98e175ab5a4b45e4b89b2d7.ctex"]
 
 [params]
 

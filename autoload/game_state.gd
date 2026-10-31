@@ -19,7 +19,7 @@ signal staff_upgraded(staff_name: String, level: int, spec: String)
 
 const MAX_RESTAURANT_LEVEL := 5
 const MAX_STAFF := 6
-const START_MONEY := 100
+const START_MONEY := 20
 ## Number of Library slots (separate sets of saved code).
 const LIBRARY_SLOTS := 6
 
@@ -55,23 +55,27 @@ const LEVELS: Array[RestaurantLevelData] = [
 var game_name := ""
 var manager_name := "Manager"
 
-## Stats: dishes served per dish name ({"EGSILOG": 3}) and coins earned from sales.
+## Stats: dishes served per dish name ({"EGGSILOG": 3}) and coins earned from sales.
 var dishes_served := {}
 var coins_from_sales := 0
 ## Customers who left because their food took too long.
 var customers_lost := 0
 ## Today's Special: until take_order() unlocks (Restaurant Level 2), every
 ## customer orders this one dish, so beginners know what to cook.
-var todays_special := "EGSILOG"
+var todays_special := "EGGSILOG"
 signal special_changed(dish: String)
 const SPECIAL_UNTIL_LEVEL := 2
 ## Restaurant levels whose C lesson the player has seen.
 var tutorials_seen: Array = []
+## Lesson quick-check answers: page titles answered correctly (a star each).
+var lesson_stars: Array = []
+## Gameplay walkthroughs (RPG tutorial) already finished, by restaurant level.
+var guides_done: Array = []
 ## Level challenges finished, e.g. ["1:count", "1:receipt"] (systems/challenges/level_challenges.gd).
 var challenges_done: Array = []
 signal challenge_completed(level: int, id: String)
 ## Level goals (sell N dishes, earn a profit): sales made at each level and the
-## goals reached, e.g. {"1": {"dishes": {"EGSILOG": 4}, "profit": 120}} and ["1:profit"].
+## goals reached, e.g. {"1": {"dishes": {"EGGSILOG": 4}, "profit": 120}} and ["1:profit"].
 var level_sales := {}
 var goals_reached: Array = []
 signal goal_reached(level: int, id: String)
@@ -144,10 +148,12 @@ func reset() -> void:
 	coins_from_sales = 0
 	customers_lost = 0
 	tutorials_seen = []
+	lesson_stars = []
+	guides_done = []
 	challenges_done = []
 	level_sales = {}
 	goals_reached = []
-	todays_special = "EGSILOG"
+	todays_special = "EGGSILOG"
 	library_slots = new_library()
 	staff_programs = {}
 	staff_levels = {}
@@ -183,7 +189,7 @@ func to_save() -> Dictionary:
 		"inventory": inventory, "market_stock": market_stock, "market_restock_left": market_restock_left,
 		"deliveries": deliveries, "crates": crates,
 		"cafe_step": cafe_step, "customers_lost": customers_lost,
-		"tutorials_seen": tutorials_seen, "challenges_done": challenges_done, "level_sales": level_sales, "goals_reached": goals_reached, "todays_special": todays_special,
+		"tutorials_seen": tutorials_seen, "lesson_stars": lesson_stars, "guides_done": guides_done, "challenges_done": challenges_done, "level_sales": level_sales, "goals_reached": goals_reached, "todays_special": todays_special,
 	}
 
 
@@ -210,22 +216,26 @@ func from_save(d: Dictionary) -> void:
 	dishes_served = {}
 	var served: Dictionary = d.get("dishes_served", {})
 	for k in served:
-		dishes_served[str(k)] = int(served[k])
+		dishes_served[str(k).replace("EGSILOG", "EGGSILOG")] = int(served[k])
 	coins_from_sales = int(d.get("coins_from_sales", 0))
 	customers_lost = int(d.get("customers_lost", 0))
-	todays_special = str(d.get("todays_special", "EGSILOG"))
+	todays_special = str(d.get("todays_special", "EGGSILOG")).replace("EGSILOG", "EGGSILOG")
 	if not Kitchen.DISHES.has(todays_special):
-		todays_special = "EGSILOG"
+		todays_special = "EGGSILOG"
 	challenges_done = []
 	for g in d.get("challenges_done", d.get("goals_done", [])):  # older saves: goals_done
 		challenges_done.append(str(g))
-	level_sales = d.get("level_sales", {})
+	level_sales = JSON.parse_string(JSON.stringify(d.get("level_sales", {})).replace("EGSILOG", "EGGSILOG"))
 	goals_reached = []
 	for g in d.get("goals_reached", []):
 		goals_reached.append(str(g))
 	tutorials_seen = []
 	for t in d.get("tutorials_seen", []):
 		tutorials_seen.append(int(t))
+	lesson_stars = Array(d.get("lesson_stars", [])).duplicate()
+	guides_done = []
+	for t in d.get("guides_done", d.get("tutorials_seen", [])):
+		guides_done.append(int(t))
 	library_slots = new_library()
 	if d.has("library_slots"):
 		var saved: Array = d.library_slots

@@ -242,7 +242,28 @@ func _add_item(ing: String, cx: float, k: float) -> void:
 		var sign := Art.label(pair[0], pair[1], Vector2.ZERO, int(30 * maxf(k, 0.8)), Art.INK, true, 56 * k, HORIZONTAL_ALIGNMENT_CENTER)
 		sign.size = Vector2(56, 56) * k
 		sign.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	var qty := Art.label(_stall_layer, "0", Vector2(st.position.x + 56 * k, 936), int(26 * maxf(k, 0.8)), Art.INK, true, 96 * k, HORIZONTAL_ALIGNMENT_CENTER)
+	# The amount box: click it and type any amount (Enter or click away to apply).
+	var qty := LineEdit.new()
+	qty.text = "0"
+	qty.position = st.position + Vector2(56, 0) * k
+	qty.size = Vector2(96, 56)
+	qty.scale = Vector2(k, k)
+	qty.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	qty.max_length = 3
+	qty.select_all_on_focus = true
+	qty.context_menu_enabled = false
+	qty.tooltip_text = "Type how many %s to buy" % Market.title(ing)
+	qty.add_theme_font_override("font", Art.bold_font())
+	qty.add_theme_font_size_override("font_size", 26)
+	for key in ["font_color", "font_uneditable_color"]:
+		qty.add_theme_color_override(key, Art.INK)
+	qty.add_theme_color_override("caret_color", Art.INK)
+	var box_style := StyleBoxEmpty.new()
+	for key in ["normal", "focus", "read_only"]:
+		qty.add_theme_stylebox_override(key, box_style)
+	qty.text_submitted.connect(func(_t): set_amount(ing, qty.text); qty.release_focus())
+	qty.focus_exited.connect(func(): set_amount(ing, qty.text))
+	_stall_layer.add_child(qty)
 	_cells[ing] = {"qty": qty, "tag": tag, "tag_label": tag_label, "stock": stock_l, "plus": plus, "minus": minus}
 
 
@@ -260,6 +281,16 @@ func _step_button(r: Rect2, delta: int, ing: String) -> Button:
 		b.add_theme_stylebox_override(k, empty)
 	_stall_layer.add_child(b)
 	return b
+
+
+## Sets the amount on the slip to a typed number (capped at the Market's stock).
+func set_amount(ing: String, text: String) -> void:
+	var digits := ""
+	for ch in text:
+		if ch >= "0" and ch <= "9":
+			digits += ch
+	var want := int(digits) if digits != "" else 0
+	change(ing, want - int(cart.get(ing, 0)))
 
 
 ## Adds or removes one of an ingredient from the slip (capped at the Market's stock).
@@ -368,7 +399,8 @@ func _refresh_slip() -> void:
 		var c: Dictionary = _cells[ing]
 		var q := int(cart.get(ing, 0))
 		var have := int(GameState.market_stock.get(ing, 0))
-		c.qty.text = str(q)
+		if not c.qty.has_focus():
+			c.qty.text = str(q)
 		c.tag.visible = q > 0
 		c.tag_label.text = "x%d" % q
 		c.stock.text = "Sold out" if have <= 0 else "in stock: %d" % have

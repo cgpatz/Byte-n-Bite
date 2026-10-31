@@ -194,7 +194,7 @@ func _physics_process(delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
 	_animate(delta)
-	if _path.is_empty():
+	if paused or _path.is_empty():
 		return
 	var step := move_speed * Progression.staff_walk_mult(level, specialization) * delta
 	while step > 0.0 and not _path.is_empty():
@@ -308,7 +308,9 @@ func run_program() -> void:
 	interp.host = self
 	interp.output.connect(func(t: String): _log(t.replace("[", "[lb]"), false))
 	run_trace = {"served": 0, "printfs": [], "stats": interp.stats, "dishes": {}, "tickets": 0}
-	interp.line_changed.connect(func(l: int): line_changed.emit(l))
+	interp.line_changed.connect(func(l: int):
+		_current_line = l
+		line_changed.emit(l))
 	if not Engine.is_editor_hint():
 		GameState.staff_programs[staff_name] = program_source
 	if not interp.compile(program_source, GameState.library_slots):
@@ -338,11 +340,51 @@ func run_program() -> void:
 
 
 func stop_program() -> void:
+	if paused:
+		paused = false
+		paused_changed.emit(false)
 	if _interp:
 		_stop_requested = true
 		_interp.stop()
 		_path.clear()
 		_arrived.emit()
+
+
+## Code editor "Stop": freezes the program (and the staff member) at the
+## current line. "Continue" resumes from there.
+var paused := false
+var _current_line := 0
+signal paused_changed(paused: bool)
+
+
+func pause_program() -> void:
+	if _interp == null or paused:
+		return
+	paused = true
+	_interp.paused = true
+	_log("[color=#e8b04a]⏸ %s stopped at line %d. Press Continue to go on from here.[/color]" % [staff_name, _current_line])
+	paused_changed.emit(true)
+	queue_redraw()
+
+
+func resume_program() -> void:
+	if not paused:
+		return
+	paused = false
+	if _interp:
+		_interp.paused = false
+	_log("[color=#9fd36a]▶ %s continues.[/color]" % staff_name)
+	paused_changed.emit(false)
+	queue_redraw()
+
+
+## Run while a program is already running: stop it, then start again from the top.
+func restart_program() -> void:
+	if is_running():
+		stop_program()
+		while is_running():
+			await get_tree().process_frame
+	run_program()
 
 
 ## Called on level change: forget position-based state and empty the hands.
@@ -455,7 +497,8 @@ func _sleep(seconds: float) -> void:
 	while left > 0.0 and not _stop_requested:
 		var chunk := minf(left, 0.1)
 		await get_tree().create_timer(chunk, false).timeout
-		left -= chunk
+		if not paused:
+			left -= chunk
 
 
 func _here_name() -> String:
@@ -512,7 +555,7 @@ func run_builtin(fname: String, args: Array, _line: int) -> Dictionary:
 			var dish_id := int(args[0])
 			if not Kitchen.is_dish(dish_id):
 				var nm := Kitchen.name_of(dish_id)
-				return {"error": "post_order() needs a dish like EGSILOG, but got %s." % (nm if nm != "" else str(dish_id))}
+				return {"error": "post_order() needs a dish like EGGSILOG, but got %s." % (nm if nm != "" else str(dish_id))}
 			var e := _need_station("SERVING_COUNTER", "post_order")
 			if e != "":
 				return {"error": e}
@@ -619,7 +662,7 @@ func _do_pick_up(id: int) -> Dictionary:
 		return {"error": "There's no %s at the %s. Try the %s." % [iname, _at_station, " or ".join(where) if not where.is_empty() else "FRIDGE"]}
 	if not GameState.take_ingredient(iname):
 		if world and world.has_method("note_out_of_stock"):
-			world.note_out_of_stock(iname)
+			world.note_out_of_stock(iname, staff_name)
 		return {"error": "Out of %s! The manager has to buy more at the Market (back door or M) and claim the crates in the delivery area. Tip: check stock(%s) first." % [iname.capitalize(), iname]}
 	await _act("pick", PICK_TIME, "picking up...")
 	if not _stop_requested:
@@ -680,7 +723,7 @@ func _do_assemble(id: int) -> Dictionary:
 		return {"error": e}
 	var dish := Kitchen.name_of(id)
 	if not Kitchen.is_dish(id):
-		return {"error": "assemble() needs a dish like EGSILOG, but got %s." % (dish if dish != "" else str(id))}
+		return {"error": "assemble() needs a dish like EGGSILOG, but got %s." % (dish if dish != "" else str(id))}
 	var why := Kitchen.available(dish, restaurant_level(), GameState.cafe_step)
 	if why != "":
 		return {"error": why}

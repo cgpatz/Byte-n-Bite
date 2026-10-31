@@ -47,8 +47,7 @@ func _ready() -> void:
 	_build_deliveries()
 	var hint := get_node_or_null("ControlsHint") as Label
 	if hint:
-		hint.text = "WASD move  ·  E interact / buy upgrades  ·  M market  ·  T lessons  ·  R recipes  ·  L library  ·  Tab stats  ·  G goals  ·  Esc / P pause"
-		hint.offset_left = -1100
+		hint.hide()  # keys are shown in each button's tooltip and in the tutorial
 	_add_icon(money_label, "coin")
 	_add_icon(level_label, "restaurant")
 	_add_icon(_player_label, "manager_level")
@@ -86,37 +85,66 @@ func _build_player_level() -> void:
 	row.add_child(_exp_bar)
 
 
-## Recipes / Library / Stats buttons in the top-right corner.
+## Icon buttons in the top-right corner (no text): Market, Lessons, Recipes,
+## Library, Stats, Pause. Each has a tooltip and a small key badge.
+const WINDOW_BUTTONS := [
+	["market", "market", "M", "Market: go to the Night Market to buy ingredients"],
+	["tutorial", "tutorial", "T", "Lessons: Chef Miso's C lessons and Kitchen Functions"],
+	["recipe_book", "recipe_book", "R", "Recipe Book: dishes and their ingredients"],
+	["library", "library", "L", "Library: your reusable functions"],
+	["stats", "stats", "Tab", "Stats: your progress and staff"],
+	["pause", "pause", "Esc", "Pause menu"],
+]
+
+
+## HUD icon buttons by window key (the gameplay guide points at them).
+var window_buttons := {}
+
+
 func _build_buttons() -> void:
 	var row := HBoxContainer.new()
 	row.name = "WindowButtons"
-	row.add_theme_constant_override("separation", 12)
+	row.add_theme_constant_override("separation", 10)
 	row.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	row.offset_left = -940
+	row.offset_left = -680
 	row.offset_right = -24
-	row.offset_top = 70
-	row.offset_bottom = 134
+	row.offset_top = 24
+	row.offset_bottom = 104
 	row.alignment = BoxContainer.ALIGNMENT_END
+	row.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	add_child(row)
-	_market_button = Button.new()
-	_market_button.text = "Market (M)"
-	_market_button.focus_mode = Control.FOCUS_NONE
-	_market_button.custom_minimum_size = Vector2(0, 64)
-	_market_button.add_theme_font_size_override("font_size", 22)
-	_market_button.tooltip_text = "Go to the Night Market to buy ingredients (or use the back door)."
-	PixelArt.button_icon(_market_button, ["market"])
-	_market_button.pressed.connect(func(): window_requested.emit("market"))
-	row.add_child(_market_button)
-	row.offset_left -= 230
-	for spec in [["Lessons (T)", "tutorial", "tutorial"], ["Recipes (R)", "recipe_book", "recipe_book"], ["Library (L)", "library", "library"], ["Stats (Tab)", "stats", "stats"]]:
-		var b := Button.new()
-		b.text = spec[0]
-		b.focus_mode = Control.FOCUS_NONE
-		b.custom_minimum_size = Vector2(0, 64)
-		b.add_theme_font_size_override("font_size", 22)
-		PixelArt.button_icon(b, [spec[2]])
-		b.pressed.connect(func(): window_requested.emit(spec[1]))
+	for spec in WINDOW_BUTTONS:
+		var b := _icon_button(spec[1], spec[2], spec[3])
+		b.pressed.connect(func(): window_requested.emit(spec[0]))
 		row.add_child(b)
+		window_buttons[spec[0]] = b
+		if spec[0] == "market":
+			_market_button = b
+
+
+func _icon_button(icon_key: String, key: String, tip: String) -> Button:
+	var b := Button.new()
+	b.focus_mode = Control.FOCUS_NONE
+	b.custom_minimum_size = Vector2(80, 80)
+	b.tooltip_text = "%s  (%s)" % [tip, key]
+	b.icon = PixelArt.find(["res://assets/ui/icons/%s.png" % icon_key])
+	b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	b.expand_icon = false
+	var badge := Label.new()
+	badge.text = key
+	badge.add_theme_font_size_override("font_size", 14)
+	badge.add_theme_color_override("font_color", Color(1, 0.93, 0.8))
+	badge.add_theme_constant_override("outline_size", 4)
+	badge.add_theme_color_override("font_outline_color", Color(0.16, 0.08, 0.04))
+	badge.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	badge.offset_left = -40
+	badge.offset_top = -26
+	badge.offset_right = -6
+	badge.offset_bottom = -4
+	badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(badge)
+	return b
 
 
 ## Puts assets/ui/hud/<key>.png in front of a HUD item, if that file exists.
@@ -268,8 +296,8 @@ func show_prompt_for(target: Node) -> void:
 	if target == null:
 		prompt.hide()
 		return
-	prompt_label.text = "[E]  %s" % target.get_prompt()
-	prompt.show()
+	# The prompt now shows as a thought bubble above the manager (manager.gd).
+	prompt.hide()
 
 
 func show_toast(text: String) -> void:
@@ -295,8 +323,8 @@ func set_admin_badge(on: bool) -> void:
 
 func set_in_market(on: bool) -> void:
 	if _market_button:
-		_market_button.text = "Back (M)" if on else "Market (M)"
-		_market_button.tooltip_text = "Go back to the restaurant." if on else "Go to the Night Market to buy ingredients (or use the back door)."
+		_market_button.tooltip_text = "Back to the restaurant  (M)" if on else "Market: go to the Night Market to buy ingredients  (M)"
+		_market_button.modulate = Color(1.0, 0.9, 0.55) if on else Color.WHITE
 
 
 func _build_deliveries() -> void:
@@ -317,6 +345,7 @@ func _process(delta: float) -> void:
 	if _delivery_tick <= 0.0:
 		_delivery_tick = 0.25
 		refresh_deliveries()
+		refresh_orders()
 
 
 ## One row per delivery on its way, plus a "Here!" row while crates wait.
@@ -402,3 +431,207 @@ func show_delivery_arrived(crates: int) -> void:
 	_arrived_tween = create_tween()
 	_arrived_tween.tween_interval(3.0)
 	_arrived_tween.tween_property(_arrived, "modulate:a", 0.0, 0.6)
+
+
+# --- Notification cards ---------------------------------------------------------------
+
+var _notes: VBoxContainer
+
+## A card that pops in at the top of the screen with an icon, a title and a
+## line of help, then fades after a few seconds (click it to close).
+func notify(title: String, body: String, icon: Texture2D = null, accent := Color(0.85, 0.55, 0.2), seconds := 6.0) -> void:
+	if _notes == null:
+		_notes = VBoxContainer.new()
+		_notes.name = "Notifications"
+		_notes.set_anchors_preset(Control.PRESET_CENTER_TOP)
+		_notes.offset_left = -300
+		_notes.offset_right = 300
+		_notes.offset_top = 320
+		_notes.add_theme_constant_override("separation", 8)
+		_notes.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(_notes)
+	while _notes.get_child_count() >= 3:
+		var old := _notes.get_child(0)
+		_notes.remove_child(old)
+		old.queue_free()
+	var card := PanelContainer.new()
+	var st := StyleBoxFlat.new()
+	st.bg_color = Color(0.98, 0.94, 0.86)
+	st.border_color = accent
+	st.border_width_left = 10
+	st.border_width_top = 3
+	st.border_width_right = 3
+	st.border_width_bottom = 3
+	st.content_margin_left = 16
+	st.content_margin_right = 16
+	st.content_margin_top = 10
+	st.content_margin_bottom = 10
+	st.shadow_color = Color(0, 0, 0, 0.35)
+	st.shadow_size = 6
+	card.add_theme_stylebox_override("panel", st)
+	card.custom_minimum_size = Vector2(600, 0)
+	card.mouse_filter = Control.MOUSE_FILTER_STOP
+	card.gui_input.connect(func(e: InputEvent):
+		if e is InputEventMouseButton and e.pressed:
+			card.queue_free())
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 14)
+	card.add_child(row)
+	if icon:
+		var ic := TextureRect.new()
+		ic.texture = icon
+		ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		ic.custom_minimum_size = Vector2(56, 56)
+		ic.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(ic)
+	var col := VBoxContainer.new()
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(col)
+	var t := Label.new()
+	t.text = title
+	t.add_theme_font_override("font", Art.bold_font())
+	t.add_theme_font_size_override("font_size", 24)
+	t.add_theme_color_override("font_color", accent.darkened(0.25))
+	t.add_theme_constant_override("outline_size", 0)
+	col.add_child(t)
+	var b := Label.new()
+	b.text = body
+	b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	b.add_theme_font_size_override("font_size", 18)
+	b.add_theme_color_override("font_color", Art.INK)
+	b.add_theme_constant_override("outline_size", 0)
+	col.add_child(b)
+	_notes.add_child(card)
+	card.modulate.a = 0.0
+	var tw := card.create_tween()
+	tw.tween_property(card, "modulate:a", 1.0, 0.18)
+	tw.tween_interval(seconds)
+	tw.tween_property(card, "modulate:a", 0.0, 0.5)
+	tw.tween_callback(card.queue_free)
+
+
+# --- Order board (serving counter orders, 3 columns × 4 rows, scrolls) ---------------
+
+## Set by Game so the board can read the order queue.
+var game: Node
+var _board: PanelContainer
+var _board_grid: GridContainer
+var _board_title: Label
+var _board_scroll: ScrollContainer
+var _board_sig := ""
+const BOARD_COLS := 3
+const BOARD_ROWS := 4
+const TILE := Vector2(96, 92)
+
+
+func _build_order_board() -> void:
+	_board = PanelContainer.new()
+	_board.name = "OrderBoard"
+	var st := StyleBoxFlat.new()
+	st.bg_color = Color(0.2, 0.12, 0.08, 0.93)
+	st.border_color = Color(0.1, 0.05, 0.03)
+	st.set_border_width_all(4)
+	st.set_corner_radius_all(6)
+	st.content_margin_left = 10
+	st.content_margin_right = 10
+	st.content_margin_top = 8
+	st.content_margin_bottom = 10
+	_board.add_theme_stylebox_override("panel", st)
+	_board.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	var w := BOARD_COLS * TILE.x + (BOARD_COLS - 1) * 8 + 20 + 14
+	var h := BOARD_ROWS * TILE.y + (BOARD_ROWS - 1) * 8 + 60
+	_board.offset_left = -w - 24
+	_board.offset_right = -24
+	_board.offset_top = -h - 24
+	_board.offset_bottom = -24
+	add_child(_board)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	_board.add_child(v)
+	_board_title = Label.new()
+	_board_title.text = "Orders"
+	_board_title.add_theme_font_size_override("font_size", 22)
+	_board_title.add_theme_color_override("font_color", Color(1, 0.86, 0.52))
+	_board_title.tooltip_text = "Orders waiting at the serving counter, oldest first. # = ticket posted with post_order(); ? = order not taken yet. Scroll for more."
+	_board_title.mouse_filter = Control.MOUSE_FILTER_PASS
+	v.add_child(_board_title)
+	_board_scroll = ScrollContainer.new()
+	_board_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_board_scroll.custom_minimum_size = Vector2(BOARD_COLS * TILE.x + (BOARD_COLS - 1) * 8 + 14, BOARD_ROWS * TILE.y + (BOARD_ROWS - 1) * 8)
+	v.add_child(_board_scroll)
+	_board_grid = GridContainer.new()
+	_board_grid.columns = BOARD_COLS
+	_board_grid.add_theme_constant_override("h_separation", 8)
+	_board_grid.add_theme_constant_override("v_separation", 8)
+	_board_scroll.add_child(_board_grid)
+
+
+func refresh_orders() -> void:
+	if _board == null:
+		_build_order_board()
+	if game == null:
+		return
+	var list: Array = game.orders.duplicate()
+	# Posted tickets first (queue order), then the rest in arrival order.
+	var sig := ""
+	for o in list:
+		sig += "%s%s%s%s%s;" % [o.dish, o.taken, o.posted, o.ticket, o.claimed_by != null or o.serving != null]
+	if sig == _board_sig:
+		return
+	_board_sig = sig
+	for c in _board_grid.get_children():
+		c.queue_free()
+	_board_title.text = "Orders (%d)" % list.size() if not list.is_empty() else "Orders: none yet"
+	for o in list:
+		_board_grid.add_child(_order_tile(o))
+
+
+func _order_tile(o: Dictionary) -> Control:
+	var t := PanelContainer.new()
+	t.custom_minimum_size = TILE
+	var busy: bool = o.claimed_by != null or o.serving != null
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(1, 0.95, 0.75) if o.posted else (Color(0.98, 0.94, 0.86) if o.taken else Color(0.78, 0.74, 0.7))
+	sb.border_color = Color(0.35, 0.7, 0.3) if busy else Color(0.45, 0.3, 0.18)
+	sb.set_border_width_all(4 if busy else 2)
+	sb.set_corner_radius_all(4)
+	t.add_theme_stylebox_override("panel", sb)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 0)
+	t.add_child(v)
+	var top := Label.new()
+	top.text = ("#%d" % o.ticket) if o.posted else ("making" if busy else ("taken" if o.taken else "waiting"))
+	top.add_theme_font_size_override("font_size", 14)
+	top.add_theme_color_override("font_color", Color(0.3, 0.18, 0.08))
+	top.add_theme_constant_override("outline_size", 0)
+	v.add_child(top)
+	if o.taken or o.posted:
+		var ic := TextureRect.new()
+		ic.texture = Art.dish_art(o.dish)
+		ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		ic.custom_minimum_size = Vector2(80, 44)
+		v.add_child(ic)
+		var nm := Label.new()
+		nm.text = Kitchen.title_of(o.dish)
+		nm.clip_text = true
+		nm.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		nm.custom_minimum_size = Vector2(80, 0)
+		nm.add_theme_font_size_override("font_size", 12)
+		nm.add_theme_color_override("font_color", Color(0.3, 0.18, 0.08))
+		nm.add_theme_constant_override("outline_size", 0)
+		v.add_child(nm)
+		t.tooltip_text = "%s%s" % [Kitchen.title_of(o.dish), "  (ticket #%d)" % o.ticket if o.posted else ""]
+	else:
+		var q := Label.new()
+		q.text = "?"
+		q.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		q.add_theme_font_size_override("font_size", 40)
+		q.add_theme_color_override("font_color", Color(0.4, 0.3, 0.25))
+		v.add_child(q)
+		t.tooltip_text = "Order not taken yet: use take_order()"
+	return t

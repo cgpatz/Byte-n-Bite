@@ -49,7 +49,7 @@ const DELIVERY_BASE := 15.0
 const DELIVERY_PER_ITEM := 3.0
 const DELIVERY_MAX := 90.0
 
-## Ingredients a new game starts with (enough for the first Egsilogs).
+## Ingredients a new game starts with (enough for the first Eggsilogs).
 const START_INVENTORY := {"RICE": 10, "EGG": 10, "HOTDOG": 5}
 
 

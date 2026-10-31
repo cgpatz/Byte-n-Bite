@@ -81,8 +81,8 @@ static func level_set(lv: int) -> Dictionary:
 	var note := ""
 	match lv:
 		1:
-			note = "Level 1 (no decisions or loops yet): set Today's Special to Egsilog, then press Run once per customer. Also completes all four Level 1 challenges."
-			code = level1_challenges("EGSILOG")
+			note = "Level 1 (no decisions or loops yet): set Today's Special to Eggsilog, then press Run once per customer. Also completes all four Level 1 challenges."
+			code = level1_challenges("EGGSILOG")
 		2:
 			note = "Level 2 (if / switch): reads one order and makes it. Press Run once per customer."
 			code = "void main() {\n    int order = take_order();\n%s}" % _switch_over(menu, "    ")
@@ -127,7 +127,7 @@ static func level1_challenges(dish: String) -> String:
 
 static func challenges_note(lv: int) -> String:
 	match lv:
-		1: return "Finishes all four Level 1 challenges in one Run (Today's Special: Egsilog)."
+		1: return "Finishes all four Level 1 challenges in one Run (Today's Special: Eggsilog)."
 		2: return "take_order(), if / else and a switch with default: all three Level 2 challenges in one Run."
 		3: return "Cook program: a for loop over 3 tickets (Busy shift, for loop, Waiter + cook). Give the Waiter program to another staff member."
 		4: return "Any dish with recipe() + sizeof. 'One loop, any dish' completes once two different dishes are served."
@@ -137,7 +137,7 @@ static func challenges_note(lv: int) -> String:
 static func challenges_program(lv: int) -> String:
 	match lv:
 		1:
-			return level1_challenges("EGSILOG")
+			return level1_challenges("EGGSILOG")
 		2:
 			return ("// Level 2 challenges: take_order(), if / else, switch with default\nvoid main() {\n    int order = take_order();\n"
 				+ "    if (order == NOTHING) {\n        printf(\"Nobody is waiting\\n\");\n    } else {\n"
@@ -149,7 +149,7 @@ static func challenges_program(lv: int) -> String:
 		4:
 			return generic_arrays().replace("    int items[8];\n", "    int items[8];\n    int room = sizeof(items) / sizeof(items[0]);\n    printf(\"Room for %d ingredients\\n\", room);\n")
 		_:
-			return ("// Level 5 challenges (needs make_dish() in a Library slot)\nint price_of(int dish) {\n    if (dish == EGSILOG) {\n        return 30;\n    }\n    return 50;\n}\n\n"
+			return ("// Level 5 challenges (needs make_dish() in a Library slot)\nint price_of(int dish) {\n    if (dish == EGGSILOG) {\n        return 30;\n    }\n    return 50;\n}\n\n"
 				+ "void main() {\n    while (1) {\n        if (has_order()) {\n            int order = take_order();\n            make_dish(order);\n"
 				+ "            printf(\"About %d coins\\n\", price_of(order));\n        } else {\n            wait(1);\n        }\n    }\n}")
 
@@ -164,10 +164,10 @@ static func practice_set(lv: int) -> Dictionary:
 			code = level1_challenges("HOTSILOG")
 		2:
 			title = "Lesson 2: switch on take_order()"
-			code = "void main() {\n    int order = take_order();\n%s}" % _switch_over(["EGSILOG", "HOTSILOG", "TOCILOG"], "    ")
+			code = "void main() {\n    int order = take_order();\n%s}" % _switch_over(["EGGSILOG", "HOTSILOG", "TOCILOG"], "    ")
 		3:
 			title = "Lesson 3: serve all day"
-			code = "void main() {\n    while (1) {\n        if (has_order()) {\n            int order = take_order();\n%s        } else {\n            wait(1);\n        }\n    }\n}" % _switch_over(["EGSILOG", "HAMBURGER"], "            ")
+			code = "void main() {\n    while (1) {\n        if (has_order()) {\n            int order = take_order();\n%s        } else {\n            wait(1);\n        }\n    }\n}" % _switch_over(["EGGSILOG", "HAMBURGER"], "            ")
 		4:
 			title = "Lesson 4: any dish with arrays"
 			code = generic_arrays()

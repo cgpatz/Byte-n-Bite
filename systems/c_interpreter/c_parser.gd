@@ -384,7 +384,7 @@ func _parse_switch() -> Dictionary:
 			var cline: int = _next().line
 			var cv := _parse_expr()
 			if not _accept_op(":"):
-				_fail("Each case needs a colon, like:  case EGSILOG:", cline)
+				_fail("Each case needs a colon, like:  case EGGSILOG:", cline)
 				return {}
 			cases.append({"value": cv, "at": body.size(), "line": cline})
 		elif _is_kw("default"):

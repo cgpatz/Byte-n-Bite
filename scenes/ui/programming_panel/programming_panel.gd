@@ -55,6 +55,7 @@ func _ready() -> void:
 	PixelArt.button_icon(run_button, ["start_dark", "start"])
 	run_button.pressed.connect(_on_run_pressed)
 	stop_button.pressed.connect(_on_stop_pressed)
+	_build_continue_button()
 	close_button.pressed.connect(close)
 	SettingsManager.changed.connect(_apply_font_size)
 	code_edit.text_changed.connect(_on_code_changed)
@@ -112,7 +113,7 @@ func _setup_editor() -> void:
 	hl.add_color_region("\"", "\"", Color(0.95, 0.85, 0.5))
 	hl.add_color_region("'", "'", Color(0.95, 0.85, 0.5))
 	code_edit.syntax_highlighter = hl
-	code_edit.placeholder_text = "// Empty program. Write your C code here, for example:\n\nvoid main() {\n    go_to(FRIDGE);\n    pick_up(RICE);\n}\n\n// Stuck? Open Lessons (T) or the Recipe Book's Kitchen Functions (R)."
+	code_edit.placeholder_text = "// Empty program. Write your C code here, for example:\n\nvoid main() {\n    go_to(FRIDGE);\n    pick_up(RICE);\n}\n\n// Stuck? Open Lessons (T): it has every Kitchen Function too."
 	code_edit.indent_size = 4
 	code_edit.indent_use_spaces = true
 	code_edit.gutters_draw_executing_lines = true
@@ -127,6 +128,7 @@ func open(for_staff: Staff) -> void:
 	staff = for_staff
 	staff.log_added.connect(_on_log_added)
 	staff.running_changed.connect(_on_running_changed)
+	staff.paused_changed.connect(_on_paused_changed)
 	staff.line_changed.connect(_on_line_changed)
 	staff.error_at.connect(_on_error_at)
 	_update_title()
@@ -159,7 +161,8 @@ func _disconnect_staff() -> void:
 	if staff == null:
 		return
 	for pair in [[staff.log_added, _on_log_added], [staff.running_changed, _on_running_changed],
-			[staff.line_changed, _on_line_changed], [staff.error_at, _on_error_at]]:
+			[staff.line_changed, _on_line_changed], [staff.error_at, _on_error_at],
+			[staff.paused_changed, _on_paused_changed]]:
 		if (pair[0] as Signal).is_connected(pair[1]):
 			(pair[0] as Signal).disconnect(pair[1])
 
@@ -172,17 +175,57 @@ func _update_hint() -> void:
 	hint.text = "Functions: %s, printf()\nMenu: %s" % [", ".join(names), ", ".join(GameState.current_menu())]
 
 
+var continue_button: Button
+
+
+## Run (start / restart from the top), Stop (freeze at the current line),
+## Continue (resume from where it stopped).
+func _build_continue_button() -> void:
+	continue_button = Button.new()
+	continue_button.name = "ContinueButton"
+	continue_button.text = "Continue"
+	continue_button.custom_minimum_size = Vector2(240, 80)
+	continue_button.add_theme_font_size_override("font_size", 30)
+	continue_button.tooltip_text = "Continue the program from the line where it stopped"
+	continue_button.disabled = true
+	stop_button.add_sibling(continue_button)
+	continue_button.pressed.connect(_on_continue_pressed)
+	run_button.tooltip_text = "Run the code from the top (restarts if already running)"
+	stop_button.tooltip_text = "Stop the code at the current line"
+
+
 func _on_run_pressed() -> void:
-	if staff == null or staff.is_running():
+	if staff == null:
 		return
 	staff.program_source = code_edit.text
 	_clear_marks()
-	staff.run_program()  # runs in the background; the panel can be closed
+	if staff.is_running():
+		staff.restart_program()
+	else:
+		staff.run_program()  # runs in the background; the panel can be closed
 
 
 func _on_stop_pressed() -> void:
+	if staff and staff.is_running():
+		staff.pause_program()
+
+
+func _on_continue_pressed() -> void:
 	if staff:
-		staff.stop_program()
+		staff.resume_program()
+
+
+func _on_paused_changed(_p: bool) -> void:
+	_refresh_buttons()
+
+
+func _refresh_buttons() -> void:
+	var running: bool = staff != null and staff.is_running()
+	var paused: bool = running and staff.paused
+	run_button.disabled = false
+	stop_button.disabled = not running or paused
+	if continue_button:
+		continue_button.disabled = not paused
 
 
 func _on_log_added(text: String) -> void:
@@ -190,8 +233,7 @@ func _on_log_added(text: String) -> void:
 
 
 func _on_running_changed(running: bool) -> void:
-	run_button.disabled = running
-	stop_button.disabled = not running
+	_refresh_buttons()
 	if not running:
 		_clear_executing()
 

@@ -1,7 +1,7 @@
 extends Control
 ## Admin panel for Admin Runs (F10): set or add coins, jump to any restaurant
 ## level, jump to any player (manager) level, add EXP, open the ready-to-copy
-## Code Sets.
+## Code Sets, ingredient tools. Sections are tabs that scroll on their own.
 ## Only reachable when the game was started with the editor-only Admin Run button.
 
 signal closed
@@ -96,6 +96,43 @@ func _ready() -> void:
 	GameState.money_changed.connect(func(_m): _refresh())
 	GameState.player_exp_changed.connect(func(_l, _e, _n): _refresh())
 	GameState.restaurant_level_changed.connect(func(_l): _refresh())
+	_organize_tabs()
+
+
+## Puts the sections into tabs (each scrolls on its own) so the panel stays a
+## fixed size: Coins & Level · Manager · Ingredients · Art & Code.
+func _organize_tabs() -> void:
+	var box: VBoxContainer = level_row.get_parent()
+	var header := box.get_child(0)
+	var groups := {"Coins": "Coins & Level", "Restaurant Level": "Coins & Level",
+		"Manager Level & EXP": "Manager", "Ingredients & Market": "Ingredients",
+		"Art Preview": "Art & Code", "Code Sets": "Art & Code"}
+	var order := ["Coins & Level", "Manager", "Ingredients", "Art & Code"]
+	var tabs := TabContainer.new()
+	tabs.custom_minimum_size = Vector2(680, 470)
+	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	tabs.add_theme_font_size_override("font_size", 22)
+	var pages := {}
+	for name in order:
+		var sc := ScrollContainer.new()
+		sc.name = name
+		sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		var v := VBoxContainer.new()
+		v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		v.add_theme_constant_override("separation", 12)
+		sc.add_child(v)
+		tabs.add_child(sc)
+		pages[name] = v
+	var current := "Coins & Level"
+	for c in box.get_children().duplicate():
+		if c == header or c == close_button:
+			continue
+		if c is Label and groups.has((c as Label).text):
+			current = groups[(c as Label).text]
+		box.remove_child(c)
+		pages["Coins & Level" if c.name == "Note" else current].add_child(c)
+	box.add_child(tabs)
+	box.move_child(tabs, 1)
 
 
 ## "Manager Level" title, Lv 1–10 buttons and EXP buttons.

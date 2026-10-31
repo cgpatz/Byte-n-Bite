@@ -3,8 +3,7 @@ extends "res://scenes/ui/common/art_window.gd"
 ##  Dishes / Café tabs: each dish's picture, price and ingredients (and where to
 ##  get and cook them). The steps are left out on purpose: the player works out
 ##  the program themselves.
-##  Kitchen Functions tab: C syntax lessons and every kitchen function; click one
-##  to see its syntax, explanation, a short tutorial and an example.
+##  Kitchen Functions moved to the Lessons window (T).
 ## Art: assets/ui/windows/recipe_book/ (book, tabs, row_selected, badges, coin,
 ## lock, ribbon, code_card, dish_<name>.png pictures). Help text:
 ## data/help/c_reference.gd.
@@ -53,7 +52,6 @@ var _help_scroll: ScrollContainer
 func _build() -> void:
 	_tabs.append(_make_tab("Dishes", "recipe_book/tab_dishes.png", Rect2(340, 52, 184, 64)))
 	_tabs.append(_make_tab("Café", "recipe_book/tab_dishes.png", Rect2(536, 52, 160, 64)))
-	_tabs.append(_make_tab("Kitchen Functions", "recipe_book/tab_functions.png", Rect2(708, 52, 312, 64)))
 	for i in _tabs.size():
 		_tabs[i].pressed.connect(_show_tab.bind(i))
 	window_rect = Rect2(BOOK, Vector2(1392, 920))
@@ -65,7 +63,7 @@ func _build() -> void:
 	_build_list()
 	_build_dish_details()
 	_functions_page = _page()
-	_build_functions()
+	_functions_page.hide()  # Kitchen Functions now live in the Lessons window (T).
 
 
 func _page() -> Control:
@@ -226,8 +224,8 @@ func _build_dish_details() -> void:
 
 
 func _refresh() -> void:
-	_entries = Reference.entries()
-	_fill_entries()
+	if _tab == Tab.FUNCTIONS:
+		_tab = Tab.DISHES
 	_show_tab(_tab)
 
 
@@ -262,7 +260,7 @@ func _show_dish(index: int) -> void:
 	var gap := Control.new()
 	gap.custom_minimum_size = Vector2(0, 6)
 	_details.add_child(gap)
-	_details.add_child(_text("Your turn: plan the steps and write them in a staff program. Stuck? See Kitchen Functions.", 18, Art.INK_SOFT))
+	_details.add_child(_text("Your turn: plan the steps and write them in a staff program. Stuck? See Kitchen Functions in Lessons (T).", 18, Art.INK_SOFT))
 
 
 func _ingredient_row(ing: String, n: int) -> Control:
@@ -322,134 +320,6 @@ func _text(text: String, size := 20, color := Art.INK, bold := false) -> Label:
 	if bold:
 		t.add_theme_font_override("font", Art.bold_font())
 	return t
-
-
-# --- Kitchen Functions (C help) ------------------------------------------------------
-
-func _build_functions() -> void:
-	Art.label(_functions_page, "Kitchen Functions", LEFT.position + Vector2(0, -6), 40, Art.INK, false, 0, HORIZONTAL_ALIGNMENT_LEFT, Art.serif())
-	Art.label(_functions_page, "Click a topic to learn it.", Vector2(320, 202), 19, Art.INK_SOFT)
-	var scroll := ScrollContainer.new()
-	scroll.position = Vector2(316, 236)
-	scroll.size = Vector2(608, 732)
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.name = "TopicScroll"
-	_functions_page.add_child(scroll)
-	var list := VBoxContainer.new()
-	list.name = "Topics"
-	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	list.add_theme_constant_override("separation", 2)
-	scroll.add_child(list)
-
-	_help_scroll = ScrollContainer.new()
-	_help_scroll.position = Vector2(988, 146)
-	_help_scroll.size = Vector2(624, 822)
-	_help_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_functions_page.add_child(_help_scroll)
-	_help = VBoxContainer.new()
-	_help.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_help.add_theme_constant_override("separation", 8)
-	_help_scroll.add_child(_help)
-
-
-func _fill_entries() -> void:
-	var list: VBoxContainer = _functions_page.get_node("TopicScroll/Topics")
-	for c in list.get_children():
-		c.queue_free()
-	_entry_buttons.clear()
-	var group := ""
-	for i in _entries.size():
-		var e: Dictionary = _entries[i]
-		if e.group != group:
-			group = e.group
-			var h := _heading(group, 24)
-			if list.get_child_count() > 0:
-				var gap := Control.new()
-				gap.custom_minimum_size = Vector2(0, 8)
-				list.add_child(gap)
-			list.add_child(h)
-		var b := Button.new()
-		b.text = e.title
-		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		b.custom_minimum_size = Vector2(0, 38)
-		b.focus_mode = Control.FOCUS_NONE
-		b.add_theme_font_size_override("font_size", 20)
-		b.add_theme_constant_override("outline_size", 0)
-		if e.group.begins_with("Kitchen"):
-			b.add_theme_font_override("font", Art.mono())
-		var locked: bool = e.level > GameState.restaurant_level
-		if locked:
-			b.icon = Art.tex("recipe_book/lock.png")
-			b.expand_icon = false
-			b.add_theme_constant_override("icon_max_width", 22)
-		b.set_meta("locked", locked)
-		b.pressed.connect(_show_entry.bind(i))
-		list.add_child(b)
-		_entry_buttons.append(b)
-	_show_entry(clampi(_entry_selected, 0, _entries.size() - 1))
-
-
-func _style_entry(b: Button, on: bool) -> void:
-	var col := Art.INK_LOCKED if b.get_meta("locked") else Art.INK
-	for k in ["font_color", "font_hover_color", "font_focus_color", "font_pressed_color", "font_hover_pressed_color"]:
-		b.add_theme_color_override(k, Color(0.29, 0.15, 0.06) if on else col)
-	var sel := Art.style("recipe_book/row_selected.png", [2, 2, 2, 2], Vector4(14, 2, 10, 2))
-	var hover := StyleBoxFlat.new()
-	hover.bg_color = Color(0.9, 0.8, 0.6, 0.5)
-	hover.content_margin_left = 14
-	var none := StyleBoxEmpty.new()
-	none.content_margin_left = 14
-	b.add_theme_stylebox_override("normal", sel if on else none)
-	b.add_theme_stylebox_override("hover", sel if on else hover)
-	b.add_theme_stylebox_override("pressed", sel)
-	b.add_theme_stylebox_override("hover_pressed", sel)
-	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-
-
-func _show_entry(i: int) -> void:
-	_entry_selected = i
-	for j in _entry_buttons.size():
-		_style_entry(_entry_buttons[j], j == i)
-	var e: Dictionary = _entries[i]
-	for c in _help.get_children():
-		c.queue_free()
-	var t := _heading(e.title, 44)
-	t.add_theme_color_override("font_color", Art.INK)
-	_help.add_child(t)
-	_help.add_child(_text(e.group, 18, Art.INK_SOFT))
-	if e.level > GameState.restaurant_level:
-		_help.add_child(_text("Unlocks at Restaurant Level %d. You can read about it now." % e.level, 19, Color(0.7, 0.2, 0.12), true))
-	_help.add_child(_heading("Syntax", 26))
-	_help.add_child(_code_card(e.syntax))
-	if not e.get("points", []).is_empty():
-		_help.add_child(_heading("Syntax explained", 26))
-		for p in e.points:
-			_help.add_child(_text("•  " + p, 19))
-	_help.add_child(_heading("What it does", 26))
-	_help.add_child(_text(e.about, 20))
-	if not e.steps.is_empty():
-		_help.add_child(_heading("How to use it", 26))
-		for s in e.steps.size():
-			_help.add_child(_text("%d.  %s" % [s + 1, e.steps[s]], 20))
-	_help.add_child(_heading("Example", 26))
-	_help.add_child(_code_card(e.example))
-	if not e.get("mistakes", []).is_empty():
-		_help.add_child(_heading("Common mistakes", 26))
-		for m in e.mistakes:
-			_help.add_child(_text("•  " + m, 19, Color(0.55, 0.2, 0.12)))
-	if not e.get("related", []).is_empty():
-		var rel: Array = []
-		for r in e.related:
-			rel.append(r + "()")
-		_help.add_child(_text("See also: " + ", ".join(rel), 19, Art.INK_SOFT, true))
-	if e.get("w3", "") != "":
-		var link := Art.button(_help, "Learn more on W3Schools", Rect2(0, 0, 340, 56), false, 20)
-		link.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-		link.custom_minimum_size = Vector2(340, 56)
-		link.tooltip_text = e.w3
-		link.pressed.connect(func(): OS.shell_open(e.w3))
-		_help.add_child(_text("Syntax notes follow the W3Schools C Tutorial (w3schools.com/c).", 16, Art.INK_SOFT))
-	_help_scroll.scroll_vertical = 0
 
 
 ## Read-only code on the dark code card, sized to fit its lines.

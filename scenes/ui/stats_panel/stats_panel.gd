@@ -105,7 +105,7 @@ func _build() -> void:
 func _stat_tile(pos: Vector2, caption: String, dish_icon: bool) -> Label:
 	Art.image(frame, "stats/stat_tile.png", pos)
 	var icon := TextureRect.new()
-	icon.texture = Art.dish_art("EGSILOG") if dish_icon else Art.tex("recipe_book/coin.png")
+	icon.texture = Art.dish_art("EGGSILOG") if dish_icon else Art.tex("recipe_book/coin.png")
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST

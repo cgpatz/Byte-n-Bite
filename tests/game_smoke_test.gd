@@ -139,17 +139,17 @@ func _ready() -> void:
 		await get_tree().process_frame
 		_report(GameState.total_seats() == GameState.slot_chair_caps.reduce(func(a, b): return a + b, 0),
 			"Restaurant Lv %d: %d tables (%d family) seat %d" % [lv, d.table_cap, fam, GameState.total_seats()])
-	# Stats + Library: Jane uses a Library function to make an Egsilog.
+	# Stats + Library: Jane uses a Library function to make an Eggsilog.
 	GameState.restaurant_level = 1
 	await get_tree().process_frame
-	var served_before := int(GameState.dishes_served.get("EGSILOG", 0))
+	var served_before := int(GameState.dishes_served.get("EGGSILOG", 0))
 	GameState.library_slots = GameState.new_library()
-	game.place_order(null, "EGSILOG")
-	jane.program_source = "void main() { fetch_and_cook(RICE); fetch_and_cook(EGG); assemble(EGSILOG); go_to(SERVING_COUNTER); serve(); }"
+	game.place_order(null, "EGGSILOG")
+	jane.program_source = "void main() { fetch_and_cook(RICE); fetch_and_cook(EGG); assemble(EGGSILOG); go_to(SERVING_COUNTER); serve(); }"
 	Engine.time_scale = 8.0
 	await jane.run_program()
 	Engine.time_scale = 1.0
-	_report(int(GameState.dishes_served.get("EGSILOG", 0)) == served_before + 1, "Library function + stats: Egsilog count %d -> %d" % [served_before, GameState.dishes_served.get("EGSILOG", 0)])
+	_report(int(GameState.dishes_served.get("EGGSILOG", 0)) == served_before + 1, "Library function + stats: Eggsilog count %d -> %d" % [served_before, GameState.dishes_served.get("EGGSILOG", 0)])
 	# Customers: one walks in, sits, orders; Jane takes the order and serves it.
 	GameState.restaurant_level = 3
 	await get_tree().process_frame
@@ -175,10 +175,10 @@ func _ready() -> void:
 		await get_tree().process_frame
 		waited += 1
 	_report(not is_instance_valid(guest) and game.orders.is_empty(), "Customer ate and left")
-	jane.program_source = _program_for("EGSILOG")
+	jane.program_source = _program_for("EGGSILOG")
 	await jane.run_program()
-	_report(game.counter_dishes == ["EGSILOG"], "Unordered dish waits on the counter")
-	game.place_order(null, "EGSILOG")
+	_report(game.counter_dishes == ["EGGSILOG"], "Unordered dish waits on the counter")
+	game.place_order(null, "EGGSILOG")
 	game.take_order_now(null)
 	_report(game.counter_dishes.is_empty() and game.orders.is_empty(), "A later order takes the dish from the counter once it's taken")
 	var impatient = game.spawn_customer("HOTSILOG")
@@ -196,7 +196,7 @@ func _ready() -> void:
 	for st in game._staff_list():
 		if st.staff_name == "John":
 			john = st
-	var diner = game.spawn_customer("EGSILOG")
+	var diner = game.spawn_customer("EGGSILOG")
 	waited = 0
 	while diner and diner.state != 1 and waited < 400:
 		await get_tree().process_frame
@@ -206,13 +206,13 @@ func _ready() -> void:
 		john.program_source = "void main() {\n    int order = take_order();\n    go_to(SERVING_COUNTER);\n    post_order(order);\n}"
 		john.clear_log()
 		await john.run_program()
-		_report(diner.order_taken and game.counter_tickets() == ["EGSILOG"], "Waiter John took the order and posted ticket %s" % [game.counter_tickets()])
+		_report(diner.order_taken and game.counter_tickets() == ["EGGSILOG"], "Waiter John took the order and posted ticket %s" % [game.counter_tickets()])
 		var coins_w := GameState.money
-		jane.program_source = "void main() {\n    int order = check_counter();\n    if (order == EGSILOG) {\n%s    }\n}" % CodeSets.dish_steps("EGSILOG", "        ")
+		jane.program_source = "void main() {\n    int order = check_counter();\n    if (order == EGGSILOG) {\n%s    }\n}" % CodeSets.dish_steps("EGGSILOG", "        ")
 		jane.clear_log()
 		await jane.run_program()
 		_report(GameState.money >= coins_w + 30 and game.counter_tickets().is_empty() and diner.state == 2,
-			"Cook Jane: check_counter() -> Egsilog served to %s (+%d)" % [diner.customer_name, GameState.money - coins_w])
+			"Cook Jane: check_counter() -> Eggsilog served to %s (+%d)" % [diner.customer_name, GameState.money - coins_w])
 		if GameState.money < coins_w + 30:
 			print(john.log_text, "\n", jane.log_text)
 	else:
@@ -252,7 +252,7 @@ func _ready() -> void:
 	GameState.restaurant_level = 1
 	await get_tree().process_frame
 	await get_tree().process_frame
-	GameState.todays_special = "EGSILOG"
+	GameState.todays_special = "EGGSILOG"
 	GameState.next_special()
 	var special_guest = game.spawn_customer()
 	waited = 0
@@ -300,9 +300,9 @@ func _ready() -> void:
 	jane.program_source = "void main() { int served = 0; float price = 30.50; char size = 'L'; go_to(FRIDGE); pick_up(EGG); printf(\"%d %.2f %c\\n\", served, price, size); }"
 	await jane.run_program()
 	_report(GameState.challenges_done.is_empty(), "No goal without serving a dish")
-	game.place_order(null, "EGSILOG")
+	game.place_order(null, "EGGSILOG")
 	var coins_g := GameState.money
-	jane.program_source = CodeSets.level1_challenges("EGSILOG")
+	jane.program_source = CodeSets.level1_challenges("EGGSILOG")
 	jane.clear_log()
 	Engine.time_scale = 8.0
 	await jane.run_program()
@@ -311,15 +311,15 @@ func _ready() -> void:
 		"Level 1 challenges: int/%%d, float/%%.2f, char/%%c and the receipt all done (%s, +%d coins)" % [GameState.challenges_done, GameState.money - coins_g])
 	if not GameState.challenges_left(1).is_empty():
 		print(jane.log_text)
-	# Level 1 goals: 10 Hotsilog, 10 Egsilog, 300 profit (counted from sales at this level).
+	# Level 1 goals: 10 Hotsilog, 10 Eggsilog, 300 profit (counted from sales at this level).
 	GameState.goals_reached = []
 	GameState.level_sales = {}
 	_report(not GameState.can_upgrade_restaurant(), "Upgrade still locked until the Level 1 goals are reached")
 	var exp_g := GameState.total_exp()
 	for k in 10:
-		GameState.record_sale("EGSILOG", 30)
-	_report(GameState.goal_reached_at(1, "egsilog") and not GameState.goal_reached_at(1, "hotsilog") and GameState.goal_reached_at(1, "profit"),
-		"Goals: 10 Egsilog reached, profit 300 reached, Hotsilog %d / 10" % GameState.goal_progress(LG_GOALS.find(1, "hotsilog")))
+		GameState.record_sale("EGGSILOG", 30)
+	_report(GameState.goal_reached_at(1, "eggsilog") and not GameState.goal_reached_at(1, "hotsilog") and GameState.goal_reached_at(1, "profit"),
+		"Goals: 10 Eggsilog reached, profit 300 reached, Hotsilog %d / 10" % GameState.goal_progress(LG_GOALS.find(1, "hotsilog")))
 	for k in 10:
 		GameState.record_sale("HOTSILOG", 40)
 	_report(GameState.goals_left(1).is_empty() and GameState.total_exp() > exp_g, "All Level 1 goals reached (+%d EXP)" % (GameState.total_exp() - exp_g))
@@ -349,14 +349,14 @@ func _ready() -> void:
 	await get_tree().process_frame
 	jane = game.get_node("Characters/Staff/Jane")
 	game.customers_enabled = false
-	var patient = game.spawn_customer("EGSILOG")
+	var patient = game.spawn_customer("EGGSILOG")
 	var wf := 0
 	while patient and patient.state != 1 and wf < 600:
 		await get_tree().process_frame
 		wf += 1
 	var lost_b := GameState.customers_lost
 	Engine.time_scale = 8.0
-	jane.program_source = "void main() {\n    int order = take_order();\n    wait(3);\n%s}" % CodeSets.dish_steps("EGSILOG", "    ")
+	jane.program_source = "void main() {\n    int order = take_order();\n    wait(3);\n%s}" % CodeSets.dish_steps("EGGSILOG", "    ")
 	jane.run_program()
 	while is_instance_valid(patient) and not patient.order_taken:
 		await get_tree().process_frame
@@ -380,7 +380,7 @@ func _ready() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	jane = game.get_node("Characters/Staff/Jane")
-	for d in ["EGSILOG", "HAMBURGER", "TOCILOG"]:
+	for d in ["EGGSILOG", "HAMBURGER", "TOCILOG"]:
 		game.place_order(null, d)
 		game.take_order_now(null)
 		game.post_order(null, d)
@@ -391,7 +391,7 @@ func _ready() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	jane = game.get_node("Characters/Staff/Jane")
-	game.place_order(null, "EGSILOG")
+	game.place_order(null, "EGGSILOG")
 	game.place_order(null, "HAMBURGER")
 	jane.program_source = CodeSets.challenges_program(4).replace("while (1)", "for (int r = 0; r < 2; r++)")
 	await jane.run_program()
@@ -402,7 +402,7 @@ func _ready() -> void:
 	jane = game.get_node("Characters/Staff/Jane")
 	GameState.library_slots = GameState.new_library()
 	GameState.library_slots[1].code = CodeSets.make_dish()
-	game.place_order(null, "EGSILOG")
+	game.place_order(null, "EGGSILOG")
 	jane.program_source = CodeSets.challenges_program(5).replace("while (1)", "for (int r = 0; r < 1; r++)")
 	var exp_before := GameState.total_exp()
 	await jane.run_program()
@@ -455,11 +455,11 @@ func _ready() -> void:
 		"Stats window has a Staff page with Upgrade buttons")
 	game.stats_panel.close()
 	var price_before := GameState.money
-	game.place_order(null, "EGSILOG")
+	game.place_order(null, "EGGSILOG")
 	var o: Dictionary = game.orders[game.orders.size() - 1]
 	game.deliver_order(o, jn)
-	_report(GameState.money - price_before == roundi(30 * 1.47) + (0 if int(GameState.dishes_served.get("EGSILOG", 0)) > 1 else game.FIRST_DISH_BONUS),
-		"A Lv 10 Cashier staff member earns %d coins for a 30-coin Egsilog" % (GameState.money - price_before))
+	_report(GameState.money - price_before == roundi(30 * 1.47) + (0 if int(GameState.dishes_served.get("EGGSILOG", 0)) > 1 else game.FIRST_DISH_BONUS),
+		"A Lv 10 Cashier staff member earns %d coins for a 30-coin Eggsilog" % (GameState.money - price_before))
 	await _market_tests()
 	# Save and load.
 	GameState.game_name = "Test Kitchen"

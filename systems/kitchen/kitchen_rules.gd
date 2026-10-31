@@ -35,7 +35,7 @@ const NEEDS_COOKING := ["RICE", "EGG", "HOTDOG", "TOCINO", "BREAD", "PATTY", "CH
 ## price = coins per sale; the menu is cumulative (earlier dishes stay).
 const DISHES := {
 	# Level 1 — syntax, variables, arithmetic
-	"EGSILOG": {"title": "Egsilog", "level": 1, "price": 30, "recipe": {"RICE": 1, "EGG": 1}},
+	"EGGSILOG": {"title": "Eggsilog", "level": 1, "price": 30, "recipe": {"RICE": 1, "EGG": 1}},
 	"HOTSILOG": {"title": "Hotsilog", "level": 1, "price": 40, "recipe": {"RICE": 1, "EGG": 1, "HOTDOG": 1}},
 	# Level 2 — if / else, switch
 	"TOCILOG": {"title": "Tocilog", "level": 2, "price": 45, "recipe": {"RICE": 1, "EGG": 1, "TOCINO": 1}},
@@ -116,6 +116,8 @@ static func constants() -> Dictionary:
 	var dishes := DISHES.keys()
 	for i in dishes.size():
 		out[dishes[i]] = DISH_BASE + i
+	# Old spelling still works in saved programs.
+	out["EGSILOG"] = out["EGGSILOG"]
 	return out
 
 

@@ -61,13 +61,13 @@ const BASICS := [
 		"id": "if", "title": "if / else if / else", "syntax": "if (test) {\n    ...\n} else if (other) {\n    ...\n} else {\n    ...\n}",
 		"about": "if runs its block only when the test is true. else if checks another test when the first was false. else runs when no test was true. Great for picking what to cook for an order.",
 		"steps": ["Write the test in ( ) after if.", "Put the steps for that case in { }.", "Add else if / else for the other cases."],
-		"example": "void main() {\n    int order = take_order();\n    if (order == EGSILOG) {\n        printf(\"Egsilog!\\n\");\n    } else if (order == HOTSILOG) {\n        printf(\"Hotsilog!\\n\");\n    } else {\n        printf(\"Something else\\n\");\n    }\n}",
+		"example": "void main() {\n    int order = take_order();\n    if (order == EGGSILOG) {\n        printf(\"Eggsilog!\\n\");\n    } else if (order == HOTSILOG) {\n        printf(\"Hotsilog!\\n\");\n    } else {\n        printf(\"Something else\\n\");\n    }\n}",
 	},
 	{
 		"id": "switch", "title": "switch", "syntax": "switch (value) {\n    case A:\n        ...\n        break;\n    case B:\n        ...\n        break;\n    default:\n        ...\n}",
 		"about": "switch picks one of many blocks to run by comparing one value with each case. It is a tidy replacement for a long if / else if chain that keeps checking the same variable, such as the dish in an order.",
 		"steps": ["Put the value to check in ( ) after switch.", "Write case VALUE: for each possibility, with its steps under it.", "End each case with break; and add default: for anything else."],
-		"example": "void main() {\n    int order = take_order();\n    switch (order) {\n        case EGSILOG:\n            printf(\"Egsilog\\n\");\n            break;\n        case HOTSILOG:\n            printf(\"Hotsilog\\n\");\n            break;\n        default:\n            printf(\"Other: %s\\n\", order);\n    }\n}",
+		"example": "void main() {\n    int order = take_order();\n    switch (order) {\n        case EGGSILOG:\n            printf(\"Eggsilog\\n\");\n            break;\n        case HOTSILOG:\n            printf(\"Hotsilog\\n\");\n            break;\n        default:\n            printf(\"Other: %s\\n\", order);\n    }\n}",
 	},
 	{
 		"id": "while", "title": "while loop", "syntax": "while (test) {\n    ...\n}",
@@ -97,7 +97,7 @@ const BASICS := [
 		"id": "functions", "title": "Your own functions", "syntax": "void name(int item) {\n    ...\n}\n\nint twice(int x) {\n    return x * 2;\n}",
 		"about": "A function is a named group of steps you can call many times. Parameters (int item) pass values in, return sends a value back. Save useful ones in your Library (L) so every staff member can call them.",
 		"steps": ["Write the return type (void if nothing comes back), a name and the parameters.", "Put the steps in { }; use return to give back a value.", "Call it from main(): fetch_and_cook(EGG);"],
-		"example": "void fetch_and_cook(int item) {\n    go_to(FRIDGE);\n    pick_up(item);\n    go_to(GRILL);\n    cook();\n    go_to(ASSEMBLY);\n    plate();\n}\n\nvoid main() {\n    fetch_and_cook(RICE);\n    fetch_and_cook(EGG);\n    assemble(EGSILOG);\n}",
+		"example": "void fetch_and_cook(int item) {\n    go_to(FRIDGE);\n    pick_up(item);\n    go_to(GRILL);\n    cook();\n    go_to(ASSEMBLY);\n    plate();\n}\n\nvoid main() {\n    fetch_and_cook(RICE);\n    fetch_and_cook(EGG);\n    assemble(EGGSILOG);\n}",
 	},
 	{
 		"id": "params", "title": "Parameters and return", "syntax": "int add(int a, int b) {\n    return a + b;\n}\n\nint sum = add(2, 3);",
@@ -106,8 +106,8 @@ const BASICS := [
 		"example": "int price_of_two(int price) {\n    return price * 2;\n}\n\nvoid cook_at(int item, int station) {\n    go_to(FRIDGE);\n    pick_up(item);\n    go_to(station);\n    cook();\n}\n\nvoid main() {\n    cook_at(EGG, STOVE);\n    printf(\"%d\\n\", price_of_two(30));\n}",
 	},
 	{
-		"id": "names", "title": "Kitchen names", "syntax": "FRIDGE  GRILL  EGG  RICE  EGSILOG  NOTHING ...",
-		"about": "Stations (FRIDGE, GRILL...), ingredients (EGG, RICE...) and dishes (EGSILOG...) are built-in names for numbers. You can store them in int variables, compare them and pass them to functions. NOTHING means empty hands. They can't be changed.",
+		"id": "names", "title": "Kitchen names", "syntax": "FRIDGE  GRILL  EGG  RICE  EGGSILOG  NOTHING ...",
+		"about": "Stations (FRIDGE, GRILL...), ingredients (EGG, RICE...) and dishes (EGGSILOG...) are built-in names for numbers. You can store them in int variables, compare them and pass them to functions. NOTHING means empty hands. They can't be changed.",
 		"steps": ["Use station names with go_to().", "Use ingredient names with pick_up() and stock().", "Use dish names with assemble() and to compare with take_order()."],
 		"example": "void main() {\n    int station = GRILL;\n    go_to(station);\n    if (holding() == NOTHING) {\n        printf(\"Hands are empty\\n\");\n    }\n}",
 	},
@@ -156,7 +156,7 @@ const KITCHEN := {
 		"about": "Takes one ingredient into the staff member's hands. They must be standing at a station that stores it: the FRIDGE has everything, and the Grand Restaurant also has a PANTRY, FREEZER, DRINKS_DISPENSER, PASTRY_CASE and SINK (water). Hands hold one thing at a time.",
 		"steps": ["go_to(FRIDGE); first.", "pick_up(EGG); with the ingredient name in capitals.", "Cook it if it needs cooking, then plate() it before picking up the next ingredient."],
 		"example": "void main() {\n    go_to(FRIDGE);\n    pick_up(RICE);\n    printf(\"Holding %s\\n\", holding());\n}",
-		"mistakes": ["Hands already full: plate() or trash() what you hold first.", "Not at a storage station: go_to(FRIDGE) first.", "Picking up a dish (EGSILOG): dishes are made with assemble(), not picked up."],
+		"mistakes": ["Hands already full: plate() or trash() what you hold first.", "Not at a storage station: go_to(FRIDGE) first.", "Picking up a dish (EGGSILOG): dishes are made with assemble(), not picked up."],
 		"related": ["go_to", "holding", "plate"],
 	},
 	"cook": {
@@ -175,8 +175,8 @@ const KITCHEN := {
 	},
 	"assemble": {
 		"about": "At the ASSEMBLY, turns the plate into a finished dish. The plate must hold exactly the recipe's ingredients: nothing missing and nothing extra. If it doesn't match, the error lists what is missing or extra. After assembling, the staff member holds the dish, ready to serve().",
-		"steps": ["Plate every ingredient the recipe needs.", "assemble(EGSILOG); with the dish name.", "serve(); to carry it to the customer."],
-		"example": "void main() {\n    // ...plate RICE and EGG first...\n    go_to(ASSEMBLY);\n    assemble(EGSILOG);\n    serve();\n}",
+		"steps": ["Plate every ingredient the recipe needs.", "assemble(EGGSILOG); with the dish name.", "serve(); to carry it to the customer."],
+		"example": "void main() {\n    // ...plate RICE and EGG first...\n    go_to(ASSEMBLY);\n    assemble(EGGSILOG);\n    serve();\n}",
 		"mistakes": ["A missing or extra ingredient on the plate.", "A dish that isn't on your menu yet.", "Holding something while assembling: plate() it first."],
 		"related": ["plate", "serve", "recipe"],
 	},
@@ -202,9 +202,9 @@ const KITCHEN := {
 		"related": ["pick_up", "is_burnt"],
 	},
 	"take_order": {
-		"about": "Walks the staff member to the customer who has waited longest and whose order nobody has taken, asks what they want, and returns the dish (like EGSILOG). The customer's bubble changes from ? to the dish, and they calm down (patience drains at half speed). Returns NOTHING straight away when nobody is waiting. The staff member who took the order is the one making it, unless they post it to the counter with post_order().",
+		"about": "Walks the staff member to the customer who has waited longest and whose order nobody has taken, asks what they want, and returns the dish (like EGGSILOG). The customer's bubble changes from ? to the dish, and they calm down (patience drains at half speed). Returns NOTHING straight away when nobody is waiting. The staff member who took the order is the one making it, unless they post it to the counter with post_order().",
 		"steps": ["Store the answer: int order = take_order();", "Decide with if / else if or switch (order).", "Cook that dish, assemble(order); and serve(); (or, as a waiter, go_to(SERVING_COUNTER); post_order(order);)."],
-		"example": "void main() {\n    int order = take_order();\n    switch (order) {\n        case EGSILOG:\n            printf(\"Egsilog!\\n\");\n            break;\n        case NOTHING:\n            printf(\"Nobody is waiting\\n\");\n            break;\n        default:\n            printf(\"Making %s\\n\", order);\n    }\n}",
+		"example": "void main() {\n    int order = take_order();\n    switch (order) {\n        case EGGSILOG:\n            printf(\"Eggsilog!\\n\");\n            break;\n        case NOTHING:\n            printf(\"Nobody is waiting\\n\");\n            break;\n        default:\n            printf(\"Making %s\\n\", order);\n    }\n}",
 		"mistakes": ["Calling take_order() twice for one dish: the second call walks to ANOTHER customer.", "Not handling NOTHING when nobody is waiting.", "Cooking without taking the order: customers only accept food after they have ordered."],
 		"related": ["has_order", "post_order", "serve"],
 	},
@@ -397,9 +397,9 @@ const RETURNS := ["holding", "take_order", "is_burnt", "stock", "has_order", "do
 const ARG_HELP := {
 	"STATION": "a station name such as FRIDGE or GRILL",
 	"INGREDIENT": "an ingredient name such as EGG or RICE",
-	"DISH": "a dish name such as EGSILOG",
+	"DISH": "a dish name such as EGGSILOG",
 	"seconds": "a number of seconds, such as 2 or 0.5",
-	"DISH, items": "a dish name and an array to fill, such as recipe(EGSILOG, items)",
+	"DISH, items": "a dish name and an array to fill, such as recipe(EGGSILOG, items)",
 	"list": "an array to fill, such as int list[10];",
 }
 
