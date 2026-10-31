@@ -151,11 +151,15 @@ func _run_all() -> void:
 		{"conv": "c", "type": "char", "var": true, "changed": false}]}]}
 	var got: Array = LG.met(1, tr)
 	got.sort()
-	_report_bool(got == ["count", "price", "receipt", "size"], "challenges: one receipt line meets all four (%s)" % [got])
+	_report_bool(got == ["receipt"], "challenges: one %%d %%.2f %%c line after serve() = receipt (%s)" % [got])
 	tr.printfs[0].served_before = 0
 	_report_bool(not "receipt" in LG.met(1, tr), "challenges: receipt only counts after serve()")
-	tr.printfs[0].items[0].changed = false
-	_report_bool(not "count" in LG.met(1, tr), "challenges: count needs an int that changed")
+	var tr2 := {"served": 2, "stats": {"math": 1}, "printfs": [{"served_before": 2, "items": [
+		{"conv": "s", "type": "int", "var": true, "changed": false},
+		{"conv": "f", "type": "float", "var": true, "changed": false}]}]}
+	var got2: Array = LG.met(1, tr2)
+	got2.sort()
+	_report_bool(got2 == ["talk", "two"], "challenges: %%s dish + %%.2f price after 2 serves = talk + two (%s)" % [got2])
 	tr.served = 0
 	_report_bool(LG.met(1, tr).is_empty(), "challenges: nothing counts without serving a dish")
 	await check("3D rejected", 'void main(){ int a[2][2][2]; }', "", "1 or 2 dimensions")

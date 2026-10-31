@@ -119,18 +119,23 @@ static func team_sets() -> Array:
 static func level1_challenges(dish: String) -> String:
 	var title: String = Kitchen.DISHES[dish].title
 	var price: int = Kitchen.DISHES[dish].price
-	var head := "// Level 1 challenges: int, float, char and printf\nvoid main() {\n    int served = 0;\n    float price = %d.00;\n    char size = 'L';\n    int dish = %s;\n\n" % [price, dish]
-	var tail := "\n    served++;\n    printf(\"Served: %d\\n\", served);\n    printf(\"Price: %.2f\\n\", price);\n    printf(\"Size: %c\\n\", size);\n"
-	tail += "    printf(\"Order #%%d  %s x1  %%.2f  size %%c\\n\", served, price, size);\n" % title
-	tail += "    // printf also makes the staff member talk (thought bubble)\n"
-	tail += "    printf(\"Hi! Here's your %s, for a price of %.2f. Enjoy!\\n\", dish, price);\n}"
-	return head + dish_steps(dish, "    ") + tail
+	var head := "// Level 1 challenges: receipt, talk to the customer, two in a row\nvoid main() {\n    int served = 0;\n    float price = %d.00;\n    char size = 'L';\n    int dish = %s;\n\n" % [price, dish]
+	var out := head
+	for n in 2:
+		out += dish_steps(dish, "    ")
+		out += "    served++;\n"
+	out += "    printf(\"Order #%%d  %s x1  %%.2f  size %%c\\n\", served, price, size);\n" % title
+	out += "    // printf also makes the staff member talk (thought bubble)\n"
+	out += "    printf(\"Hi! Here's your %s, for a price of %.2f. Enjoy!\\n\", dish, price);\n"
+	out += "    float total = price * served;\n"
+	out += "    printf(\"Total: %.2f\\n\", total);\n}"
+	return out
 
 
 static func challenges_note(lv: int) -> String:
 	match lv:
-		1: return "Finishes all five Level 1 challenges in one Run (Today's Special: Eggsilog)."
-		2: return "take_order(), if / else and a switch with default: all three Level 2 challenges in one Run."
+		1: return "Finishes all three Level 1 challenges in one Run (needs 2 orders) (Today's Special: Eggsilog)."
+		2: return "Two customers: take_order(), if / else if / else with ||, and a switch with default (all three Level 2 challenges)."
 		3: return "Cook program: a for loop over 3 tickets (Busy shift, for loop, Waiter + cook). Give the Waiter program to another staff member."
 		4: return "Any dish with recipe() + sizeof. 'One loop, any dish' completes once two different dishes are served."
 		_: return "Put make_dish() in a Library slot first (Code Sets › Library). Uses your own functions, a return value and the Library."
@@ -141,9 +146,10 @@ static func challenges_program(lv: int) -> String:
 		1:
 			return level1_challenges("EGGSILOG")
 		2:
-			return ("// Level 2 challenges: take_order(), if / else, switch with default\nvoid main() {\n    int order = take_order();\n"
-				+ "    if (order == NOTHING) {\n        printf(\"Nobody is waiting\\n\");\n    } else {\n"
-				+ _switch_over(Kitchen.menu(2, 0), "        ") + "    }\n}")
+			var block := ("    order = take_order();\n    if (order == NOTHING) {\n        printf(\"Nobody is waiting\\n\");\n"
+				+ "    } else if (order == EGGSILOG || order == HOTSILOG) {\n" + _switch_over(Kitchen.menu(2, 0), "        ")
+				+ "    } else {\n" + _switch_over(Kitchen.menu(2, 0), "        ") + "    }\n")
+			return "// Level 2 challenges: if / else if / else, switch with default, && / ||, 2 customers\nvoid main() {\n    int order = NOTHING;\n" + block + block + "}"
 		3:
 			return ("// Level 3 challenges (cook): serve 3 tickets with a for loop\nvoid main() {\n    for (int i = 0; i < 3; i++) {\n"
 				+ "        int order = check_counter();\n        while (order == NOTHING) {\n            wait(1);\n            order = check_counter();\n        }\n"

@@ -119,18 +119,13 @@ func _next_step() -> void:
 			_rect_before = game.programming_panel._current_rect()
 		if st.get("until") == "talked":
 			_said_before = _speech_texts()
-		if String(st.get("until")).begins_with("code:"):
-			_runs_before = {}
-			for s in game.staff_root.get_children():
-				if "run_count" in s:
-					_runs_before[s.staff_name] = s.run_count
 		if st.get("until") == "ran":
 			_ran = false
 			var ce: CodeEdit = game.programming_panel.code_edit
 			if ce.text.strip_edges() == "":
 				ce.text = STARTER % _first_staff()
 		_quest.show()
-		_quest_text.text = ("[b]C Quest:[/b] " if String(st.until).begins_with("code:") else "[b]Quest:[/b] ") + st.do
+		_quest_text.text = ("[b]C Quest:[/b] " if String(st.until).begins_with("miso:") else "[b]Quest:[/b] ") + st.do
 		_pop(_quest)
 	else:
 		_quest.hide()
@@ -167,11 +162,8 @@ func _process(delta: float) -> void:
 
 
 func _met(cond: String) -> bool:
-	if cond.begins_with("code:"):
-		if _code_quest_met(cond.substr(5)):
-			_quest_done()
-			return true
-		return false
+	if cond.begins_with("miso:"):
+		return GameState.miso_progress(_level) > int(cond.substr(5))
 	match cond:
 		"moved":
 			# Any walking counts (WASD or arrows, any direction, even back and
@@ -496,17 +488,6 @@ func _first_staff() -> String:
 	return "your cook"
 
 
-## A coding quest is met when any staff member's NEW run (Run pressed after
-## the quest started) uses the C idea (data/help/miso_quests.gd).
-func _code_quest_met(check: String) -> bool:
-	for s in game.staff_root.get_children():
-		if not ("run_count" in s):
-			continue
-		if s.run_count > int(_runs_before.get(s.staff_name, 0)) and MisoQuests.met(check, s.run_trace):
-			return true
-	return false
-
-
 ## The level's tour, then Chef Miso's hands-on coding quest for each new C topic.
 func steps_for(level: int) -> Array:
 	var steps := _walkthrough(level)
@@ -520,7 +501,7 @@ func steps_for(level: int) -> Array:
 		steps.append({"quest_index": k, "example": q.example, "point": "editor",
 			"say": "[b]C Quest %d of %d: %s[/b]\n%s Here's an example (write it inside [b]main()[/b]):" % [k + 1, quests.size(), q.topic, q.say]})
 		steps.append({"quest_index_do": k, "example": q.example, "point": "editor",
-			"do": q.do.replace("{who}", who), "until": "code:" + q.check,
+			"do": q.do.replace("{who}", who), "until": "miso:%d" % k,
 			"say": "Open a staff member's program ([b]E[/b]), write it your way and press [b]Run[/b]. I'll check your code while it runs."})
 	steps.append({"say": "Every C quest for this level is done. Great coding, chef! ★"})
 	return steps
@@ -599,16 +580,6 @@ func _walkthrough(level: int) -> Array:
 var _example_card: PanelContainer
 var _example_text: RichTextLabel
 var _example_code := ""
-
-
-## Saves the quest progress and cheers when a coding quest is done.
-func _quest_done() -> void:
-	var st: Dictionary = _steps[_i]
-	var k := int(st.get("quest_index_do", -1))
-	if k >= 0:
-		GameState.quest_progress[str(_level)] = k + 1
-		if game.hud.has_method("show_toast"):
-			game.hud.show_toast("★ C Quest complete!")
 
 
 ## The example code for the current coding quest, above the dialogue box,

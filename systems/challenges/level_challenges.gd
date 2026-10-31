@@ -16,32 +16,26 @@ extends RefCounted
 ## level -> [{id, title, task, how, coins, exp}]   (exp = EXP points)
 const GOALS := {
 	1: [
-		{"id": "count", "title": "Count your sales", "coins": 40, "exp": 40,
-			"task": "Serve a dish, add 1 to an int variable, and print it with %d.",
-			"how": "int served = 0;  ...serve();  served++;  printf(\"Served: %d\\n\", served);"},
-		{"id": "price", "title": "Price tag", "coins": 40, "exp": 40,
-			"task": "Serve a dish and print a float price with %.2f.",
-			"how": "float price = 30.50;  printf(\"Price: %.2f\\n\", price);"},
-		{"id": "size", "title": "Size code", "coins": 40, "exp": 40,
-			"task": "Serve a dish and print a char with %c.",
-			"how": "char size = 'L';  printf(\"Size: %c\\n\", size);"},
 		{"id": "receipt", "title": "Print a receipt", "coins": 100, "exp": 80,
 			"task": "After serve(), print ONE line that uses an int (%d), a float (%.2f) and a char (%c) variable.",
 			"how": "printf(\"Order #%d  Eggsilog x1  %.2f  size %c\\n\", served, price, size);"},
 		{"id": "talk", "title": "Talk to the customer", "coins": 60, "exp": 60,
-			"task": "After serve(), make your staff SAY a line with printf: a dish variable with %s and a float price with %.2f. It shows in their thought bubble.",
-			"how": "int dish = EGGSILOG;  ...serve();  printf(\"Hi, I'm Jane! Here's your %s, for a price of %.2f\\n\", dish, price);"},
+			"task": "After serve(), make your staff SAY a line with printf: a dish variable with %s and a float price with %.2f.",
+			"how": "int dish = EGGSILOG;  ...serve();  printf(\"Here's your %s, for %.2f\\n\", dish, price);"},
+		{"id": "two", "title": "Two in a row", "coins": 80, "exp": 80,
+			"task": "Serve 2 dishes in ONE Run, then print the total coins you calculated with + or *.",
+			"how": "...serve(); ...serve();  int total = price * 2;  printf(\"Total: %d\\n\", total);"},
 	],
 	2: [
-		{"id": "take", "title": "Take an order", "coins": 60, "exp": 60,
-			"task": "Use take_order() to ask a customer, then make and serve what they ordered.",
-			"how": "int order = take_order();  ...make it...  serve();"},
-		{"id": "ifelse", "title": "Decide with if / else", "coins": 60, "exp": 60,
-			"task": "Use an if with an else to choose what to cook, and serve the dish.",
-			"how": "if (order == EGGSILOG) { ... } else { ... }"},
+		{"id": "decide", "title": "Decide the order", "coins": 80, "exp": 80,
+			"task": "take_order(), then pick what to cook with an if / else if / else chain, and serve it.",
+			"how": "int order = take_order();  if (order == EGGSILOG) { ... } else if (order == HOTSILOG) { ... } else { ... }"},
 		{"id": "switch", "title": "Switch on the order", "coins": 80, "exp": 80,
 			"task": "Use a switch with case labels AND a default, and serve the dish.",
 			"how": "switch (order) { case EGGSILOG: ... break; default: printf(\"?\\n\"); }"},
+		{"id": "combo", "title": "Smart combo", "coins": 100, "exp": 100,
+			"task": "Serve 2 customers in ONE Run, using && or || in a condition.",
+			"how": "if (order == EGGSILOG || order == HOTSILOG) { ...silog steps... }"},
 	],
 	3: [
 		{"id": "three", "title": "Busy shift", "coins": 80, "exp": 80,
@@ -106,37 +100,33 @@ static func met(level: int, trace: Dictionary) -> Array:
 				var has_d := false
 				var has_f := false
 				var has_c := false
+				var has_s := false
 				for it in p.items:
 					if not it.var:
 						continue
 					if it.conv in ["d", "i"] and it.type == "int":
 						has_d = true
-						if it.changed and not "count" in out:
-							out.append("count")
 					elif it.conv == "f" and it.type in ["float", "double"]:
 						has_f = true
-						if not "price" in out:
-							out.append("price")
 					elif it.conv == "c" and it.type == "char":
 						has_c = true
-						if not "size" in out:
-							out.append("size")
-				if has_d and has_f and has_c and int(p.served_before) >= 1 and not "receipt" in out:
-					out.append("receipt")
-				# Talk: a dish variable (%s) and a float price (%.2f) said after serve().
-				var has_s := false
-				for it in p.items:
-					if it.var and it.conv == "s" and it.type == "int":
+					elif it.conv == "s" and it.type == "int":
 						has_s = true
-				if has_s and has_f and int(p.served_before) >= 1 and not "talk" in out:
+				var after := int(p.served_before)
+				if has_d and has_f and has_c and after >= 1 and not "receipt" in out:
+					out.append("receipt")
+				if has_s and has_f and after >= 1 and not "talk" in out:
 					out.append("talk")
+				if after >= 2 and (has_d or has_f) and _n(trace, "math") >= 1 and not "two" in out:
+					out.append("two")
 		2:
-			if _n(trace, "fn:take_order") + _n(trace, "fn:next_order") >= 1:
-				out.append("take")
-			if _n(trace, "if_else") >= 1:
-				out.append("ifelse")
+			var took := _n(trace, "fn:take_order") + _n(trace, "fn:next_order") >= 1
+			if took and _n(trace, "else_if") >= 1:
+				out.append("decide")
 			if _n(trace, "switch") >= 1 and _n(trace, "switch_default") >= 1:
 				out.append("switch")
+			if served >= 2 and _n(trace, "logic") >= 1:
+				out.append("combo")
 		3:
 			if served >= 3:
 				out.append("three")
@@ -158,4 +148,61 @@ static func met(level: int, trace: Dictionary) -> Array:
 				out.append("return")
 			if _n(trace, "library_call") >= 1:
 				out.append("library")
+	return out
+
+
+
+# --- Mastery quests (optional, harder; bonus coins and EXP) ------------------------
+
+const MASTERY := {
+	1: [{"id": "triple", "title": "Breakfast rush", "coins": 120, "exp": 100,
+		"task": "Serve 3 dishes in ONE Run (no loops yet: plan every step!).",
+		"how": "Write the steps for 3 dishes one after another, then press Run once."}],
+	2: [{"id": "variety", "title": "Full menu", "coins": 150, "exp": 120,
+		"task": "Serve 3 DIFFERENT dishes in ONE Run, deciding each one with take_order().",
+		"how": "Three take_order() blocks, each with a switch or if / else if."}],
+	3: [{"id": "shift", "title": "Whole shift", "coins": 200, "exp": 150,
+		"task": "Serve 6 dishes in ONE Run with a loop.",
+		"how": "while (1) { int order = take_order(); ... serve(); }"}],
+	4: [{"id": "queue", "title": "Ticket master", "coins": 250, "exp": 180,
+		"task": "Read the tickets with orders() and serve 4 dishes in ONE Run.",
+		"how": "int list[8];  int n = orders(list);  for (int i = 0; i < n; i++) { ... }"}],
+	5: [{"id": "head_chef", "title": "Head chef", "coins": 300, "exp": 250,
+		"task": "Serve 4 DIFFERENT dishes in ONE Run using a function from your Library.",
+		"how": "while (1) { make_dish(take_order()); }   // make_dish() lives in your Library"}],
+}
+
+
+static func mastery_for(level: int) -> Array:
+	return MASTERY.get(level, [])
+
+
+static func find_mastery(level: int, id: String) -> Dictionary:
+	for g in mastery_for(level):
+		if g.id == id:
+			return g
+	return {}
+
+
+## Which of this level's Mastery quests the trace completes.
+static func met_mastery(level: int, trace: Dictionary) -> Array:
+	var out: Array = []
+	var served := int(trace.get("served", 0))
+	var kinds: int = trace.get("dishes", {}).size()
+	match level:
+		1:
+			if served >= 3:
+				out.append("triple")
+		2:
+			if kinds >= 3 and _n(trace, "fn:take_order") + _n(trace, "fn:next_order") >= 3:
+				out.append("variety")
+		3:
+			if served >= 6 and _n(trace, "loop") >= 1:
+				out.append("shift")
+		4:
+			if served >= 4 and _n(trace, "fn:orders") >= 1:
+				out.append("queue")
+		5:
+			if kinds >= 4 and _n(trace, "library_call") >= 1:
+				out.append("head_chef")
 	return out

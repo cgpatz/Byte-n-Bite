@@ -601,6 +601,61 @@ func _count_level_sale(dish: String, price: int) -> void:
 			goal_reached.emit(restaurant_level, g.id)
 
 
+# --- Quest Log: Chef Miso quests (step by step) -> Level Challenge -> Mastery ------
+
+const MisoQuests := preload("res://data/help/miso_quests.gd")
+signal quests_changed
+
+
+## How many of this level's Chef Miso quests are finished.
+func miso_progress(level := restaurant_level) -> int:
+	if level < restaurant_level:
+		return MisoQuests.for_level(level).size()
+	return mini(int(quest_progress.get(str(level), 0)), MisoQuests.for_level(level).size())
+
+
+## All Chef Miso quests of the level done? (The Level Challenge unlocks then.)
+## Admin Runs skip the lock so every tool can be tested.
+func miso_done(level := restaurant_level) -> bool:
+	return admin_mode or miso_progress(level) >= MisoQuests.for_level(level).size()
+
+
+## The current Chef Miso quest ({} when all are done).
+func current_miso_quest(level := restaurant_level) -> Dictionary:
+	var qs: Array = MisoQuests.for_level(level)
+	var k := miso_progress(level)
+	return qs[k] if k < qs.size() else {}
+
+
+## Marks Chef Miso quest k finished (small EXP reward). False if already done.
+func complete_miso_quest(level: int, k: int) -> bool:
+	if miso_progress(level) != k:
+		return false
+	quest_progress[str(level)] = k + 1
+	add_exp(10, "quest")
+	quests_changed.emit()
+	return true
+
+
+## Optional Mastery quests (harder, bonus coins and EXP), stored as "1:m_triple".
+func mastery_done(level: int, id: String) -> bool:
+	return ("%d:m_%s" % [level, id]) in challenges_done
+
+
+func complete_mastery(level: int, id: String) -> bool:
+	var key := "%d:m_%s" % [level, id]
+	if key in challenges_done:
+		return false
+	var g: Dictionary = LevelChallenges.find_mastery(level, id)
+	if g.is_empty():
+		return false
+	challenges_done.append(key)
+	money += int(g.coins)
+	add_exp(int(g.exp), "challenge")
+	quests_changed.emit()
+	return true
+
+
 ## This level's challenges not finished yet (the upgrade waits for them).
 func challenges_left(level := restaurant_level) -> Array:
 	var out: Array = []

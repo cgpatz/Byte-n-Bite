@@ -292,14 +292,20 @@ func _ready() -> void:
 	for c in game.restaurant.get_node("Stations/Decor").get_children():
 		if c is Station and c.opens == "upgrades":
 			board = c
-	# Level 1 challenges: the upgrade is locked until they're done.
+	# Level 1 challenges: the upgrade is locked until they're done. They also
+	# stay locked until Chef Miso's quests are finished.
 	GameState.challenges_done = []
+	GameState.quest_progress = {}
+	_report(not GameState.miso_done(1) and GameState.current_miso_quest(1).get("check", "") == "printf", "Quest Log: Chef Miso quests come first (1 of %d: printf)" % preload("res://data/help/miso_quests.gd").for_level(1).size())
+	for l in range(1, 6):
+		GameState.quest_progress[str(l)] = 99
 	game._offer_upgrade(board)
 	_report(game.confirm_dialog.visible and game.confirm_dialog._yes.disabled, "Upgrade locked until the Level 1 challenges are done")
 	game.confirm_dialog.close()
 	jane.program_source = "void main() { int served = 0; float price = 30.50; char size = 'L'; go_to(FRIDGE); pick_up(EGG); printf(\"%d %.2f %c\\n\", served, price, size); }"
 	await jane.run_program()
 	_report(GameState.challenges_done.is_empty(), "No goal without serving a dish")
+	game.place_order(null, "EGGSILOG")
 	game.place_order(null, "EGGSILOG")
 	var coins_g := GameState.money
 	jane.program_source = CodeSets.level1_challenges("EGGSILOG")
@@ -308,7 +314,7 @@ func _ready() -> void:
 	await jane.run_program()
 	Engine.time_scale = 1.0
 	_report(GameState.challenges_left(1).is_empty() and GameState.money >= coins_g + 220,
-		"Level 1 challenges: int/%%d, float/%%.2f, char/%%c and the receipt all done (%s, +%d coins)" % [GameState.challenges_done, GameState.money - coins_g])
+		"Level 1 challenges: receipt, talk to the customer, two in a row all done (%s, +%d coins)" % [GameState.challenges_done, GameState.money - coins_g])
 	if not GameState.challenges_left(1).is_empty():
 		print(jane.log_text)
 	# Level 1 goals: 10 Hotsilog, 10 Eggsilog, 300 profit (counted from sales at this level).
@@ -373,9 +379,10 @@ func _ready() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	game.place_order(null, "TOCILOG")
+	game.place_order(null, "EGGSILOG")
 	jane.program_source = CodeSets.challenges_program(2)
 	await jane.run_program()
-	_report(GameState.challenges_left(2).is_empty(), "Level 2 challenges (take_order, if/else, switch+default) done: %s" % [GameState.challenges_done])
+	_report(GameState.challenges_left(2).is_empty(), "Level 2 challenges (else if, switch+default, || with 2 customers) done: %s" % [GameState.challenges_done])
 	GameState.restaurant_level = 3
 	await get_tree().process_frame
 	await get_tree().process_frame

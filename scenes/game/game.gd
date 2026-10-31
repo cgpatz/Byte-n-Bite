@@ -886,6 +886,7 @@ func _process(delta: float) -> void:
 	camera.global_position = camera.global_position.lerp(_camera_target(), t)
 	GameState.tick_market(delta)
 	_check_teleport_pad()
+	_check_miso_quest(delta)
 	if customers_enabled:
 		_spawn_timer -= delta
 		if _spawn_timer <= 0.0:
@@ -1028,6 +1029,13 @@ func _staff_upgraded(ok: bool, staff_name: String) -> void:
 ## Level challenges: called by a staff member after each printf and serve().
 func check_challenges(staff: Node) -> void:
 	var lv: int = GameState.restaurant_level
+	# The Level Challenge (and Mastery) unlock after Chef Miso's quests.
+	if not GameState.miso_done(lv):
+		return
+	for id in LevelChallenges.met_mastery(lv, staff.run_trace):
+		if GameState.complete_mastery(lv, id):
+			var m: Dictionary = LevelChallenges.find_mastery(lv, id)
+			hud.show_toast("★ Mastery: %s!  +%d coins  +%d EXP" % [m.title, m.coins, m.exp])
 	for id in LevelChallenges.met(lv, staff.run_trace):
 		if GameState.complete_challenge(lv, id):
 			var g: Dictionary = LevelChallenges.find(lv, id)
@@ -1464,3 +1472,42 @@ func _on_focus_for_glow(target: Node) -> void:
 	for n in _door_extras:
 		if is_instance_valid(n) and n.name == "BackDoorGlow":
 			n.visible = target is Station and target.station_id == "BACK_DOOR"
+
+
+# --- Chef Miso quests (Quest Log): checked while staff programs run -------------
+
+const MisoQuests := preload("res://data/help/miso_quests.gd")
+var _miso_k := -1          # quest being watched (index in this level's list)
+var _miso_level := 0
+var _miso_runs := {}       # staff name -> run_count when that quest started
+var _miso_timer := 0.0
+
+
+## The current Chef Miso quest is done when any staff member's NEW run (Run
+## pressed after the quest became current) uses its C idea.
+func _check_miso_quest(delta: float) -> void:
+	if not tutorials_enabled:
+		return
+	_miso_timer -= delta
+	if _miso_timer > 0.0:
+		return
+	_miso_timer = 0.25
+	var lv: int = GameState.restaurant_level
+	var q: Dictionary = GameState.current_miso_quest(lv)
+	if q.is_empty():
+		return
+	var k: int = GameState.miso_progress(lv)
+	if k != _miso_k or lv != _miso_level:
+		_miso_k = k
+		_miso_level = lv
+		_miso_runs = {}
+		for s in _staff_list():
+			_miso_runs[s.staff_name] = s.run_count
+		return
+	for s in _staff_list():
+		if s.run_count > int(_miso_runs.get(s.staff_name, 0)) and MisoQuests.met(q.check, s.run_trace):
+			if GameState.complete_miso_quest(lv, k):
+				var left: int = MisoQuests.for_level(lv).size() - (k + 1)
+				hud.notify("Chef Miso Quest done!", "%s  ✔%s" % [q.topic, ("   Next quest is in your Quest Log." if left > 0 else "   Level Challenge unlocked!")],
+					load("res://assets/ui/windows/tutorial/mentor.png"), Color(0.95, 0.7, 0.25), 5.0)
+			return

@@ -187,32 +187,68 @@ func _on_level_changed(level: int) -> void:
 	_refresh_challenges()
 
 
-## Goals (sell dishes, earn profit) and Challenges (programming tasks) for this
-## level, under Today's Special. Both unlock the next upgrade. Hover for hints.
+## Quest Log (left drawer, G): 1) Chef Miso quest, one C idea at a time, in
+## order; 2) the Level Challenge, harder tasks that combine the level's ideas,
+## locked until Chef Miso's quests are done; 3) Restaurant Goals (sales and
+## profit, always running); 4) optional Mastery quests for bonus coins.
+## The Challenge and the Goals unlock the next restaurant upgrade.
+const MisoQuests := preload("res://data/help/miso_quests.gd")
+const QL_W := 340.0
+const QL_INK := Color(1, 0.93, 0.8)
+const QL_SOFT := Color(0.79, 0.7, 0.56)
+const QL_GOLD := Color(1, 0.85, 0.54)
+const QL_GREEN := Color(0.62, 0.82, 0.54)
+var _ql_body: VBoxContainer
+var _ql_scroll: ScrollContainer
+var _ql_example: PopupPanel
+var _ql_example_text: Label
+
+
 func _build_challenges() -> void:
-	# A drawer on the left edge: a sideways tab, and the list beside it when open.
+	# A drawer on the left edge: a sideways tab, and the log beside it when open.
 	_goals = PanelContainer.new()
 	_goals.theme_type_variation = &"WoodPanel"
 	_goals.position = Vector2(0, 200)
 	_goals.mouse_filter = Control.MOUSE_FILTER_PASS
 	add_child(_goals)
-	_chal_label = RichTextLabel.new()
+	var outer := VBoxContainer.new()
+	outer.add_theme_constant_override("separation", 6)
+	_goals.add_child(outer)
+	var head := HBoxContainer.new()
+	outer.add_child(head)
+	var t := Label.new()
+	t.text = "QUEST LOG"
+	t.add_theme_font_override("font", Art.serif())
+	t.add_theme_font_size_override("font_size", 22)
+	t.add_theme_color_override("font_color", QL_GOLD)
+	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(t)
+	_chal_label = RichTextLabel.new()   # level name, right side of the header
 	_chal_label.bbcode_enabled = true
 	_chal_label.fit_content = true
 	_chal_label.scroll_active = false
-	_chal_label.custom_minimum_size = Vector2(300, 0)
-	_chal_label.add_theme_font_size_override("normal_font_size", 15)
-	_chal_label.add_theme_font_size_override("bold_font_size", 16)
-	_chal_label.mouse_filter = Control.MOUSE_FILTER_PASS
-	_goals.add_child(_chal_label)
+	_chal_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_chal_label.custom_minimum_size = Vector2(150, 0)
+	_chal_label.add_theme_font_size_override("normal_font_size", 13)
+	_chal_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	head.add_child(_chal_label)
+	_ql_scroll = ScrollContainer.new()
+	_ql_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_ql_scroll.custom_minimum_size = Vector2(QL_W, 0)
+	outer.add_child(_ql_scroll)
+	_ql_body = VBoxContainer.new()
+	_ql_body.add_theme_constant_override("separation", 8)
+	_ql_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_ql_scroll.add_child(_ql_body)
 	_goals_tab = preload("res://scenes/ui/hud/side_tab.gd").new()
 	_goals_tab.size = Vector2(34, 200)
-	_goals_tab.tooltip_text = "Goals & Challenges: click or press G to open / close"
+	_goals_tab.tooltip_text = "Quest Log: click or press G to open / close"
 	_goals_tab.pressed.connect(toggle_goals)
 	add_child(_goals_tab)
 	GameState.challenge_completed.connect(func(_l, _i): _refresh_challenges())
 	GameState.goal_reached.connect(func(_l, _i): _refresh_challenges())
 	GameState.stats_changed.connect(_refresh_challenges)
+	GameState.quests_changed.connect(_refresh_challenges)
 	_refresh_challenges()
 
 
@@ -239,40 +275,235 @@ func _refresh_challenges() -> void:
 	var lv: int = GameState.restaurant_level
 	var goals: Array = LevelGoals.for_level(lv)
 	var chals: Array = LevelChallenges.for_level(lv)
-	var any := not (goals.is_empty() and chals.is_empty())
+	var quests: Array = MisoQuests.for_level(lv)
+	var any := not (goals.is_empty() and chals.is_empty() and quests.is_empty())
 	_goals_tab.visible = any
 	_goals.visible = any
 	if not any:
 		return
-	var t := ""
-	var tips: Array = []
-	if not goals.is_empty():
-		var gl: int = GameState.goals_left(lv).size()
-		t += "[b][color=#ffd98a]Level %d goals[/color][/b]  [color=#c9b48f](%d / %d)[/color]\n" % [lv, goals.size() - gl, goals.size()]
-		for g in goals:
-			var done: bool = GameState.goal_reached_at(lv, g.id)
-			t += "%s [color=%s]%s[/color]  [color=#c9b48f]%d / %d[/color]\n" % [
-				"☑" if done else "☐", "#9fd18a" if done else "#f2e3c4", g.title,
-				GameState.goal_progress(g, lv), g.n]
+	for c in _ql_body.get_children():
+		c.queue_free()
+	_chal_label.text = "[right][color=#c9b48f]Lv %d · %s[/color][/right]" % [lv, GameState.level_data().display_name]
+	var miso_left := quests.size() - GameState.miso_progress(lv)
+	var unlocked: bool = GameState.miso_done(lv)
+	# 1) Chef Miso quest
+	if not quests.is_empty():
+		_ql_body.add_child(_ql_miso_card(lv, quests))
+	# 2) Level Challenge
 	if not chals.is_empty():
 		var cl: int = GameState.challenges_left(lv).size()
-		t += "[b][color=#ffd98a]Challenges[/color][/b]  [color=#c9b48f](%d / %d)[/color]\n" % [chals.size() - cl, chals.size()]
-		for g in chals:
-			var done: bool = GameState.challenge_done(lv, g.id)
-			t += "%s [color=%s]%s[/color]  [color=#c9b48f]+%d coins · +%d EXP[/color]\n" % [
-				"☑" if done else "☐", "#9fd18a" if done else "#f2e3c4", g.title, g.coins, g.exp]
-			if not done:
-				tips.append("%s: %s\n   e.g. %s" % [g.title, g.task, g.how])
-	if lv < GameState.MAX_RESTAURANT_LEVEL and GameState.goals_left(lv).is_empty() and GameState.challenges_left(lv).is_empty():
-		t += "[color=#9fd18a]All done: upgrade at the chalkboard![/color]"
-	_chal_label.text = t.strip_edges()
+		var sec := _ql_section("Level Challenge", "%d / %d" % [chals.size() - cl, chals.size()], Color(0.95, 0.62, 0.3))
+		if not unlocked:
+			sec.add_child(_ql_line("[img=16x16]res://assets/ui/windows/recipe_book/lock.png[/img] [color=#c9b48f]Finish Chef Miso's quests to unlock (%d left).[/color]" % miso_left, 14))
+		else:
+			for g in chals:
+				var done: bool = GameState.challenge_done(lv, g.id)
+				sec.add_child(_ql_item(g.title, g.task, "+%d coins · +%d EXP" % [g.coins, g.exp], done, g.how))
+		_ql_body.add_child(sec.get_parent())
+	# 3) Restaurant Goals
+	if not goals.is_empty():
+		var gl: int = GameState.goals_left(lv).size()
+		var sec2 := _ql_section("Restaurant Goals", "%d / %d" % [goals.size() - gl, goals.size()], Color(0.45, 0.7, 0.9))
+		for g in goals:
+			var done2: bool = GameState.goal_reached_at(lv, g.id)
+			sec2.add_child(_ql_goal(g.title, GameState.goal_progress(g, lv), int(g.n), done2))
+		_ql_body.add_child(sec2.get_parent())
+	# 4) Mastery (optional)
+	var mastery: Array = LevelChallenges.mastery_for(lv)
+	if not mastery.is_empty():
+		var sec3 := _ql_section("Mastery (optional)", "bonus", Color(0.75, 0.55, 0.95))
+		for m in mastery:
+			if unlocked:
+				sec3.add_child(_ql_item("★ " + m.title, m.task, "+%d coins · +%d EXP" % [m.coins, m.exp], GameState.mastery_done(lv, m.id), m.how))
+			else:
+				sec3.add_child(_ql_line("[color=#8f8270]★ %s: unlocks with the Level Challenge.[/color]" % m.title, 13))
+		_ql_body.add_child(sec3.get_parent())
+	if lv < GameState.MAX_RESTAURANT_LEVEL and GameState.goals_left(lv).is_empty() and GameState.challenges_left(lv).is_empty() and unlocked:
+		_ql_body.add_child(_ql_line("[color=#9fd18a][b]All done: upgrade the restaurant at the chalkboard![/b][/color]", 15))
 	var open: bool = SettingsManager.goals_open
-	var left: int = GameState.goals_left(lv).size() + GameState.challenges_left(lv).size()
-	_goals_tab.text = "%s Goals  ·  %d left" % ["◂" if open else "▸", left]
+	var left: int = GameState.goals_left(lv).size() + GameState.challenges_left(lv).size() + miso_left
+	_goals_tab.text = "%s Quests  ·  %d left" % ["◂" if open else "▸", left]
 	_goals.visible = open
+	_ql_layout.call_deferred()
+
+
+## Height follows the content, up to the space under the HUD (then it scrolls).
+func _ql_layout() -> void:
+	if _ql_body == null:
+		return
+	var vs := get_viewport_rect().size
+	var max_h := maxf(200.0, vs.y - 200.0 - 260.0)
+	_ql_scroll.custom_minimum_size = Vector2(QL_W, minf(_ql_body.get_combined_minimum_size().y, max_h))
 	_goals.reset_size()
-	_goals_tab.position = Vector2(_goals.size.x - 4 if open else 0.0, _goals.position.y)
-	_goals.tooltip_text = "\n\n".join(tips) if not tips.is_empty() else "Goals count dishes sold and coins earned at this level."
+	_goals_tab.position = Vector2(_goals.size.x - 4 if SettingsManager.goals_open else 0.0, _goals.position.y)
+
+
+## A section card: coloured header bar + VBox for its rows (returned).
+func _ql_section(title: String, count: String, accent: Color) -> VBoxContainer:
+	var card := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.13, 0.08, 0.05, 0.6)
+	sb.border_color = accent.darkened(0.2)
+	sb.border_width_left = 4
+	sb.set_corner_radius_all(6)
+	sb.content_margin_left = 10
+	sb.content_margin_right = 8
+	sb.content_margin_top = 6
+	sb.content_margin_bottom = 8
+	card.add_theme_stylebox_override("panel", sb)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 4)
+	card.add_child(v)
+	var h := HBoxContainer.new()
+	v.add_child(h)
+	var l := Label.new()
+	l.text = title
+	l.add_theme_font_override("font", Art.bold_font())
+	l.add_theme_font_size_override("font_size", 16)
+	l.add_theme_color_override("font_color", accent.lightened(0.25))
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(l)
+	var c := Label.new()
+	c.text = count
+	c.add_theme_font_size_override("font_size", 13)
+	c.add_theme_color_override("font_color", QL_SOFT)
+	h.add_child(c)
+	return v
+
+
+## The Chef Miso card: portrait, "Quest 3 / 7", the topic, what to do, the
+## progress pips and an Example button.
+func _ql_miso_card(lv: int, quests: Array) -> Control:
+	var k: int = GameState.miso_progress(lv)
+	var v := _ql_section("Chef Miso Quest", "%d / %d" % [mini(k + 1, quests.size()) if k < quests.size() else quests.size(), quests.size()], Color(0.98, 0.78, 0.35))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	v.add_child(row)
+	var face := TextureRect.new()
+	face.texture = load("res://assets/ui/windows/tutorial/mentor.png")
+	face.custom_minimum_size = Vector2(44, 60)
+	face.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	face.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	face.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	face.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	row.add_child(face)
+	var col := VBoxContainer.new()
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.add_theme_constant_override("separation", 2)
+	row.add_child(col)
+	if k >= quests.size():
+		col.add_child(_ql_line("[color=#9fd18a][b]All quests done! ✔[/b][/color]\n[color=#c9b48f]The Level Challenge is open.[/color]", 14))
+	else:
+		var q: Dictionary = quests[k]
+		var who := "your staff"
+		if game and game.has_method("_staff_list") and not game._staff_list().is_empty():
+			who = game._staff_list()[0].staff_name
+		col.add_child(_ql_line("[b][color=#ffd98a]%s[/color][/b]" % q.topic, 15))
+		col.add_child(_ql_line(q.do.replace("{who}", who), 13))
+	# Progress pips.
+	var pips := HBoxContainer.new()
+	pips.add_theme_constant_override("separation", 4)
+	for n in quests.size():
+		var d := ColorRect.new()
+		d.custom_minimum_size = Vector2(maxf(8.0, (QL_W - 60.0) / quests.size() - 4.0), 6)
+		d.color = QL_GREEN if n < k else (QL_GOLD if n == k else Color(1, 1, 1, 0.15))
+		d.tooltip_text = quests[n].topic
+		pips.add_child(d)
+	v.add_child(pips)
+	if k < quests.size():
+		var ex := Button.new()
+		ex.text = "Show example"
+		ex.focus_mode = Control.FOCUS_NONE
+		ex.add_theme_font_size_override("font_size", 14)
+		ex.size_flags_horizontal = Control.SIZE_SHRINK_END
+		ex.pressed.connect(_ql_show_example.bind(quests[k], ex))
+		v.add_child(ex)
+	return v.get_parent()
+
+
+func _ql_show_example(q: Dictionary, from: Control) -> void:
+	if _ql_example == null:
+		_ql_example = PopupPanel.new()
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0.1, 0.08, 0.07, 0.98)
+		sb.border_color = QL_GOLD
+		sb.set_border_width_all(3)
+		sb.set_corner_radius_all(8)
+		sb.content_margin_left = 14
+		sb.content_margin_right = 14
+		sb.content_margin_top = 10
+		sb.content_margin_bottom = 10
+		_ql_example.add_theme_stylebox_override("panel", sb)
+		var v := VBoxContainer.new()
+		_ql_example.add_child(v)
+		_ql_example_text = Label.new()
+		_ql_example_text.add_theme_font_override("font", Art.mono())
+		_ql_example_text.add_theme_font_size_override("font_size", 16)
+		_ql_example_text.add_theme_color_override("font_color", Color(0.85, 0.95, 0.78))
+		v.add_child(_ql_example_text)
+		var copy := Button.new()
+		copy.text = "Copy"
+		copy.focus_mode = Control.FOCUS_NONE
+		copy.add_theme_font_size_override("font_size", 14)
+		copy.pressed.connect(func():
+			DisplayServer.clipboard_set(_ql_example_text.get_meta("code", ""))
+			copy.text = "Copied!")
+		v.add_child(copy)
+		add_child(_ql_example)
+	var code: String = q.example
+	_ql_example_text.text = "%s\n\n%s" % [q.topic, code]
+	_ql_example_text.set_meta("code", code)
+	var btn: Button = _ql_example.get_child(0).get_child(1)
+	btn.text = "Copy"
+	var r := from.get_global_rect()
+	_ql_example.popup(Rect2i(Vector2i(int(r.end.x) + 10, int(r.position.y) - 40), Vector2i(0, 0)))
+
+
+func _ql_line(bbcode: String, fs: int) -> RichTextLabel:
+	var r := RichTextLabel.new()
+	r.bbcode_enabled = true
+	r.fit_content = true
+	r.scroll_active = false
+	r.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	r.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	r.add_theme_font_size_override("normal_font_size", fs)
+	r.add_theme_font_size_override("bold_font_size", fs)
+	r.add_theme_color_override("default_color", QL_INK)
+	r.mouse_filter = Control.MOUSE_FILTER_PASS
+	r.text = bbcode
+	return r
+
+
+## A challenge row: tick box, title, reward, and the task (hover for an example).
+func _ql_item(title: String, task: String, reward: String, done: bool, how: String) -> Control:
+	var r := _ql_line("%s [b][color=%s]%s[/color][/b]  [color=#c9b48f][font_size=12]%s[/font_size][/color]%s" % [
+		"☑" if done else "☐", "#9fd18a" if done else "#f2e3c4", title, reward,
+		"" if done else "\n[color=#bfae92][font_size=12]%s[/font_size][/color]" % task], 14)
+	r.tooltip_text = "%s\n\nExample: %s" % [task, how]
+	return r
+
+
+## A goal row: title, n / total and a small progress bar.
+func _ql_goal(title: String, have: int, total: int, done: bool) -> Control:
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 2)
+	v.add_child(_ql_line("%s [color=%s]%s[/color]  [color=#c9b48f]%d / %d[/color]" % [
+		"☑" if done else "☐", "#9fd18a" if done else "#f2e3c4", title, have, total], 14))
+	var bar := ProgressBar.new()
+	bar.max_value = maxi(1, total)
+	bar.value = have
+	bar.show_percentage = false
+	bar.custom_minimum_size = Vector2(0, 6)
+	var bg := StyleBoxFlat.new()
+	bg.bg_color = Color(1, 1, 1, 0.12)
+	bg.set_corner_radius_all(3)
+	var fg := StyleBoxFlat.new()
+	fg.bg_color = QL_GREEN if done else Color(0.45, 0.7, 0.9)
+	fg.set_corner_radius_all(3)
+	bar.add_theme_stylebox_override("background", bg)
+	bar.add_theme_stylebox_override("fill", fg)
+	v.add_child(bar)
+	return v
 
 
 ## Today's Special (Restaurant Levels 1-2): click to change what every customer orders.
