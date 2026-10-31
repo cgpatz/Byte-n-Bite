@@ -106,7 +106,6 @@ func make_rich(min_height := 0.0) -> RichTextLabel:
 	r.add_theme_font_size_override("bold_font_size", 22)
 	r.add_theme_font_size_override("mono_font_size", 20)
 	r.add_theme_color_override("default_color", Color(1, 0.93, 0.8))
-	var mono := SystemFont.new()
-	mono.font_names = PackedStringArray(["Consolas", "Cascadia Mono", "Courier New", "monospace"])
+	var mono: Font = preload("res://scenes/ui/common/ui_art.gd").mono()
 	r.add_theme_font_override("mono_font", mono)
 	return r

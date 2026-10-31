@@ -40,6 +40,7 @@ func _ready() -> void:
 	load_game_button.pressed.connect(_on_load_game_pressed)
 	settings_button.pressed.connect(_on_settings_pressed)
 	exit_button.pressed.connect(_on_exit_pressed)
+	exit_button.visible = not OS.has_feature("web")  # a browser tab is closed by the player
 
 	# Admin Run only exists when playing from the Godot editor (debug builds).
 	admin_run_button.visible = OS.is_debug_build()

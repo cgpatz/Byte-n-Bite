@@ -160,7 +160,11 @@ static func serif() -> Font:
 		var f := SystemFont.new()
 		f.font_names = PackedStringArray(["Georgia", "Cambria", "DejaVu Serif", "Times New Roman", "serif"])
 		f.font_weight = 700
+		f.fallbacks = [preload("res://assets/fonts/DejaVuSans.ttf")]
 		_serif = f
+		# The web build can't see system fonts: use the bundled serif.
+		if OS.has_feature("web"):
+			_serif = preload("res://assets/fonts/DejaVuSerif-Bold.ttf")
 	return _serif
 
 
@@ -181,7 +185,10 @@ static func mono() -> Font:
 	if _mono == null:
 		var f := SystemFont.new()
 		f.font_names = PackedStringArray(["Consolas", "Cascadia Mono", "DejaVu Sans Mono", "Courier New", "monospace"])
+		f.fallbacks = [preload("res://assets/fonts/DejaVuSans.ttf")]
 		_mono = f
+		if OS.has_feature("web"):
+			_mono = preload("res://assets/fonts/DejaVuSansMono.ttf")
 	return _mono
 
 

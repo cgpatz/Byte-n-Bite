@@ -104,8 +104,7 @@ func _update_title() -> void:
 
 
 func _setup_editor() -> void:
-	var mono := SystemFont.new()
-	mono.font_names = PackedStringArray(["Consolas", "Cascadia Mono", "Courier New", "monospace"])
+	var mono: Font = preload("res://scenes/ui/common/ui_art.gd").mono()
 	code_edit.add_theme_font_override("font", mono)
 	_apply_font_size()
 
@@ -577,8 +576,7 @@ func _build_library_drawer() -> void:
 func _fill_library() -> void:
 	for c in _lib_list.get_children():
 		c.queue_free()
-	var mono := SystemFont.new()
-	mono.font_names = PackedStringArray(["Consolas", "Cascadia Mono", "DejaVu Sans Mono", "Courier New", "monospace"])
+	var mono: Font = preload("res://scenes/ui/common/ui_art.gd").mono()
 	var shown := 0
 	for i in GameState.library_slots.size():
 		var slot: Dictionary = GameState.library_slots[i]

@@ -11,3 +11,6 @@
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Web export output (built by GitHub Actions)
+/build/

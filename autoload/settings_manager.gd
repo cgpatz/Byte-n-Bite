@@ -23,7 +23,17 @@ var goals_open := true
 const MUSIC_PLAYER := preload("res://autoload/music_player.gd")
 
 
+## Bundled fonts (assets/fonts, DejaVu, free licence): the web build has no
+## system fonts, so symbols like ★ ▶ ✔ ☐ come from DejaVu Sans as a fallback.
+const SYMBOL_FONT := preload("res://assets/fonts/DejaVuSans.ttf")
+
+
 func _ready() -> void:
+	var base := ThemeDB.fallback_font
+	if base and not base.fallbacks.has(SYMBOL_FONT):
+		var fb := base.fallbacks.duplicate()
+		fb.append(SYMBOL_FONT)
+		base.fallbacks = fb
 	load_settings()
 	apply()
 	# Background music lives here so it plays in every scene.
