@@ -53,8 +53,12 @@ func _build() -> void:
 	_code.clip_contents = true
 	_style_editor(_code)
 	_code.text_changed.connect(_on_code_changed)
+	_code.gui_input.connect(_on_code_zoom_input)
 	frame.add_child(_code)
 	Art.image(frame, "library/chalk_tray.png", Vector2(240, 740))
+	var zl := Art.label(frame, "Zoom: Ctrl + mouse wheel  ·  Ctrl+0 resets", Vector2(1076, 744), 17, Art.CREAM, false, 600, HORIZONTAL_ALIGNMENT_RIGHT)
+	zl.clip_text = true
+	SettingsManager.changed.connect(func(): _code.add_theme_font_size_override("font_size", SettingsManager.code_font_size))
 
 	# Slot name, on/off switch, clear.
 	Art.label(frame, "Slot name", Vector2(228, 788), 22, Art.CREAM, true)
@@ -272,6 +276,27 @@ func _clear_error() -> void:
 	if _error_line >= 0 and _error_line < _code.get_line_count():
 		_code.set_line_background_color(_error_line, Color(0, 0, 0, 0))
 	_error_line = -1
+
+
+## Ctrl + mouse wheel (or Ctrl + = / -, Ctrl+0 resets) zooms the code, the same
+## setting as the staff code editor and Settings > Code Text Size.
+func _on_code_zoom_input(e: InputEvent) -> void:
+	var v: int = SettingsManager.code_font_size
+	if e is InputEventMouseButton and e.pressed and e.ctrl_pressed and e.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
+		v += 1 if e.button_index == MOUSE_BUTTON_WHEEL_UP else -1
+	elif e is InputEventKey and e.pressed and e.ctrl_pressed and e.keycode in [KEY_EQUAL, KEY_PLUS, KEY_KP_ADD, KEY_MINUS, KEY_KP_SUBTRACT, KEY_0, KEY_KP_0]:
+		if e.keycode in [KEY_0, KEY_KP_0]:
+			v = 16
+		else:
+			v += -1 if e.keycode in [KEY_MINUS, KEY_KP_SUBTRACT] else 1
+	else:
+		return
+	_code.accept_event()
+	v = clampi(v, 10, 36)
+	if v != SettingsManager.code_font_size:
+		SettingsManager.code_font_size = v
+		SettingsManager.save_settings()
+		SettingsManager.changed.emit()
 
 
 func _style_editor(ce: CodeEdit) -> void:

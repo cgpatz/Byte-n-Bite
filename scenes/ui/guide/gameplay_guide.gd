@@ -98,7 +98,8 @@ func _next_step() -> void:
 		if st.get("until") == "moved":
 			_start_pos = game.manager.global_position
 		if st.get("until") in ["win_moved", "win_resized"]:
-			_win_before = Transform2D(0.0, game.tutorial_window.frame.scale, 0.0, game.tutorial_window.frame.position)
+			var wf: Control = _step_window().frame
+			_win_before = Transform2D(0.0, wf.scale, 0.0, wf.position)
 		if st.get("until") == "zoomed":
 			_zoom_before = SettingsManager.code_font_size
 		if st.get("until") == "resized":
@@ -151,9 +152,9 @@ func _met(cond: String) -> bool:
 		"panel_open":
 			return game.programming_panel.visible
 		"win_moved":
-			return game.tutorial_window.frame.position.distance_to(_win_before.origin) > 30.0
+			return _step_window().frame.position.distance_to(_win_before.origin) > 30.0
 		"win_resized":
-			return absf(game.tutorial_window.frame.scale.x - _win_before.get_scale().x) > 0.04
+			return absf(_step_window().frame.scale.x - _win_before.get_scale().x) > 0.04
 		"zoomed":
 			return SettingsManager.code_font_size != _zoom_before
 		"resized":
@@ -202,6 +203,12 @@ func _target(id: String) -> Rect2:
 		"win_grip":
 			var wg: Control = game.tutorial_window._grip
 			return wg.get_global_rect() if wg and wg.is_visible_in_tree() else Rect2()
+		"lib_grip":
+			var lg: Control = game.library_panel._grip
+			return lg.get_global_rect() if lg and lg.is_visible_in_tree() else Rect2()
+		"lib_code":
+			var lc: Control = game.library_panel._code
+			return lc.get_global_rect() if lc and lc.is_visible_in_tree() else Rect2()
 		"rb_grip":
 			var rg: Control = game.recipe_book._grip
 			return rg.get_global_rect() if rg and rg.is_visible_in_tree() else Rect2()
@@ -431,6 +438,12 @@ func _pop(c: Control) -> void:
 
 # --- The scripts ---------------------------------------------------------------------
 
+## The window a move / resize quest is about (step "win": "library", default Lessons).
+func _step_window() -> Control:
+	var st: Dictionary = _steps[_i] if _i >= 0 and _i < _steps.size() else {}
+	return game.library_panel if st.get("win", "") == "library" else game.tutorial_window
+
+
 ## What each staff member's printf thought bubble says right now.
 func _speech_texts() -> Dictionary:
 	var out := {}
@@ -509,6 +522,8 @@ func steps_for(level: int) -> Array:
 			return [
 				{"say": "Welcome to the [b]Grand Restaurant[/b]! Programs get long here, so you'll write your [b]own functions[/b] and reuse them."},
 				{"do": "Open your Library ([b]L[/b]).", "say": "Functions you save in the [b]Library[/b] can be used by every staff member. Open it with [b]L[/b].", "until": "library", "point": "hud:library"},
+				{"do": "Drag the Library's [b]corner grip[/b] to resize it.", "say": "The Library is a window too: drag its [b]corner grip[/b] (bottom right) to make it bigger or smaller, and drag its frame to move it.", "until": "win_resized", "win": "library", "point": "lib_grip"},
+				{"do": "Hold [b]Ctrl[/b] and scroll the [b]mouse wheel[/b] over the Library code.", "say": "Its code board zooms just like the staff code editor: hold [b]Ctrl[/b] and scroll the [b]mouse wheel[/b] over the code ([b]Ctrl+0[/b] resets).", "until": "zoomed", "point": "lib_code"},
 				{"do": "Press [b]T[/b] for Lesson 5: Functions.", "say": "Tick a slot's [b]Use[/b] box to share it. Now press [b]T[/b] for the last lesson!", "until": "lessons", "point": "hud:tutorial"},
 			]
 	return []
