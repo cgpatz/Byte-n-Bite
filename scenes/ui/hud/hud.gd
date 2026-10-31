@@ -521,6 +521,8 @@ var _board_grid: GridContainer
 var _board_title: Label
 var _board_scroll: ScrollContainer
 var _board_sig := ""
+var _board_toggle: Button
+var _board_open := true
 const BOARD_COLS := 3
 const BOARD_ROWS := 4
 const TILE := Vector2(96, 92)
@@ -556,7 +558,16 @@ func _build_order_board() -> void:
 	_board_title.add_theme_color_override("font_color", Color(1, 0.86, 0.52))
 	_board_title.tooltip_text = "Orders waiting at the serving counter, oldest first. # = ticket posted with post_order(); ? = order not taken yet. Scroll for more."
 	_board_title.mouse_filter = Control.MOUSE_FILTER_PASS
-	v.add_child(_board_title)
+	_board_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var head := HBoxContainer.new()
+	v.add_child(head)
+	head.add_child(_board_title)
+	_board_toggle = Button.new()
+	_board_toggle.focus_mode = Control.FOCUS_NONE
+	_board_toggle.add_theme_font_size_override("font_size", 18)
+	_board_toggle.tooltip_text = "Hide or show the Order board"
+	_board_toggle.pressed.connect(func(): set_orders_open(not _board_open))
+	head.add_child(_board_toggle)
 	_board_scroll = ScrollContainer.new()
 	_board_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_board_scroll.custom_minimum_size = Vector2(BOARD_COLS * TILE.x + (BOARD_COLS - 1) * 8 + 14, BOARD_ROWS * TILE.y + (BOARD_ROWS - 1) * 8)
@@ -566,6 +577,16 @@ func _build_order_board() -> void:
 	_board_grid.add_theme_constant_override("h_separation", 8)
 	_board_grid.add_theme_constant_override("v_separation", 8)
 	_board_scroll.add_child(_board_grid)
+	set_orders_open(_board_open)
+
+
+## Hide (just the title bar stays) or show the Order board.
+func set_orders_open(on: bool) -> void:
+	_board_open = on
+	_board_scroll.visible = on
+	_board_toggle.text = "Hide ▾" if on else "Show ▴"
+	var h := BOARD_ROWS * TILE.y + (BOARD_ROWS - 1) * 8 + 60 if on else 52.0
+	_board.offset_top = -h - 24
 
 
 func refresh_orders() -> void:

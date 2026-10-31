@@ -28,6 +28,9 @@ const GOALS := {
 		{"id": "receipt", "title": "Print a receipt", "coins": 100, "exp": 80,
 			"task": "After serve(), print ONE line that uses an int (%d), a float (%.2f) and a char (%c) variable.",
 			"how": "printf(\"Order #%d  Eggsilog x1  %.2f  size %c\\n\", served, price, size);"},
+		{"id": "talk", "title": "Talk to the customer", "coins": 60, "exp": 60,
+			"task": "After serve(), make your staff SAY a line with printf: a dish variable with %s and a float price with %.2f. It shows in their thought bubble.",
+			"how": "int dish = EGGSILOG;  ...serve();  printf(\"Hi, I'm Jane! Here's your %s, for a price of %.2f\\n\", dish, price);"},
 	],
 	2: [
 		{"id": "take", "title": "Take an order", "coins": 60, "exp": 60,
@@ -120,6 +123,13 @@ static func met(level: int, trace: Dictionary) -> Array:
 							out.append("size")
 				if has_d and has_f and has_c and int(p.served_before) >= 1 and not "receipt" in out:
 					out.append("receipt")
+				# Talk: a dish variable (%s) and a float price (%.2f) said after serve().
+				var has_s := false
+				for it in p.items:
+					if it.var and it.conv == "s" and it.type == "int":
+						has_s = true
+				if has_s and has_f and int(p.served_before) >= 1 and not "talk" in out:
+					out.append("talk")
 		2:
 			if _n(trace, "fn:take_order") + _n(trace, "fn:next_order") >= 1:
 				out.append("take")

@@ -27,6 +27,7 @@ var _i := -1
 var _level := 0
 var _waiting_click := false
 var _ran := false
+var _said_before := {}   # staff name -> what their thought bubble said at step start
 var _start_pos := Vector2.ZERO
 var _time := 0.0
 
@@ -93,6 +94,8 @@ func _next_step() -> void:
 	if st.has("until"):
 		if st.get("until") == "moved":
 			_start_pos = game.manager.global_position
+		if st.get("until") == "talked":
+			_said_before = _speech_texts()
 		if st.get("until") == "ran":
 			_ran = false
 			var ce: CodeEdit = game.programming_panel.code_edit
@@ -138,6 +141,12 @@ func _met(cond: String) -> bool:
 			return game.manager.global_position.distance_to(_start_pos) > 140.0
 		"panel_open":
 			return game.programming_panel.visible
+		"talked":
+			var now := _speech_texts()
+			for k in now:
+				if now[k] != "" and now[k] != _said_before.get(k, ""):
+					return true
+			return false
 		"ran":
 			return _ran
 		"panel_closed":
@@ -389,6 +398,16 @@ func _pop(c: Control) -> void:
 
 # --- The scripts ---------------------------------------------------------------------
 
+## What each staff member's printf thought bubble says right now.
+func _speech_texts() -> Dictionary:
+	var out := {}
+	for s in game.staff_root.get_children():
+		var b = s.get("_speech")
+		if b != null and "staff_name" in s:
+			out[s.staff_name] = b.text
+	return out
+
+
 func _first_staff() -> String:
 	for s in game.staff_root.get_children():
 		if "staff_name" in s:
@@ -408,6 +427,8 @@ func steps_for(level: int) -> Array:
 				{"say": "This is the [b]code editor[/b]. You write C here. Under it, the [b]Output[/b] box shows printf messages and mistakes (with the line number)."},
 				{"say": "Three buttons control the code: [b]Run[/b] starts it from the top, [b]Stop[/b] freezes %s on the current line, and [b]Continue[/b] goes on from where it stopped." % who},
 				{"do": "Press [b]Run[/b].", "say": "Let's see it work. If the editor was empty, I wrote a tiny program for you. Press [b]Run[/b]!", "until": "ran", "point": "run"},
+				{"say": "See the [b]thought bubble[/b] over %s's head? Whatever [b]printf[/b] prints, %s [b]says out loud[/b]. That's how your staff talk to customers!" % [who, who], "point": "staff"},
+				{"do": "Change the words inside printf(\"...\") and press [b]Run[/b].", "say": "Your turn: change the words inside [b]printf(\"...\")[/b], for example [b]printf(\"Welcome to Byte n' Bite!\\n\");[/b], then press [b]Run[/b] to hear %s say it." % who, "until": "talked", "point": "run"},
 				{"do": "Close the editor ([b]Close[/b] or [b]Esc[/b]).", "say": "Nice! %s keeps working even after you close the editor. Close it now." % who, "until": "panel_closed"},
 				{"say": "Customers order [b]Today's Special[/b] (the gold button at the top left). Orders appear on the [b]Order board[/b] at the bottom right.", "point": "board"},
 				{"say": "Cooking uses ingredients. When they run out, a notice pops up and you buy more at the [b]Night Market[/b]. Every new game starts with [b]20 coins[/b], so spend wisely!"},
@@ -417,6 +438,7 @@ func steps_for(level: int) -> Array:
 				{"do": "Go back to the restaurant (the glowing pad or [b]M[/b]).", "say": "Step on the glowing pad, or press [b]M[/b], to go back to the restaurant.", "until": "back", "point": "hud:market"},
 				{"say": "The icons at the top right open everything: Market [b]M[/b], Lessons [b]T[/b], Recipe Book [b]R[/b], Library [b]L[/b], Stats [b]Tab[/b] and Pause [b]Esc[/b]. Hover one to see its name.", "point": "buttons"},
 				{"say": "Your [b]goals[/b] are at the top left. Finish them, then upgrade the restaurant at the [b]chalkboard[/b]. Every new level teaches new C, and I'll show you what's new.", "point": "goals"},
+				{"say": "One challenge is [b]Talk to the customer[/b]: after serve(), use printf so %s says the dish with [b]%%s[/b] and its price with [b]%%.2f[/b], like [b]printf(\"Here's your %%s, for a price of %%.2f\\n\", dish, price);[/b]" % who, "point": "goals"},
 				{"do": "Press [b]T[/b] to open your first C lesson.", "say": "Last thing: your first C lesson! Press [b]T[/b] or click the cap icon.", "until": "lessons", "point": "hud:tutorial"},
 				{"say": "Read a page, press [b]Try it[/b] to run the example, and answer the quick check to earn a [b]star[/b]. Have fun, chef!"},
 			]

@@ -94,6 +94,20 @@ var _action_t := 0.0
 var _action_at := Vector2.ZERO
 
 
+## printf() also shows above the staff member's head as a thought bubble.
+const SpeechBubble := preload("res://scenes/characters/staff/speech_bubble.gd")
+var _speech: Node2D
+
+
+func _say(t: String) -> void:
+	if _speech == null:
+		_speech = SpeechBubble.new()
+		_speech.name = "Speech"
+		add_child(_speech)
+	_speech.position = Vector2(0, _art_top() - 40)
+	_speech.add_output(t)
+
+
 func _ready() -> void:
 	if not Engine.is_editor_hint() and GameState.staff_programs.has(staff_name):
 		program_source = GameState.staff_programs[staff_name]  # from the save file
@@ -306,7 +320,11 @@ func run_program() -> void:
 	_stop_requested = false
 	var interp := CInterpreter.new()
 	interp.host = self
-	interp.output.connect(func(t: String): _log(t.replace("[", "[lb]"), false))
+	interp.output.connect(func(t: String):
+		_log(t.replace("[", "[lb]"), false)
+		_say(t))
+	if _speech:
+		_speech.clear()
 	run_trace = {"served": 0, "printfs": [], "stats": interp.stats, "dishes": {}, "tickets": 0}
 	interp.line_changed.connect(func(l: int):
 		_current_line = l
