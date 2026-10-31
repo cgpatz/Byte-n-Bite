@@ -27,6 +27,8 @@ var _i := -1
 var _level := 0
 var _waiting_click := false
 var _ran := false
+var _zoom_before := 0
+var _rect_before := Rect2()
 var _said_before := {}   # staff name -> what their thought bubble said at step start
 var _start_pos := Vector2.ZERO
 var _time := 0.0
@@ -94,6 +96,10 @@ func _next_step() -> void:
 	if st.has("until"):
 		if st.get("until") == "moved":
 			_start_pos = game.manager.global_position
+		if st.get("until") == "zoomed":
+			_zoom_before = SettingsManager.code_font_size
+		if st.get("until") == "resized":
+			_rect_before = game.programming_panel._current_rect()
 		if st.get("until") == "talked":
 			_said_before = _speech_texts()
 		if st.get("until") == "ran":
@@ -141,6 +147,11 @@ func _met(cond: String) -> bool:
 			return game.manager.global_position.distance_to(_start_pos) > 140.0
 		"panel_open":
 			return game.programming_panel.visible
+		"zoomed":
+			return SettingsManager.code_font_size != _zoom_before
+		"resized":
+			var r: Rect2 = game.programming_panel._current_rect()
+			return absf(r.size.x - _rect_before.size.x) > 24.0 or absf(r.size.y - _rect_before.size.y) > 24.0
 		"talked":
 			var now := _speech_texts()
 			for k in now:
@@ -181,6 +192,15 @@ func _target(id: String) -> Rect2:
 			for s in game.staff_root.get_children():
 				if s is Node2D and s.visible:
 					return _world_rect(s, Vector2(0, -60))
+		"grip":
+			var gp: Control = game.programming_panel._grip
+			return gp.get_global_rect() if gp and gp.is_visible_in_tree() else Rect2()
+		"editor_title":
+			var tl: Control = game.programming_panel.title
+			return tl.get_global_rect() if tl and tl.is_visible_in_tree() else Rect2()
+		"code":
+			var ce: Control = game.programming_panel.code_edit
+			return ce.get_global_rect() if ce and ce.is_visible_in_tree() else Rect2()
 		"run":
 			var rb: Control = game.programming_panel.run_button
 			return rb.get_global_rect() if rb.is_visible_in_tree() else Rect2()
@@ -429,6 +449,9 @@ func steps_for(level: int) -> Array:
 				{"do": "Press [b]Run[/b].", "say": "Let's see it work. If the editor was empty, I wrote a tiny program for you. Press [b]Run[/b]!", "until": "ran", "point": "run"},
 				{"say": "See the [b]thought bubble[/b] over %s's head? Whatever [b]printf[/b] prints, %s [b]says out loud[/b]. That's how your staff talk to customers!" % [who, who], "point": "staff"},
 				{"do": "Change the words inside printf(\"...\") and press [b]Run[/b].", "say": "Your turn: change the words inside [b]printf(\"...\")[/b], for example [b]printf(\"Welcome to Byte n' Bite!\\n\");[/b], then press [b]Run[/b] to hear %s say it." % who, "until": "talked", "point": "run"},
+				{"say": "You can set the editor up the way you like. Drag its [b]title bar[/b] to move it anywhere on the screen.", "point": "editor_title"},
+				{"do": "Drag the [b]corner grip[/b] (bottom right) to resize the editor.", "say": "Too big or too small? Drag the [b]corner grip[/b] at the bottom right of the editor to make the whole window bigger or smaller.", "until": "resized", "point": "grip"},
+				{"do": "Hold [b]Ctrl[/b] and scroll the [b]mouse wheel[/b] over the code.", "say": "You can zoom the code too: hold [b]Ctrl[/b] and scroll the [b]mouse wheel[/b] over the code ([b]Ctrl+0[/b] puts it back). The Lessons, Recipe Book, Library and Stats windows resize with their corner grip as well.", "until": "zoomed", "point": "code"},
 				{"do": "Close the editor ([b]Close[/b] or [b]Esc[/b]).", "say": "Nice! %s keeps working even after you close the editor. Close it now." % who, "until": "panel_closed"},
 				{"say": "Customers order [b]Today's Special[/b] (the gold button at the top left). Orders appear on the [b]Order board[/b] at the bottom right.", "point": "board"},
 				{"say": "Cooking uses ingredients. When they run out, a notice pops up and you buy more at the [b]Night Market[/b]. Every new game starts with [b]20 coins[/b], so spend wisely!"},
