@@ -29,8 +29,8 @@ var _lib_panel: PanelContainer
 var _lib_list: VBoxContainer
 var _lib_toggle: Button
 var _exec_line := -1
-const MIN_SIZE := Vector2(560, 460)
-const LIB_WIDTH := 536.0
+const MIN_SIZE := Vector2(460, 380)
+const LIB_WIDTH := 420.0
 const GRIP := 30.0
 var _panel: PanelContainer
 var _grip: Control
@@ -67,8 +67,8 @@ func _ready() -> void:
 ## "Upgrade" in the title row: buys this staff member's next level.
 func _build_upgrade_button() -> void:
 	_upgrade = Button.new()
-	_upgrade.custom_minimum_size = Vector2(130, 56)
-	_upgrade.add_theme_font_size_override("font_size", 22)
+	_upgrade.custom_minimum_size = Vector2(100, 40)
+	_upgrade.add_theme_font_size_override("font_size", 17)
 	_upgrade.focus_mode = Control.FOCUS_NONE
 	_upgrade.tooltip_text = "Level up this staff member: faster walking and work, more coins per dish."
 	_upgrade.pressed.connect(func():
@@ -184,8 +184,8 @@ func _build_continue_button() -> void:
 	continue_button = Button.new()
 	continue_button.name = "ContinueButton"
 	continue_button.text = "Continue"
-	continue_button.custom_minimum_size = Vector2(240, 80)
-	continue_button.add_theme_font_size_override("font_size", 30)
+	continue_button.custom_minimum_size = Vector2(150, 52)
+	continue_button.add_theme_font_size_override("font_size", 22)
 	continue_button.tooltip_text = "Continue the program from the line where it stopped"
 	continue_button.disabled = true
 	stop_button.add_sibling(continue_button)
@@ -317,7 +317,7 @@ func _setup_floating() -> void:
 
 func _default_rect() -> Rect2:
 	var vs := size
-	return Rect2(vs.x - 840.0, 24.0, 816.0, vs.y - 48.0)
+	return Rect2(vs.x - 724.0, 24.0, 700.0, minf(vs.y - 48.0, 860.0))
 
 
 func _current_rect() -> Rect2:
@@ -338,12 +338,13 @@ func _apply_rect(r: Rect2) -> void:
 	# Wrapped labels measure their height from the old width: size again once
 	# the new width has been laid out, so the window doesn't grow too tall.
 	_panel.set_deferred("size", r.size)
-	var lib_x := r.position.x - LIB_WIDTH - 8.0
+	var lib_w := maxf(LIB_WIDTH, _lib_panel.get_combined_minimum_size().x)
+	var lib_x := r.position.x - lib_w - 8.0
 	if lib_x < 0.0:
-		lib_x = minf(r.end.x + 8.0, vs.x - LIB_WIDTH)
+		lib_x = minf(r.end.x + 8.0, vs.x - lib_w)
 	_lib_panel.position = Vector2(lib_x, r.position.y)
-	_lib_panel.size = Vector2(LIB_WIDTH, r.size.y)
-	_lib_panel.set_deferred("size", Vector2(LIB_WIDTH, r.size.y))
+	_lib_panel.size = Vector2(lib_w, r.size.y)
+	_lib_panel.set_deferred("size", Vector2(lib_w, r.size.y))
 	_grip.position = _panel.position + _panel.size - Vector2(GRIP, GRIP)
 	_grip.queue_redraw()
 
@@ -426,8 +427,8 @@ func _build_library_drawer() -> void:
 	_lib_toggle.text = "Library"
 	_lib_toggle.toggle_mode = true
 	_lib_toggle.button_pressed = true
-	_lib_toggle.custom_minimum_size = Vector2(150, 56)
-	_lib_toggle.add_theme_font_size_override("font_size", 22)
+	_lib_toggle.custom_minimum_size = Vector2(110, 40)
+	_lib_toggle.add_theme_font_size_override("font_size", 17)
 	_lib_toggle.toggled.connect(func(on): _lib_panel.visible = on)
 	var head: HBoxContainer = $Panel/VBox/HeaderRow
 	head.add_child(_lib_toggle)
@@ -449,13 +450,13 @@ func _build_library_drawer() -> void:
 	var title_l := Label.new()
 	title_l.text = "My Library"
 	title_l.theme_type_variation = &"HeaderLabel"
-	title_l.add_theme_font_size_override("font_size", 32)
+	title_l.add_theme_font_size_override("font_size", 24)
 	box.add_child(title_l)
 	var help := Label.new()
 	help.text = "Functions saved in your Library (L). Ticked slots can be called from this program. Insert adds a call where your cursor is."
 	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	help.custom_minimum_size.x = 420
-	help.add_theme_font_size_override("font_size", 18)
+	help.add_theme_font_size_override("font_size", 15)
 	help.add_theme_color_override("font_color", Color(0.9, 0.82, 0.66))
 	help.add_theme_constant_override("outline_size", 0)
 	box.add_child(help)
@@ -484,21 +485,21 @@ func _fill_library() -> void:
 		var name_l := Label.new()
 		name_l.text = "%d · %s" % [i + 1, slot.name]
 		name_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		name_l.add_theme_font_size_override("font_size", 22)
+		name_l.add_theme_font_size_override("font_size", 18)
 		name_l.add_theme_color_override("font_color", Color(1, 0.86, 0.52))
 		name_l.clip_text = true
 		head.add_child(name_l)
 		var use := CheckBox.new()
 		use.text = "Use"
 		use.button_pressed = slot.enabled
-		use.add_theme_font_size_override("font_size", 18)
+		use.add_theme_font_size_override("font_size", 15)
 		use.toggled.connect(func(on): slot.enabled = on)
 		head.add_child(use)
 		var copy := Button.new()
 		copy.text = "Copy code"
 		copy.tooltip_text = "Paste this whole slot into the program (your copy can be changed without touching the Library)."
-		copy.custom_minimum_size = Vector2(0, 40)
-		copy.add_theme_font_size_override("font_size", 16)
+		copy.custom_minimum_size = Vector2(0, 34)
+		copy.add_theme_font_size_override("font_size", 14)
 		copy.pressed.connect(_copy_slot_code.bind(i, use))
 		head.add_child(copy)
 		_lib_list.add_child(head)
@@ -507,7 +508,7 @@ func _fill_library() -> void:
 		if not interp.error.is_empty():
 			var err := Label.new()
 			err.text = "  Has an error (line %d). Fix it in the Library (L)." % int(interp.error.get("line", 0))
-			err.add_theme_font_size_override("font_size", 17)
+			err.add_theme_font_size_override("font_size", 14)
 			err.add_theme_color_override("font_color", Color(1, 0.55, 0.45))
 			_lib_list.add_child(err)
 			continue
@@ -522,7 +523,7 @@ func _fill_library() -> void:
 				args.append(prm.name)
 			sig.text = "  %s %s(%s)" % [fn.ret, fname, ", ".join(params)]
 			sig.add_theme_font_override("font", mono)
-			sig.add_theme_font_size_override("font_size", 17)
+			sig.add_theme_font_size_override("font_size", 14)
 			sig.add_theme_color_override("font_color", Color(0.92, 0.9, 0.85))
 			sig.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			sig.clip_text = true
@@ -532,8 +533,8 @@ func _fill_library() -> void:
 			var call := "%s(%s)%s" % [fname, ", ".join(args), ";" if fn.ret == "void" else ""]
 			var ins := Button.new()
 			ins.text = "Insert"
-			ins.custom_minimum_size = Vector2(96, 40)
-			ins.add_theme_font_size_override("font_size", 16)
+			ins.custom_minimum_size = Vector2(80, 34)
+			ins.add_theme_font_size_override("font_size", 14)
 			ins.pressed.connect(_insert_call.bind(call, i, use))
 			row.add_child(ins)
 			_lib_list.add_child(row)
@@ -543,7 +544,7 @@ func _fill_library() -> void:
 		var none := Label.new()
 		none.text = "Your Library is empty. Press L (outside this window) to write functions you can reuse."
 		none.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		none.add_theme_font_size_override("font_size", 18)
+		none.add_theme_font_size_override("font_size", 15)
 		_lib_list.add_child(none)
 
 

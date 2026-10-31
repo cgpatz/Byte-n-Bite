@@ -15,7 +15,7 @@ const Art := preload("res://scenes/ui/common/ui_art.gd")
 const DESIGN := Vector2(1920, 1080)
 const GRIP := 34.0
 const MIN_SCALE := 0.3
-const DEFAULT_SCALE := 0.62
+const DEFAULT_SCALE := 0.54
 
 var frame: Control
 var close_button: Button

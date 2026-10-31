@@ -35,7 +35,7 @@ anchors_preset = 11
 anchor_left = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -840.0
+offset_left = -724.0
 offset_top = 24.0
 offset_right = -24.0
 offset_bottom = -24.0
@@ -45,7 +45,7 @@ theme_type_variation = &"WoodPanel"
 
 [node name="VBox" type="VBoxContainer" parent="Panel"]
 layout_mode = 2
-theme_override_constants/separation = 12
+theme_override_constants/separation = 8
 
 [node name="HeaderRow" type="HBoxContainer" parent="Panel/VBox"]
 layout_mode = 2
@@ -55,21 +55,21 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"HeaderLabel"
-theme_override_font_sizes/font_size = 36
+theme_override_font_sizes/font_size = 26
 text = "Program: Jane"
 
 [node name="CloseButton" type="Button" parent="Panel/VBox/HeaderRow"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(120, 56)
+custom_minimum_size = Vector2(90, 40)
 layout_mode = 2
-theme_override_font_sizes/font_size = 24
+theme_override_font_sizes/font_size = 18
 text = "Close"
 
 [node name="Hint" type="Label" parent="Panel/VBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.9, 0.82, 0.66, 1)
 theme_override_constants/outline_size = 0
-theme_override_font_sizes/font_size = 20
+theme_override_font_sizes/font_size = 15
 text = "Write real C for this staff member. Supported: variables, if / else if / else, for / while, functions."
 autowrap_mode = 3
 
@@ -92,36 +92,36 @@ auto_brace_completion_highlight_matching = true
 
 [node name="OutputLabel" type="Label" parent="Panel/VBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 20
+theme_override_font_sizes/font_size = 16
 text = "Output"
 
 [node name="Console" type="RichTextLabel" parent="Panel/VBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 150)
+custom_minimum_size = Vector2(0, 120)
 layout_mode = 2
 theme_override_colors/default_color = Color(0.75, 0.9, 0.65, 1)
-theme_override_font_sizes/normal_font_size = 18
+theme_override_font_sizes/normal_font_size = 15
 theme_override_styles/normal = SubResource("StyleBoxFlat_code")
 bbcode_enabled = true
 scroll_following = true
 
 [node name="ButtonRow" type="HBoxContainer" parent="Panel/VBox"]
 layout_mode = 2
-theme_override_constants/separation = 16
+theme_override_constants/separation = 10
 alignment = 1
 
 [node name="RunButton" type="Button" parent="Panel/VBox/ButtonRow"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(240, 80)
+custom_minimum_size = Vector2(150, 52)
 layout_mode = 2
 theme_type_variation = &"StartButton"
-theme_override_font_sizes/font_size = 30
+theme_override_font_sizes/font_size = 22
 text = "Run"
 icon = ExtResource("ic_start")
 
 [node name="StopButton" type="Button" parent="Panel/VBox/ButtonRow"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(240, 80)
+custom_minimum_size = Vector2(150, 52)
 layout_mode = 2
-theme_override_font_sizes/font_size = 30
+theme_override_font_sizes/font_size = 22
 text = "Stop"

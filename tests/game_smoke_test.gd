@@ -418,7 +418,7 @@ func _ready() -> void:
 	var csw = game.code_sets_window
 	csw._select(0)
 	csw._on_give()
-	_report(csw.visible and csw.frame.size.x == 1920 and game._staff_list()[0].program_source == csw.current_code(),
+	_report(csw.visible and roundi(csw.frame.size.x) == 1920 and game._staff_list()[0].program_source == csw.current_code(),
 		"Admin Code Sets window: %d sets, Give to staff works" % csw._sets.size())
 	csw.close()
 	# Staff upgrades: expensive, need coins, speed up, Lv 10 needs a specialization.

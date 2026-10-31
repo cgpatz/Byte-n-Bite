@@ -109,7 +109,7 @@ func _build_buttons() -> void:
 	row.offset_left = -680
 	row.offset_right = -24
 	row.offset_top = 24
-	row.offset_bottom = 104
+	row.offset_bottom = 88
 	row.alignment = BoxContainer.ALIGNMENT_END
 	row.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	add_child(row)
@@ -125,20 +125,21 @@ func _build_buttons() -> void:
 func _icon_button(icon_key: String, key: String, tip: String) -> Button:
 	var b := Button.new()
 	b.focus_mode = Control.FOCUS_NONE
-	b.custom_minimum_size = Vector2(80, 80)
+	b.custom_minimum_size = Vector2(64, 64)
+	b.add_theme_constant_override("icon_max_width", 40)
 	b.tooltip_text = "%s  (%s)" % [tip, key]
 	b.icon = PixelArt.find(["res://assets/ui/icons/%s.png" % icon_key])
 	b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	b.expand_icon = false
 	var badge := Label.new()
 	badge.text = key
-	badge.add_theme_font_size_override("font_size", 14)
+	badge.add_theme_font_size_override("font_size", 12)
 	badge.add_theme_color_override("font_color", Color(1, 0.93, 0.8))
 	badge.add_theme_constant_override("outline_size", 4)
 	badge.add_theme_color_override("font_outline_color", Color(0.16, 0.08, 0.04))
 	badge.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	badge.offset_left = -40
-	badge.offset_top = -26
+	badge.offset_top = -22
 	badge.offset_right = -6
 	badge.offset_bottom = -4
 	badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT

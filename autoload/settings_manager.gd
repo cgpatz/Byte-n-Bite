@@ -9,7 +9,7 @@ var master_volume := 1.0
 var music_volume := 0.8
 var sfx_volume := 0.8
 var fullscreen := false
-var code_font_size := 20  # used by the programming panel later
+var code_font_size := 16  # code editor font size (Settings)
 ## Where the floating code window was left (position + size). Empty = default.
 var code_window := Rect2()
 ## Floating windows (Lessons, Recipe Book, Library, Stats): name -> [x, y, scale].
@@ -42,6 +42,13 @@ func load_settings() -> void:
 	code_window = cfg.get_value("editor", "code_window", code_window)
 	windows = cfg.get_value("editor", "windows", windows)
 	goals_open = cfg.get_value("editor", "goals_open", goals_open)
+	# Compact UI (v2): smaller code editor and windows. Old saved sizes and the
+	# old default code font size are reset once.
+	if not cfg.get_value("editor", "compact_ui", false):
+		if code_font_size == 20:
+			code_font_size = 16
+		code_window = Rect2()
+		windows = {}
 
 
 func save_settings() -> void:
@@ -54,6 +61,7 @@ func save_settings() -> void:
 	cfg.set_value("editor", "code_window", code_window)
 	cfg.set_value("editor", "windows", windows)
 	cfg.set_value("editor", "goals_open", goals_open)
+	cfg.set_value("editor", "compact_ui", true)
 	cfg.save(PATH)
 
 
