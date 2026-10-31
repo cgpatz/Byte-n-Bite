@@ -60,7 +60,14 @@ func _ready() -> void:
 	SettingsManager.changed.connect(_apply_font_size)
 	code_edit.text_changed.connect(_on_code_changed)
 	code_edit.gui_input.connect(_on_code_zoom_input)
-	code_edit.tooltip_text = "Ctrl + mouse wheel: bigger / smaller code (Ctrl+0 resets)"
+	var zoom_hint := Label.new()
+	zoom_hint.text = "Zoom: Ctrl + mouse wheel  ·  Ctrl+0 resets"
+	zoom_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	zoom_hint.add_theme_font_size_override("font_size", 12)
+	zoom_hint.add_theme_color_override("font_color", Color(0.7, 0.6, 0.48))
+	zoom_hint.add_theme_constant_override("outline_size", 0)
+	zoom_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	code_edit.add_sibling(zoom_hint)
 	_build_library_drawer()
 	_setup_floating()
 	_build_upgrade_button()
