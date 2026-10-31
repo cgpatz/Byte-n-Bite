@@ -245,6 +245,7 @@ func open(for_staff: Staff) -> void:
 		console.append_text(staff.log_text)
 	_on_running_changed(staff.is_running())
 	_fill_library()
+	_lib_toggle.button_pressed = false  # every time the editor opens, the Library starts closed
 	show()
 	_apply_rect(SettingsManager.code_window)
 	code_edit.grab_focus()
@@ -529,7 +530,7 @@ func _build_library_drawer() -> void:
 	_lib_toggle = Button.new()
 	_lib_toggle.text = "Library"
 	_lib_toggle.toggle_mode = true
-	_lib_toggle.button_pressed = true
+	_lib_toggle.button_pressed = false  # the Library drawer starts closed
 	_lib_toggle.custom_minimum_size = Vector2(110, 40)
 	_lib_toggle.add_theme_font_size_override("font_size", 17)
 	_lib_toggle.toggled.connect(func(on): _lib_panel.visible = on)
@@ -547,6 +548,7 @@ func _build_library_drawer() -> void:
 	_lib_panel.offset_top = 24.0
 	_lib_panel.offset_bottom = -24.0
 	add_child(_lib_panel)
+	_lib_panel.visible = false
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 10)
 	_lib_panel.add_child(box)
