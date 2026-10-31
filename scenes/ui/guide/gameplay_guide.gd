@@ -34,6 +34,7 @@ var _rect_before := Rect2()
 var _runs_before := {}   # staff name -> run_count when a coding quest started
 var _said_before := {}   # staff name -> what their thought bubble said at step start
 var _start_pos := Vector2.ZERO
+var _walked := 0.0   # distance walked during the "move around" quest, in any direction
 var _time := 0.0
 
 var _root: Control
@@ -108,6 +109,7 @@ func _next_step() -> void:
 	if st.has("until"):
 		if st.get("until") == "moved":
 			_start_pos = game.manager.global_position
+			_walked = 0.0
 		if st.get("until") in ["win_moved", "win_resized"]:
 			var wf: Control = _step_window().frame
 			_win_before = Transform2D(0.0, wf.scale, 0.0, wf.position)
@@ -172,7 +174,12 @@ func _met(cond: String) -> bool:
 		return false
 	match cond:
 		"moved":
-			return game.manager.global_position.distance_to(_start_pos) > 140.0
+			# Any walking counts (WASD or arrows, any direction, even back and
+			# forth): add up the distance walked, about one tile is enough.
+			var p: Vector2 = game.manager.global_position
+			_walked += p.distance_to(_start_pos)
+			_start_pos = p
+			return _walked > 48.0
 		"panel_open":
 			return game.programming_panel.visible
 		"win_moved":
