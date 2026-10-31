@@ -60,14 +60,38 @@ func _ready() -> void:
 	SettingsManager.changed.connect(_apply_font_size)
 	code_edit.text_changed.connect(_on_code_changed)
 	code_edit.gui_input.connect(_on_code_zoom_input)
+	code_edit.code_completion_enabled = true
+	code_edit.code_completion_requested.connect(_on_completion_requested)
+	_build_snippet_bar()
+	# Under the code: "Explain my code" (the line under the mouse or the caret,
+	# in plain English) on the left, the zoom tip on the right.
+	var info_row := HBoxContainer.new()
+	info_row.add_theme_constant_override("separation", 12)
+	code_edit.add_sibling(info_row)
+	_explain_label = RichTextLabel.new()
+	_explain_label.bbcode_enabled = true
+	_explain_label.fit_content = true
+	_explain_label.scroll_active = false
+	_explain_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_explain_label.add_theme_font_size_override("normal_font_size", 14)
+	_explain_label.add_theme_font_size_override("bold_font_size", 14)
+	_explain_label.add_theme_color_override("default_color", Color(1, 0.9, 0.7))
+	_explain_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	info_row.add_child(_explain_label)
 	var zoom_hint := Label.new()
-	zoom_hint.text = "Zoom: Ctrl + mouse wheel  ·  Ctrl+0 resets"
+	zoom_hint.text = "Zoom: Ctrl + wheel · Ctrl+0"
 	zoom_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	zoom_hint.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	zoom_hint.add_theme_font_size_override("font_size", 12)
 	zoom_hint.add_theme_color_override("font_color", Color(0.7, 0.6, 0.48))
 	zoom_hint.add_theme_constant_override("outline_size", 0)
 	zoom_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	code_edit.add_sibling(zoom_hint)
+	info_row.add_child(zoom_hint)
+	code_edit.caret_changed.connect(func(): _explain_line(code_edit.get_caret_line()))
+	code_edit.mouse_exited.connect(func():
+		_explained_line = -1
+		_explain_line(code_edit.get_caret_line()))
+	_explain_line(-1)
 	_build_library_drawer()
 	_setup_floating()
 	_build_upgrade_button()
@@ -167,7 +191,41 @@ var _zoom_label: Label
 var _zoom_tween: Tween
 
 
+const Explainer := preload("res://data/help/code_explainer.gd")
+var _explained_line := -1
+
+
+## Explain my code: the line under the mouse (or the caret) in plain English,
+## shown under the editor.
+var _explain_label: RichTextLabel
+
+
+func _explain_hover(pos: Vector2) -> void:
+	var lc := code_edit.get_line_column_at_pos(Vector2i(pos), false)
+	if lc.y == _explained_line:
+		return
+	_explained_line = lc.y
+	_explain_line(lc.y)
+
+
+func _explain_line(line: int) -> void:
+	if _explain_label == null:
+		return
+	if line < 0 or line >= code_edit.get_line_count():
+		_explain_label.text = "[color=#a8977c]Point at a line (or click in it) to read it in plain English.[/color]"
+		return
+	var who: String = staff.staff_name if staff else "The staff member"
+	var e: String = Explainer.explain(code_edit.get_line(line), who)
+	if e == "":
+		_explain_label.text = "[color=#a8977c]Line %d: (empty or just a bracket)[/color]" % (line + 1)
+	else:
+		_explain_label.text = "[color=#c9b48f]Line %d:[/color] %s" % [line + 1, e.replace("[", "[lb]")]
+
+
 func _on_code_zoom_input(e: InputEvent) -> void:
+	if e is InputEventMouseMotion:
+		_explain_hover(e.position)
+		return
 	var step := 0
 	if e is InputEventMouseButton and e.pressed and e.ctrl_pressed:
 		if e.button_index == MOUSE_BUTTON_WHEEL_UP:
@@ -228,6 +286,7 @@ func _show_zoom(v: int) -> void:
 
 func open(for_staff: Staff) -> void:
 	_disconnect_staff()
+	_fill_snippet_bar()
 	staff = for_staff
 	staff.log_added.connect(_on_log_added)
 	staff.running_changed.connect(_on_running_changed)
@@ -294,6 +353,20 @@ func _build_continue_button() -> void:
 	continue_button.disabled = true
 	stop_button.add_sibling(continue_button)
 	continue_button.pressed.connect(_on_continue_pressed)
+	step_button = Button.new()
+	step_button.name = "StepButton"
+	step_button.text = "Step"
+	step_button.custom_minimum_size = Vector2(130, 52)
+	step_button.add_theme_font_size_override("font_size", 22)
+	step_button.tooltip_text = "Run ONE line, then wait (watch the Variables box change)"
+	continue_button.add_sibling(step_button)
+	step_button.pressed.connect(func():
+		if staff:
+			if not staff.is_running():
+				staff.program_source = code_edit.text
+				_clear_marks()
+			staff.step_program())
+	_build_variables_box()
 	run_button.tooltip_text = "Run the code from the top (restarts if already running)"
 	stop_button.tooltip_text = "Stop the code at the current line"
 
@@ -330,6 +403,83 @@ func _refresh_buttons() -> void:
 	stop_button.disabled = not running or paused
 	if continue_button:
 		continue_button.disabled = not paused
+	if step_button:
+		step_button.disabled = staff == null
+	_refresh_variables()
+
+
+# --- Variables box (beside Output): every variable's value, live -----------------
+
+var step_button: Button
+var _vars_label: RichTextLabel
+var _vars_timer := 0.0
+const KitchenRules := preload("res://systems/kitchen/kitchen_rules.gd")
+
+
+func _build_variables_box() -> void:
+	var parent: Control = console.get_parent()
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	row.size_flags_vertical = console.size_flags_vertical
+	parent.add_child(row)
+	parent.move_child(row, console.get_index())
+	console.reparent(row)
+	console.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var box := PanelContainer.new()
+	box.custom_minimum_size = Vector2(230, 0)
+	box.add_theme_stylebox_override("panel", console.get_theme_stylebox("normal"))
+	row.add_child(box)
+	_vars_label = RichTextLabel.new()
+	_vars_label.bbcode_enabled = true
+	_vars_label.scroll_active = true
+	_vars_label.add_theme_font_override("normal_font", preload("res://scenes/ui/common/ui_art.gd").mono())
+	_vars_label.add_theme_font_size_override("normal_font_size", 14)
+	_vars_label.add_theme_font_size_override("bold_font_size", 14)
+	_vars_label.add_theme_color_override("default_color", Color(0.92, 0.9, 0.85))
+	_vars_label.tooltip_text = "Variables: what each box holds right now. Press Step to watch them change line by line."
+	box.add_child(_vars_label)
+	_refresh_variables()
+
+
+func _process(delta: float) -> void:
+	if not visible or staff == null or not staff.is_running():
+		return
+	_vars_timer -= delta
+	if _vars_timer <= 0.0:
+		_vars_timer = 0.2
+		_refresh_variables()
+
+
+func _refresh_variables() -> void:
+	if _vars_label == null:
+		return
+	var t := "[color=#c9b48f][b]Variables[/b][/color]\n"
+	var vars: Array = staff.variables() if staff else []
+	if vars.is_empty():
+		t += "[color=#8f8270]None yet. Variables you make (int eggs = 3;) show up here while the code runs.[/color]"
+	for v in vars:
+		t += "[color=#7fb4e8]%s[/color] [b]%s[/b] = [color=#ffd98a]%s[/color]\n" % [v.type, v.name, _fmt_value(v.v, v.type)]
+	_vars_label.text = t.strip_edges()
+
+
+func _fmt_value(v, type: String) -> String:
+	if v is Array:
+		var parts: Array = []
+		for i in mini(v.size(), 8):
+			parts.append(_fmt_value(v[i], type))
+		return "{" + ", ".join(parts) + (", …" if v.size() > 8 else "") + "}"
+	match type:
+		"char":
+			return "'%s'" % String.chr(int(v)) if v is int else str(v)
+		"float", "double":
+			return "%.2f" % float(v)
+		"bool":
+			return "true" if v else "false"
+	if v is int and v >= 101:
+		var nm: String = KitchenRules.name_of(v)
+		if nm != "":
+			return nm
+	return str(v)
 
 
 func _on_log_added(text: String) -> void:
@@ -364,6 +514,135 @@ func _on_error_at(line: int, _msg: String) -> void:
 func _on_code_changed() -> void:
 	if _error_line >= 0:
 		_clear_marks()
+	_maybe_complete()
+
+
+# --- Typing helpers: autocomplete and the snippet bar ----------------------------
+
+const C_WORDS := ["int", "float", "char", "bool", "double", "void", "if", "else", "while", "do", "for",
+	"switch", "case", "default", "break", "continue", "return", "true", "false", "sizeof", "printf"]
+var _snippet_bar: HFlowContainer
+
+
+## Suggest names after 2 letters of a word (Tab or Enter picks one).
+func _maybe_complete() -> void:
+	var line := code_edit.get_line(code_edit.get_caret_line())
+	var col := code_edit.get_caret_column()
+	var i := col
+	while i > 0 and (line[i - 1] == "_" or line[i - 1].is_valid_identifier() or line[i - 1].is_valid_int()):
+		i -= 1
+	var word := line.substr(i, col - i)
+	if word.length() >= 2 and not line.substr(0, i).contains("//") and line.substr(0, i).count("\"") % 2 == 0:
+		code_edit.request_code_completion()
+
+
+func _on_completion_requested() -> void:
+	var lv: int = GameState.restaurant_level
+	for n in Builtins.unlocked(lv):
+		code_edit.add_code_completion_option(CodeEdit.KIND_FUNCTION, n + "()", n + "(", Color(0.55, 0.8, 1.0))
+	code_edit.add_code_completion_option(CodeEdit.KIND_FUNCTION, "printf()", "printf(", Color(0.55, 0.8, 1.0))
+	# Kitchen names: stations, plus the dishes on today's menu and their ingredients.
+	var names := {"NOTHING": true}
+	for st in KitchenRules.STATIONS:
+		names[st] = true
+	for d in KitchenRules.menu(lv, GameState.cafe_step):
+		names[d] = true
+		for ing in KitchenRules.DISHES[d].recipe:
+			names[ing] = true
+	for k in names:
+		code_edit.add_code_completion_option(CodeEdit.KIND_CONSTANT, k, k, Color(1.0, 0.82, 0.5))
+	for w in C_WORDS:
+		code_edit.add_code_completion_option(CodeEdit.KIND_PLAIN_TEXT, w, w, Color(1.0, 0.55, 0.6))
+	var r := RegEx.new()
+	r.compile("\\b(?:int|float|char|bool|double|void)\\s+([A-Za-z_]\\w*)")
+	var seen := {}
+	for m in r.search_all(code_edit.text):
+		var name := m.get_string(1)
+		if not seen.has(name) and name != "main":
+			seen[name] = true
+			code_edit.add_code_completion_option(CodeEdit.KIND_VARIABLE, name, name, Color(0.85, 0.95, 0.75))
+	code_edit.update_code_completion_options(false)
+
+
+## Buttons above the code that insert a ready-made piece of C at the cursor.
+## New ones appear as the restaurant level teaches them.
+func _build_snippet_bar() -> void:
+	_snippet_bar = HFlowContainer.new()
+	_snippet_bar.add_theme_constant_override("h_separation", 6)
+	_snippet_bar.add_theme_constant_override("v_separation", 4)
+	var parent: Control = code_edit.get_parent()
+	parent.add_child(_snippet_bar)
+	parent.move_child(_snippet_bar, code_edit.get_index())
+	_fill_snippet_bar()
+
+
+func _snippets() -> Array:
+	var lv: int = GameState.restaurant_level
+	var out: Array = [
+		["main", "void main() {\n    \n}\n", "The start of every program"],
+		["printf", "printf(\"Hello!\\n\");", "Print a line (the staff member says it)"],
+		["variable", "int count = 0;", "Make a variable that stores a number"],
+		["cook steps", "go_to(FRIDGE);\npick_up(EGG);\ngo_to(GRILL);\ncook();\ngo_to(ASSEMBLY);\nplate();", "Fetch, cook and plate one ingredient"],
+	]
+	if lv >= 2:
+		out.append(["if", "if (order == EGGSILOG) {\n    \n}", "Do something only when a condition is true"])
+		out.append(["if / else", "if (order == EGGSILOG) {\n    \n} else {\n    \n}", "Choose between two blocks"])
+		out.append(["switch", "switch (order) {\n    case EGGSILOG:\n        \n        break;\n    default:\n        break;\n}", "Match one value against cases"])
+	if lv >= 3:
+		out.append(["while", "while (has_order()) {\n    \n}", "Repeat while a condition is true"])
+		out.append(["for", "for (int i = 0; i < 3; i++) {\n    \n}", "Repeat a set number of times"])
+	if lv >= 4:
+		out.append(["array", "int items[8];\nint n = recipe(order, items);", "Many values in one variable"])
+	if lv >= 5:
+		out.append(["function", "void fetch(int item) {\n    go_to(FRIDGE);\n    pick_up(item);\n}\n", "Write steps once, use them many times"])
+	return out
+
+
+func _fill_snippet_bar() -> void:
+	if _snippet_bar == null:
+		return
+	for c in _snippet_bar.get_children():
+		c.queue_free()
+	var l := Label.new()
+	l.text = "Insert:"
+	l.add_theme_font_size_override("font_size", 13)
+	l.add_theme_color_override("font_color", Color(0.79, 0.7, 0.56))
+	_snippet_bar.add_child(l)
+	for sn in _snippets():
+		var b := Button.new()
+		b.text = sn[0]
+		b.tooltip_text = sn[2]
+		b.focus_mode = Control.FOCUS_NONE
+		b.add_theme_font_size_override("font_size", 13)
+		b.add_theme_constant_override("outline_size", 0)
+		for st_name in ["normal", "hover", "pressed", "focus"]:
+			var sb := StyleBoxFlat.new()
+			sb.bg_color = Color(0.36, 0.22, 0.12) if st_name == "normal" else Color(0.5, 0.32, 0.17)
+			sb.border_color = Color(0.62, 0.42, 0.22)
+			sb.set_border_width_all(1)
+			sb.set_corner_radius_all(4)
+			sb.content_margin_left = 8
+			sb.content_margin_right = 8
+			sb.content_margin_top = 2
+			sb.content_margin_bottom = 2
+			b.add_theme_stylebox_override(st_name, sb)
+		b.add_theme_color_override("font_color", Color(1, 0.9, 0.7))
+		b.pressed.connect(_insert_snippet.bind(sn[1]))
+		_snippet_bar.add_child(b)
+
+
+func _insert_snippet(code: String) -> void:
+	var line := code_edit.get_line(code_edit.get_caret_line())
+	var indent := ""
+	for ch in line:
+		if ch == " " or ch == "\t":
+			indent += ch
+		else:
+			break
+	if line.strip_edges() != "":
+		code_edit.insert_text_at_caret("\n" + indent)
+	code_edit.insert_text_at_caret(code.replace("\n", "\n" + indent))
+	code_edit.grab_focus()
 
 
 func _clear_executing() -> void:
@@ -397,6 +676,9 @@ func _setup_floating() -> void:
 	_panel = $Panel
 	_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	_lib_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	# If the content needs more room, grow down / right (never up off the screen).
+	_panel.grow_vertical = Control.GROW_DIRECTION_END
+	_panel.grow_horizontal = Control.GROW_DIRECTION_END
 	var head: HBoxContainer = $Panel/VBox/HeaderRow
 	title.clip_text = true
 	# Wrapped text measures its height at its current width: never let it start

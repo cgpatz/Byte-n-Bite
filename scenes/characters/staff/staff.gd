@@ -327,8 +327,12 @@ func run_program() -> void:
 		_speech.clear()
 	run_trace = {"served": 0, "printfs": [], "stats": interp.stats, "dishes": {}, "tickets": 0}
 	run_count += 1
+	last_variables = []
 	interp.line_changed.connect(func(l: int):
 		_current_line = l
+		var vs: Array = interp.visible_variables()
+		if not vs.is_empty():
+			last_variables = vs
 		line_changed.emit(l))
 	if not Engine.is_editor_hint():
 		GameState.staff_programs[staff_name] = program_source
@@ -340,6 +344,14 @@ func run_program() -> void:
 	held = {}
 	plate_items = {}
 	_interp = interp
+	interp.halted_at.connect(_on_halted_at)
+	if _start_stepping:
+		# Step pressed while stopped: start paused on the first line.
+		_start_stepping = false
+		paused = true
+		interp.paused = true
+		_log("[color=#e8b04a]⏯ Step mode: press Step to run one line at a time, Continue to run normally.[/color]")
+		paused_changed.emit(true)
 	running_changed.emit(true)
 	if world and world.has_method("reserve_special_order"):
 		world.reserve_special_order(self)
@@ -354,6 +366,10 @@ func run_program() -> void:
 		_report_error(interp.error)
 	else:
 		_log("[color=#9fd67a]✔ Program finished.[/color]")
+		_mistakes.clear()
+	var fin: Array = interp.visible_variables()
+	if not fin.is_empty():
+		last_variables = fin
 	_interp = null
 	running_changed.emit(false)
 
@@ -397,6 +413,44 @@ func resume_program() -> void:
 	queue_redraw()
 
 
+## Step button: run ONE line, then pause again (starts the program if needed).
+var _start_stepping := false
+## Variables the program could see when it last paused or ended (Variables panel).
+var last_variables: Array = []
+signal halted(line: int)
+
+
+func step_program() -> void:
+	if not is_running():
+		_start_stepping = true
+		run_program()
+		return
+	if _interp == null:
+		return
+	if not paused:
+		pause_program()
+		return
+	paused = false          # let the staff member walk / cook for this line
+	_interp.step_budget = 1
+	paused_changed.emit(false)
+
+
+func _on_halted_at(line: int) -> void:
+	_current_line = line
+	if _interp:
+		last_variables = _interp.visible_variables()
+	if not paused:
+		paused = true
+		paused_changed.emit(true)
+		queue_redraw()
+	halted.emit(line)
+
+
+## The variables right now (live while running).
+func variables() -> Array:
+	return _interp.visible_variables() if _interp else last_variables
+
+
 ## Run while a program is already running: stop it, then start again from the top.
 func restart_program() -> void:
 	if is_running():
@@ -432,7 +486,48 @@ func _report_error(err: Dictionary) -> void:
 		error_at.emit(-1, err.get("msg", ""))
 		return
 	_log("[color=#ff7a6a]Line %d: %s[/color]" % [line, msg])
+	Sfx.play("error", -6.0)
+	_progressive_hint(String(err.get("msg", "")), line)
 	error_at.emit(line, err.get("msg", ""))
+
+
+## Progressive hints: the same kind of mistake again gets a clearer tip in the
+## Output box; a third time, Chef Miso explains it in a card.
+var _mistakes := {}
+const HINTS := {
+	"semicolon": "Every instruction ends with ;  Check the END of that line (and the line above). Lines that end with { or } don't need one.",
+	"braces": "Every { needs a matching }. Click next to a { and the editor highlights its partner. main() { ... } must be closed too.",
+	"unknown": "Names must match exactly, capitals too. Kitchen names are ALL CAPS (EGG, FRIDGE). Your own variable needs a type first: int eggs = 0;",
+	"kitchen": "Stand at the right place first: go_to(FRIDGE) before pick_up(), go_to(GRILL) or go_to(RICE_COOKER) before cook(), go_to(ASSEMBLY) before plate().",
+	"syntax": "Compare your line with an example in Lessons (T) > Kitchen Functions. Look for a missing ( ) or { }, or a typo.",
+	"other": "Read the red message slowly, then compare your line with an example in Lessons (T).",
+}
+
+
+func _mistake_kind(msg: String) -> String:
+	var m := msg.to_lower()
+	if m.contains("missing ';'"):
+		return "semicolon"
+	if m.contains("never closed") or m.contains("'{'") or m.contains("'}'"):
+		return "braces"
+	if m.contains("doesn't know what") or m.contains("hasn't been declared") or m.contains("did you mean"):
+		return "unknown"
+	if m.contains("station") or m.contains("holding") or m.contains("fridge") or m.contains("hands"):
+		return "kitchen"
+	if m.contains("expected"):
+		return "syntax"
+	return "other"
+
+
+func _progressive_hint(msg: String, line: int) -> void:
+	var kind := _mistake_kind(msg)
+	var n := int(_mistakes.get(kind, 0)) + 1
+	_mistakes[kind] = n
+	if n == 2:
+		_log("[color=#e8c46a]Tip: %s[/color]" % HINTS[kind])
+	elif n >= 3 and world and world.get("hud") and world.hud.has_method("notify"):
+		world.hud.notify("Chef Miso: let's fix line %d together" % line, HINTS[kind],
+			load("res://assets/ui/windows/tutorial/mentor.png"), Color(0.9, 0.45, 0.35), 10.0)
 
 
 func _log(text: String, newline := true) -> void:
@@ -459,8 +554,8 @@ var run_count := 0
 
 
 ## Called by the interpreter after each printf.
-func note_printf(items: Array, _text: String) -> void:
-	run_trace.printfs.append({"items": items, "served_before": run_trace.served})
+func note_printf(items: Array, text: String) -> void:
+	run_trace.printfs.append({"items": items, "served_before": run_trace.served, "text": text})
 	if world and world.has_method("check_challenges"):
 		world.check_challenges(self)
 
@@ -711,6 +806,7 @@ func _do_cook() -> Dictionary:
 				where = " Cook it at the %s." % st
 				break
 		return {"error": "The %s can't cook %s.%s" % [_at_station, iname, where]}
+	Sfx.play("cook", -4.0)
 	await _act("cook", Kitchen.COOK_TIME.get(_at_station, 2.0),
 		{"brew": "brewing...", "bake": "baking...", "fry": "frying..."}.get(Kitchen.COOK_VERB.get(_at_station, "cook"), "cooking..."))
 	if not _stop_requested:
@@ -773,6 +869,7 @@ func _do_assemble(id: int) -> Dictionary:
 ## over. If nobody has ordered it yet, it is left on the SERVING_COUNTER.
 func _served_one(dish := "") -> void:
 	run_trace.served += 1
+	Sfx.play("serve", -2.0)
 	if dish != "":
 		run_trace.dishes[dish] = true
 	if world and world.has_method("check_challenges"):

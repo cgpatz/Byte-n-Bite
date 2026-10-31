@@ -105,6 +105,7 @@ var _looks: Array = []
 
 
 func _ready() -> void:
+	add_to_group("game_root")
 	RenderingServer.set_default_clear_color(BACKGROUND)
 	# Depth: stations, tables and characters are drawn in Y order (lower = in front).
 	customers_root = Node2D.new()
@@ -887,7 +888,11 @@ func _process(delta: float) -> void:
 	GameState.tick_market(delta)
 	_check_teleport_pad()
 	_check_miso_quest(delta)
-	if customers_enabled:
+	# No customers walk in while Chef Miso's tour is on (the coding quests that
+	# follow it don't hold them back); the first one comes soon after.
+	if guide and guide.is_touring():
+		_spawn_timer = maxf(_spawn_timer, 2.0)
+	elif customers_enabled:
 		_spawn_timer -= delta
 		if _spawn_timer <= 0.0:
 			spawn_customer()
@@ -1355,6 +1360,7 @@ var _truck: Sprite2D
 ## The delivery truck drives in through the back door to the delivery area,
 ## opens up, the crates pop out, and it drives away.
 func _drive_truck() -> void:
+	Sfx.play("truck", -4.0)
 	var area := get_station("RECEIVING")
 	var door := get_station("BACK_DOOR")
 	var sheet := PixelArt.find(["res://assets/delivery/delivery_truck_drive_sheet.png"])
@@ -1481,6 +1487,7 @@ var _miso_k := -1          # quest being watched (index in this level's list)
 var _miso_level := 0
 var _miso_runs := {}       # staff name -> run_count when that quest started
 var _miso_timer := 0.0
+var _miso_hinted := {}    # staff name -> run_count already given a hint
 
 
 ## The current Chef Miso quest is done when any staff member's NEW run (Run
@@ -1505,9 +1512,25 @@ func _check_miso_quest(delta: float) -> void:
 			_miso_runs[s.staff_name] = s.run_count
 		return
 	for s in _staff_list():
-		if s.run_count > int(_miso_runs.get(s.staff_name, 0)) and MisoQuests.met(q.check, s.run_trace):
+		var fresh: bool = s.run_count > int(_miso_runs.get(s.staff_name, 0))
+		# A new Run finished without the quest's C idea: say what's missing.
+		if fresh and not s.is_running() and _miso_hinted.get(s.staff_name, -1) != s.run_count \
+				and not MisoQuests.met(q.check, s.run_trace):
+			_miso_hinted[s.staff_name] = s.run_count
+			hud.notify("Chef Miso: not quite yet", MisoQuests.why_not(q.check, s.run_trace),
+				load("res://assets/ui/windows/tutorial/mentor.png"), Color(0.55, 0.65, 0.9), 8.0)
+			continue
+		if fresh and MisoQuests.met(q.check, s.run_trace):
 			if GameState.complete_miso_quest(lv, k):
 				var left: int = MisoQuests.for_level(lv).size() - (k + 1)
 				hud.notify("Chef Miso Quest done!", "%s  ✔%s" % [q.topic, ("   Next quest is in your Quest Log." if left > 0 else "   Level Challenge unlocked!")],
 					load("res://assets/ui/windows/tutorial/mentor.png"), Color(0.95, 0.7, 0.25), 5.0)
 			return
+
+
+
+## Pause menu > Replay tutorial: Chef Miso's tour of this level again.
+func replay_tutorial() -> void:
+	if guide == null or guide.is_running():
+		return
+	guide.run(GameState.restaurant_level, true)

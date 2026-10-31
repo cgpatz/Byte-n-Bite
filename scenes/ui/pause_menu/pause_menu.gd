@@ -23,6 +23,23 @@ func _ready() -> void:
 	settings_button.pressed.connect(_on_settings_pressed)
 	main_menu_button.pressed.connect(_on_main_menu_pressed)
 	resume_button.grab_focus()
+	_add_replay_button()
+
+
+## "Replay tutorial": closes the menu and plays Chef Miso's tour of this level.
+func _add_replay_button() -> void:
+	var game := get_tree().get_first_node_in_group("game_root")
+	if game == null or not game.has_method("replay_tutorial"):
+		return
+	var b := Button.new()
+	b.text = "Replay tutorial"
+	b.custom_minimum_size = settings_button.custom_minimum_size
+	b.theme_type_variation = settings_button.theme_type_variation
+	settings_button.add_sibling(b)
+	PixelArt.button_icon(b, ["start_dark", "start"])
+	b.pressed.connect(func():
+		close()
+		game.replay_tutorial())
 
 
 func _on_settings_pressed() -> void:

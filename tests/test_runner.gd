@@ -160,6 +160,19 @@ func _run_all() -> void:
 	var got2: Array = LG.met(1, tr2)
 	got2.sort()
 	_report_bool(got2 == ["talk", "two"], "challenges: %%s dish + %%.2f price after 2 serves = talk + two (%s)" % [got2])
+	# Explain my code: plain-English lines.
+	var EX = preload("res://data/help/code_explainer.gd")
+	_report_bool(EX.explain("go_to(FRIDGE);", "Jane") == "Jane walks to the FRIDGE.", "explain: go_to")
+	_report_bool(EX.explain("int eggs = 3;").contains("whole-number variable named eggs"), "explain: int variable")
+	_report_bool(EX.explain("for (int i = 0; i < 3; i++) {").contains("keeps going while i is less than 3"), "explain: for loop")
+	# Quest Log: Chef Miso printf quest needs the player's name; Mastery checks.
+	var MQ = preload("res://data/help/miso_quests.gd")
+	GameState.manager_name = "Chris"
+	_report_bool(not MQ.met("printf", {"printfs": [{"items": [], "text": "Hello!\n"}]}), "miso: printf without your name isn't done yet")
+	_report_bool(MQ.met("printf", {"printfs": [{"items": [], "text": "Hi, "}, {"items": [], "text": "chris!\n"}]}), "miso: printf with your name (any case, split lines) is done")
+	_report_bool(MQ.why_not("printf", {"printfs": []}).contains("didn't see any printf"), "miso: friendly hint when no printf ran")
+	_report_bool(LG.met_mastery(3, {"served": 4, "stats": {"do_while": 2, "loop": 4}}).has("do_rush"), "mastery: do / while rush")
+	_report_bool(not LG.met_mastery(3, {"served": 3, "stats": {"do_while": 2}}).has("do_rush"), "mastery: do / while rush needs 4 served")
 	tr.served = 0
 	_report_bool(LG.met(1, tr).is_empty(), "challenges: nothing counts without serving a dish")
 	await check("3D rejected", 'void main(){ int a[2][2][2]; }', "", "1 or 2 dimensions")

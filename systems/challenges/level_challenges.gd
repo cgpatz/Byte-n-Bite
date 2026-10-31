@@ -155,21 +155,61 @@ static func met(level: int, trace: Dictionary) -> Array:
 # --- Mastery quests (optional, harder; bonus coins and EXP) ------------------------
 
 const MASTERY := {
-	1: [{"id": "triple", "title": "Breakfast rush", "coins": 120, "exp": 100,
-		"task": "Serve 3 dishes in ONE Run (no loops yet: plan every step!).",
-		"how": "Write the steps for 3 dishes one after another, then press Run once."}],
-	2: [{"id": "variety", "title": "Full menu", "coins": 150, "exp": 120,
-		"task": "Serve 3 DIFFERENT dishes in ONE Run, deciding each one with take_order().",
-		"how": "Three take_order() blocks, each with a switch or if / else if."}],
-	3: [{"id": "shift", "title": "Whole shift", "coins": 200, "exp": 150,
-		"task": "Serve 6 dishes in ONE Run with a loop.",
-		"how": "while (1) { int order = take_order(); ... serve(); }"}],
-	4: [{"id": "queue", "title": "Ticket master", "coins": 250, "exp": 180,
-		"task": "Read the tickets with orders() and serve 4 dishes in ONE Run.",
-		"how": "int list[8];  int n = orders(list);  for (int i = 0; i < n; i++) { ... }"}],
-	5: [{"id": "head_chef", "title": "Head chef", "coins": 300, "exp": 250,
-		"task": "Serve 4 DIFFERENT dishes in ONE Run using a function from your Library.",
-		"how": "while (1) { make_dish(take_order()); }   // make_dish() lives in your Library"}],
+	1: [
+		{"id": "triple", "title": "Breakfast rush", "coins": 120, "exp": 100,
+			"task": "Serve 3 dishes in ONE Run (no loops yet: plan every step!).",
+			"how": "Write the steps for 3 dishes one after another, then press Run once."},
+		{"id": "hotsilog_pair", "title": "Hotsilog combo", "coins": 140, "exp": 110,
+			"task": "Serve 2 Hotsilog (3 ingredients each) in ONE Run and print a receipt line after each.",
+			"how": "...assemble(HOTSILOG); serve(); printf(\"#%d Hotsilog\\n\", served); ... (twice)"},
+		{"id": "menu_card", "title": "Menu card", "coins": 100, "exp": 90,
+			"task": "After serving, print a 3-line menu card that uses %s, %d, %.2f and %c somewhere.",
+			"how": "printf(\"%s\\n\", dish); printf(\"Qty %d  Size %c\\n\", qty, size); printf(\"%.2f\\n\", price);"},
+	],
+	2: [
+		{"id": "variety", "title": "Full menu", "coins": 150, "exp": 120,
+			"task": "Serve 3 DIFFERENT dishes in ONE Run, deciding each one with take_order().",
+			"how": "Three take_order() blocks, each with a switch or if / else if."},
+		{"id": "quality", "title": "Quality check", "coins": 140, "exp": 120,
+			"task": "Check is_burnt() before plating and serve 2 dishes in ONE Run.",
+			"how": "cook(); if (is_burnt()) { go_to(TRASH); trash(); } else { go_to(ASSEMBLY); plate(); }"},
+		{"id": "price_tag", "title": "Price with ? :", "coins": 120, "exp": 100,
+			"task": "Pick a price with the short-hand if (? :) and print it after serving.",
+			"how": "float price = (order == HOTSILOG) ? 40.0 : 30.0;  printf(\"%.2f\\n\", price);"},
+	],
+	3: [
+		{"id": "shift", "title": "Whole shift", "coins": 200, "exp": 150,
+			"task": "Serve 6 dishes in ONE Run with a loop.",
+			"how": "while (1) { int order = take_order(); ... serve(); }"},
+		{"id": "do_rush", "title": "Do-while rush", "coins": 180, "exp": 140,
+			"task": "Serve 4 dishes in ONE Run using a do / while loop.",
+			"how": "int served = 0;  do { ...make and serve... served++; } while (served < 4);"},
+		{"id": "stock_watch", "title": "Stock watch", "coins": 180, "exp": 140,
+			"task": "Use stock() and break to stop the loop when an ingredient runs low, after serving 2.",
+			"how": "while (1) { if (stock(EGG) < 1) { break; } ... serve(); }"},
+	],
+	4: [
+		{"id": "queue", "title": "Ticket master", "coins": 250, "exp": 180,
+			"task": "Read the tickets with orders() and serve 4 dishes in ONE Run.",
+			"how": "int list[8];  int n = orders(list);  for (int i = 0; i < n; i++) { ... }"},
+		{"id": "grid_menu", "title": "Menu grid", "coins": 220, "exp": 170,
+			"task": "Keep the menu in a 2D array and serve 3 dishes in ONE Run.",
+			"how": "int menu[2][2] = {{EGGSILOG, HOTSILOG}, {HAMBURGER, TOCILOG}};"},
+		{"id": "any_three", "title": "Any dish, any time", "coins": 240, "exp": 180,
+			"task": "Serve 3 DIFFERENT dishes with ONE recipe() loop that uses sizeof.",
+			"how": "int items[8]; int n = recipe(order, items); for (int i = 0; i < n; i++) { ... }"},
+	],
+	5: [
+		{"id": "head_chef", "title": "Head chef", "coins": 300, "exp": 250,
+			"task": "Serve 4 DIFFERENT dishes in ONE Run using a function from your Library.",
+			"how": "while (1) { make_dish(take_order()); }   // make_dish() lives in your Library"},
+		{"id": "bookkeeper", "title": "Bookkeeper", "coins": 280, "exp": 220,
+			"task": "Serve 3 dishes and get each price from your own function that uses return.",
+			"how": "int price_of(int dish) { ... return 30; }   total += price_of(order);"},
+		{"id": "kitchen_team", "title": "Kitchen team", "coins": 320, "exp": 260,
+			"task": "Serve 5 dishes in ONE Run calling Library functions at least 3 times.",
+			"how": "for (...) { make_dish(take_order()); }"},
+	],
 }
 
 
@@ -188,21 +228,58 @@ static func find_mastery(level: int, id: String) -> Dictionary:
 static func met_mastery(level: int, trace: Dictionary) -> Array:
 	var out: Array = []
 	var served := int(trace.get("served", 0))
-	var kinds: int = trace.get("dishes", {}).size()
+	var dishes: Dictionary = trace.get("dishes", {})
+	var kinds: int = dishes.size()
+	var printfs: Array = trace.get("printfs", [])
+	var took := _n(trace, "fn:take_order") + _n(trace, "fn:next_order")
 	match level:
 		1:
 			if served >= 3:
 				out.append("triple")
+			var after_serves := {}
+			for p in printfs:
+				if int(p.served_before) >= 1:
+					after_serves[int(p.served_before)] = true
+			if dishes.has("HOTSILOG") and served >= 2 and after_serves.has(1) and after_serves.has(2):
+				out.append("hotsilog_pair")
+			var convs := {}
+			var lines := 0
+			for p in printfs:
+				if int(p.served_before) >= 1:
+					lines += 1
+					for it in p.items:
+						convs[it.conv] = true
+			if lines >= 3 and convs.has("s") and convs.has("f") and convs.has("c") and (convs.has("d") or convs.has("i")):
+				out.append("menu_card")
 		2:
-			if kinds >= 3 and _n(trace, "fn:take_order") + _n(trace, "fn:next_order") >= 3:
+			if kinds >= 3 and took >= 3:
 				out.append("variety")
+			if _n(trace, "fn:is_burnt") >= 1 and served >= 2:
+				out.append("quality")
+			if _n(trace, "ternary") >= 1 and served >= 1:
+				for p in printfs:
+					if int(p.served_before) >= 1:
+						out.append("price_tag")
+						break
 		3:
 			if served >= 6 and _n(trace, "loop") >= 1:
 				out.append("shift")
+			if served >= 4 and _n(trace, "do_while") >= 1:
+				out.append("do_rush")
+			if served >= 2 and _n(trace, "fn:stock") >= 1 and _n(trace, "break") >= 1:
+				out.append("stock_watch")
 		4:
 			if served >= 4 and _n(trace, "fn:orders") >= 1:
 				out.append("queue")
+			if served >= 3 and _n(trace, "array2d") >= 1:
+				out.append("grid_menu")
+			if kinds >= 3 and _n(trace, "fn:recipe") >= 3 and _n(trace, "sizeof") >= 1:
+				out.append("any_three")
 		5:
 			if kinds >= 4 and _n(trace, "library_call") >= 1:
 				out.append("head_chef")
+			if served >= 3 and _n(trace, "user_return") >= 3:
+				out.append("bookkeeper")
+			if served >= 5 and _n(trace, "library_call") >= 3:
+				out.append("kitchen_team")
 	return out

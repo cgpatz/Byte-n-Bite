@@ -14,6 +14,12 @@ var _left := 0.0
 var _pop := 1.0
 var _pending := ""
 var _flush_in := -1.0
+## Lines waiting their turn, so fast printf loops don't flicker: each line stays
+## up at least MIN_SHOW seconds; only the newest few are kept.
+var _queue: Array[String] = []
+var _shown := 0.0
+const MIN_SHOW := 1.2
+const MAX_QUEUE := 3
 
 
 func _ready() -> void:
@@ -36,6 +42,16 @@ func add_output(t: String) -> void:
 
 
 func say(line: String) -> void:
+	if visible and text != "" and _shown < MIN_SHOW:
+		_queue.append(line)
+		while _queue.size() > MAX_QUEUE:
+			_queue.pop_front()
+		return
+	_show_line(line)
+
+
+func _show_line(line: String) -> void:
+	_shown = 0.0
 	if line.length() > MAX_CHARS:
 		line = line.substr(0, MAX_CHARS - 1) + "…"
 	text = line
@@ -47,6 +63,7 @@ func say(line: String) -> void:
 
 
 func clear() -> void:
+	_queue.clear()
 	_pending = ""
 	_flush_in = -1.0
 	text = ""
@@ -63,6 +80,10 @@ func _process(delta: float) -> void:
 			if line != "":
 				say(line)
 	if not visible:
+		return
+	_shown += delta
+	if not _queue.is_empty() and _shown >= MIN_SHOW:
+		_show_line(_queue.pop_front())
 		return
 	if _pop < 1.0:
 		_pop = minf(1.0, _pop + delta * 6.0)

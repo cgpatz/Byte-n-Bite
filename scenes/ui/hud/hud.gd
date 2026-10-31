@@ -681,7 +681,16 @@ func notify(title: String, body: String, icon: Texture2D = null, accent := Color
 		_notes.offset_top = 320
 		_notes.add_theme_constant_override("separation", 8)
 		_notes.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		add_child(_notes)
+		# Own layer above the windows, so Chef Miso's hints are never hidden.
+		var layer := CanvasLayer.new()
+		layer.layer = 15
+		add_child(layer)
+		var holder := Control.new()
+		holder.set_anchors_preset(Control.PRESET_FULL_RECT)
+		holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		layer.add_child(holder)
+		holder.add_child(_notes)
+	Sfx.play("pop", -4.0)
 	while _notes.get_child_count() >= 3:
 		var old := _notes.get_child(0)
 		_notes.remove_child(old)

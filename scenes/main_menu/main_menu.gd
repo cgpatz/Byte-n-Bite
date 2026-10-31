@@ -145,9 +145,10 @@ func _on_new_game_pressed() -> void:
 	_open_overlay(dialog)
 
 
-func _start_new_game(game_name: String, manager_name: String, slot: int) -> void:
+func _start_new_game(game_name: String, manager_name: String, new_to_c: bool, slot: int) -> void:
 	GameState.reset()
 	GameState.admin_mode = false
+	GameState.short_tour = not new_to_c
 	GameState.game_name = game_name
 	GameState.manager_name = manager_name
 	SaveManager.current_slot = slot

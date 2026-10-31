@@ -18,6 +18,8 @@ extends RefCounted
 
 signal output(text: String)
 signal line_changed(line: int)
+## Paused (Stop / Step) and waiting on this line.
+signal halted_at(line: int)
 
 const Lexer := preload("res://systems/c_interpreter/c_lexer.gd")
 const Parser := preload("res://systems/c_interpreter/c_parser.gd")
@@ -55,6 +57,8 @@ var constants: Dictionary = Kitchen.constants()
 var _program := {}
 var _functions := {}
 var _globals := {}
+## Step button: how many more lines may run while paused (1 = one line).
+var step_budget := 0
 ## Call stack: each frame is an Array of scopes (Dictionary name -> {"type","v"}).
 var _frames: Array = []
 var _ret_value = 0
@@ -211,8 +215,16 @@ func _level() -> int:
 ## Called once per statement: highlights the line, counts steps, yields a frame now and then.
 func _step(line: int) -> void:
 	line_changed.emit(line)
-	while paused and not stopped and host:
-		await host.get_tree().process_frame
+	if paused and not stopped and host:
+		if step_budget > 0:
+			step_budget -= 1   # Step: run this one line, pause at the next
+		else:
+			halted_at.emit(line)
+			while paused and not stopped and host:
+				if step_budget > 0:
+					step_budget -= 1
+					break
+				await host.get_tree().process_frame
 	_steps += 1
 	_since_yield += 1
 	if _steps > MAX_STEPS_WITHOUT_ACTION:
@@ -1126,3 +1138,25 @@ func _printf(n: Dictionary):
 	if host != null and host.has_method("note_printf"):
 		host.note_printf(items, out)
 	return out.length()
+
+
+
+## Every variable the program can see right now (for the Variables panel):
+## [{"name", "type", "v", "global"}], innermost first.
+func visible_variables() -> Array:
+	var out: Array = []
+	var seen := {}
+	if not _frames.is_empty():
+		var frame: Array = _frames[-1]
+		for i in range(frame.size() - 1, -1, -1):
+			for name in frame[i]:
+				if seen.has(name):
+					continue
+				seen[name] = true
+				var c: Dictionary = frame[i][name]
+				out.append({"name": name, "type": c.get("type", "int"), "v": c.v, "global": false})
+	for name in _globals:
+		if not seen.has(name):
+			var g: Dictionary = _globals[name]
+			out.append({"name": name, "type": g.get("type", "int"), "v": g.v, "global": true})
+	return out

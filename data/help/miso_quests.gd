@@ -12,9 +12,9 @@ extends RefCounted
 const QUESTS := {
 	1: [
 		{"topic": "Output with printf", "check": "printf",
-			"say": "Your first C line! [b]printf[/b] prints text. Put the words in double quotes and end with [b]\\n[/b] for a new line.",
+			"say": "Your first C line! [b]printf[/b] prints text, and the staff member says it out loud. Put the words in double quotes and end with [b]\\n[/b] for a new line. Try greeting yourself by name!",
 			"example": "printf(\"Good morning!\\n\");",
-			"do": "Write a [b]printf[/b] in {who}'s program and press [b]Run[/b]."},
+			"do": "Make {who} greet YOU: [b]printf[/b] a line with your name, then press [b]Run[/b]."},
 		{"topic": "Kitchen commands", "check": "kitchen",
 			"say": "Staff work through [b]function calls[/b]: [b]go_to[/b] a station, [b]pick_up[/b] an ingredient, [b]cook()[/b] it. Rice cooks only at the [b]RICE_COOKER[/b].",
 			"example": "go_to(FRIDGE);\npick_up(RICE);\ngo_to(RICE_COOKER);\ncook();",
@@ -144,7 +144,11 @@ static func met(check: String, trace: Dictionary) -> bool:
 	var printfs: Array = trace.get("printfs", [])
 	match check:
 		"printf":
-			return not printfs.is_empty()
+			# Friendly twist: the line must include the player's name.
+			var all := ""
+			for p in printfs:
+				all += String(p.get("text", ""))
+			return all.to_lower().contains(_player_name().to_lower())
 		"kitchen":
 			return _n(trace, "fn:go_to") + _n(trace, "fn:move_to") >= 1 and _n(trace, "fn:pick_up") >= 1 and _n(trace, "fn:cook") >= 1
 		"int", "float", "char":
@@ -204,3 +208,82 @@ static func met(check: String, trace: Dictionary) -> bool:
 		"library":
 			return _n(trace, "library_call") >= 1
 	return false
+
+
+
+static func _player_name() -> String:
+	var gs = Engine.get_main_loop().root.get_node_or_null("GameState") if Engine.get_main_loop() else null
+	var n: String = gs.manager_name if gs else "Manager"
+	return n if n.strip_edges() != "" else "Manager"
+
+
+## Beginner-friendly feedback after a Run that didn't finish the quest yet:
+## what is still missing, in plain words.
+static func why_not(check: String, trace: Dictionary) -> String:
+	var printfs: Array = trace.get("printfs", [])
+	match check:
+		"printf":
+			if printfs.is_empty():
+				return "I didn't see any printf run. Write it inside main() { } and end the line with ;"
+			return "Nice printf! Now put your name in the text, like printf(\"Hi, %s!\\n\");" % _player_name()
+		"kitchen":
+			var miss: Array = []
+			if _n(trace, "fn:go_to") + _n(trace, "fn:move_to") == 0:
+				miss.append("go_to(FRIDGE);")
+			if _n(trace, "fn:pick_up") == 0:
+				miss.append("pick_up(RICE);")
+			if _n(trace, "fn:cook") == 0:
+				miss.append("go_to(RICE_COOKER); cook();")
+			return "Almost! Still missing: " + "  ".join(miss)
+		"int", "float", "char":
+			var spec: String = {"int": "%d", "float": "%.2f", "char": "%c"}[check]
+			if printfs.is_empty():
+				return "Make the variable, then print it with printf and %s." % spec
+			return "Put the VARIABLE after the quotes, like printf(\"%s\\n\", myVariable); (a %s variable with %s)." % [spec, check, spec]
+		"math":
+			return "Calculate with + - * / or %% (like 30 * 2), and printf the result."
+		"incdec":
+			return "Change a variable with ++, -- or += (like served++;), then printf it."
+		"compare":
+			return "Compare two values with == != < > <= or >= (like eggs > 2)."
+		"if":
+			return "Write if (condition) { ... } and press Run."
+		"else":
+			return "Add an else { ... } right after your if block."
+		"elseif":
+			return "Between if and else, add: else if (another condition) { ... }"
+		"logic":
+			return "Join two conditions with && (and) or || (or) inside an if."
+		"switch":
+			if _n(trace, "switch") > 0:
+				return "Good switch! Add a default: label too."
+			return "Write switch (value) { case ...: ... break; default: ... }"
+		"while":
+			return "Write while (condition) { ... } and make sure the condition is true at the start."
+		"do_while":
+			return "Write do { ... } while (condition);  (note the ; at the end)"
+		"for":
+			return "Write for (int i = 0; i < 3; i++) { ... }"
+		"nested":
+			return "Put a second loop INSIDE the { } of your first loop."
+		"break_continue":
+			return "Inside a loop, use break; to stop it (or continue; to skip a round)."
+		"array":
+			return "Make an array like int a[] = {1, 2, 3}; and read one item with a[0]."
+		"array_loop":
+			return "Use a for loop and read list[i] inside it."
+		"sizeof":
+			return "Use sizeof(list) / sizeof(list[0]) to count the items."
+		"recipe":
+			return "Call recipe(DISH, items) with an int array, like int items[8];"
+		"array2d":
+			return "Make a 2D array like int g[2][2] and read g[1][0]."
+		"func":
+			return "Write a function above main() and CALL it inside main(), like greet();"
+		"params":
+			return "Give your function a parameter (int item) and call it with a value: cook_one(EGG);"
+		"return":
+			return "Make a function that ends with return value; and call it."
+		"library":
+			return "Tick Use on a Library slot (L) and call its function in main()."
+	return "Not quite yet: check the example in your Quest Log."

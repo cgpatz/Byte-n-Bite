@@ -21,6 +21,7 @@ config/icon="res://icon.svg"
 SettingsManager="*res://autoload/settings_manager.gd"
 SaveManager="*res://autoload/save_manager.gd"
 GameState="*res://autoload/game_state.gd"
+Sfx="*res://autoload/sfx.gd"
 
 [display]
 

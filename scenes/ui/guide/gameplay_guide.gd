@@ -66,9 +66,26 @@ func is_running() -> bool:
 	return _i >= 0
 
 
+## True during the tour part (before the coding quests start): the restaurant
+## holds new customers back so beginners can learn without pressure.
+func is_touring() -> bool:
+	if _i < 0 or _i >= _steps.size():
+		return false
+	for k in range(0, _i + 1):
+		var st: Dictionary = _steps[k]
+		if st.get("until", "") == "lessons_closed" and k < _i:
+			return false
+		if st.has("quest_index") or st.has("quest_index_do"):
+			return false
+	return true
+
+
 ## Plays the guide for a restaurant level; returns when every step is done.
-func run(level: int) -> void:
+func run(level: int, replay := false) -> void:
 	_steps = steps_for(level)
+	if replay:
+		# Pause menu > Replay tutorial: just the tour (the C quests stay in the Quest Log).
+		_steps = _walkthrough(level)
 	if _steps.is_empty():
 		return
 	_level = level
@@ -82,7 +99,7 @@ func run(level: int) -> void:
 	# Coming back to a level whose coding quests were started: skip the tour
 	# and continue with the next unfinished quest.
 	var done_q := int(GameState.quest_progress.get(str(level), 0))
-	if done_q > 0:
+	if done_q > 0 and not replay:
 		_i = _steps.size() - 2  # all quests done: just the closing line
 		for k in _steps.size():
 			if _steps[k].get("quest_index", -1) == done_q:
@@ -490,6 +507,8 @@ func _first_staff() -> String:
 
 ## The level's tour, then Chef Miso's hands-on coding quest for each new C topic.
 func steps_for(level: int) -> Array:
+	if GameState.short_tour:
+		return _short_tour(level)
 	var steps := _walkthrough(level)
 	var quests: Array = MisoQuests.for_level(level)
 	if quests.is_empty():
@@ -507,6 +526,30 @@ func steps_for(level: int) -> Array:
 	return steps
 
 
+## "I know some C": a quick tour; Chef Miso's C quests wait in the Quest Log.
+func _short_tour(level: int) -> Array:
+	var who := _first_staff()
+	var log_step := {"say": "Your [b]Quest Log[/b] (left side, [b]G[/b]) lists Chef Miso's C quests one at a time, then the [b]Level Challenge[/b] and the restaurant goals. Press [b]Show example[/b] there if you need a hint.", "point": "goals"}
+	if level == 1:
+		return [
+			{"say": "Welcome to [b]Byte n' Bite[/b], chef! I'm [b]Chef Miso[/b]. Your staff cook whatever you [b]program[/b] them to do in C. Here's the quick tour."},
+			{"do": "Walk up to %s and press [b]E[/b]." % who, "say": "Walk ([b]WASD[/b]) up to [b]%s[/b] and press [b]E[/b] to open the code editor." % who, "until": "panel_open", "point": "staff"},
+			{"say": "Write C here. [b]Run[/b] starts it, [b]Stop[/b] freezes it on the current line, [b]Continue[/b] goes on. Whatever [b]printf[/b] prints, %s says in a thought bubble. Rice cooks only at the [b]RICE_COOKER[/b]." % who},
+			{"do": "Close the editor ([b]Close[/b] or [b]Esc[/b]).", "say": "Close the editor; %s keeps working. Buy ingredients at the Night Market ([b]M[/b]); the icons at the top right open everything else." % who, "until": "panel_closed", "point": "buttons"},
+			log_step,
+			{"say": "Lessons ([b]T[/b]) and Kitchen Functions explain every C idea if you get stuck. Have fun, chef!", "point": "hud:tutorial"},
+		]
+	var full := _walkthrough(level)
+	var out: Array = []
+	for st in full:
+		if not st.has("until"):
+			out.append(st)
+		if out.size() >= 2:
+			break
+	out.append(log_step)
+	return out
+
+
 func _walkthrough(level: int) -> Array:
 	var who := _first_staff()
 	match level:
@@ -517,7 +560,8 @@ func _walkthrough(level: int) -> Array:
 				{"say": "See the [b]thought bubble[/b] over your head when you stand next to something? It tells you what pressing [b]E[/b] will do."},
 				{"do": "Walk up to %s and press [b]E[/b]." % who, "say": "This is [b]%s[/b], your cook. Walk up to %s and press [b]E[/b] to open %s program." % [who, who, "her" if who == "Jane" else "their"], "until": "panel_open", "point": "staff"},
 				{"say": "This is the [b]code editor[/b]. You write C here. Under it, the [b]Output[/b] box shows printf messages and mistakes (with the line number)."},
-				{"say": "Three buttons control the code: [b]Run[/b] starts it from the top, [b]Stop[/b] freezes %s on the current line, and [b]Continue[/b] goes on from where it stopped." % who},
+				{"say": "Buttons control the code: [b]Run[/b] starts it from the top, [b]Stop[/b] freezes %s on the current line, [b]Continue[/b] goes on, and [b]Step[/b] runs just ONE line so you can watch the [b]Variables[/b] box change." % who},
+				{"say": "Stuck on a line? Point at it and read it in plain English just under the code. The [b]Insert[/b] buttons add ready-made code, and suggestions pop up while you type (press [b]Tab[/b] or [b]Enter[/b] to use one).", "point": "code"},
 				{"do": "Press [b]Run[/b].", "say": "Let's see it work. If the editor was empty, I wrote a tiny program for you. Press [b]Run[/b]!", "until": "ran", "point": "run"},
 				{"say": "See the [b]thought bubble[/b] over %s's head? Whatever [b]printf[/b] prints, %s [b]says out loud[/b]. That's how your staff talk to customers!" % [who, who], "point": "staff"},
 				{"do": "Change the words inside printf(\"...\") and press [b]Run[/b].", "say": "Your turn: change the words inside [b]printf(\"...\")[/b], for example [b]printf(\"Welcome to Byte n' Bite!\\n\");[/b], then press [b]Run[/b] to hear %s say it." % who, "until": "talked", "point": "run"},
