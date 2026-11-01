@@ -40,6 +40,7 @@ offset_bottom = 1020.0
 theme_override_constants/separation = 14
 
 [node name="Logo" type="TextureRect" parent="MenuColumn" unique_id=725686930]
+texture_filter = 1
 custom_minimum_size = Vector2(520, 420)
 layout_mode = 2
 texture = ExtResource("3_logo")
