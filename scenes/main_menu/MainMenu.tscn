@@ -2,23 +2,13 @@
 
 [ext_resource type="Script" uid="uid://dh7lfjrxrt0h5" path="res://scenes/main_menu/main_menu.gd" id="2_script"]
 [ext_resource type="Texture2D" uid="uid://cukutf2dqoshj" path="res://assets/ui/logo/logo.png" id="3_logo"]
-[ext_resource type="Texture2D" uid="uid://2jpgdv0x8cal" path="res://assets/backgrounds/main_menu_bg.png" id="bg_tex"]
-[ext_resource type="VideoStream" uid="uid://bw28ggnyuiha5" path="res://assets/backgrounds/main_menu_bg.ogv" id="bg_video"]
+[ext_resource type="Texture2D" path="res://assets/backgrounds/main_menu_bg_v8.png" id="bg_tex"]
 [ext_resource type="Texture2D" uid="uid://co1ynuno66u2l" path="res://assets/ui/icons/burger.png" id="ic_burger"]
 [ext_resource type="Texture2D" uid="uid://c00axfkcsl1nj" path="res://assets/ui/icons/exit.png" id="ic_exit"]
 [ext_resource type="Texture2D" uid="uid://duc4o30ouos77" path="res://assets/ui/icons/load_game.png" id="ic_load"]
 [ext_resource type="Texture2D" uid="uid://vkuuu6ij0lcf" path="res://assets/ui/icons/new_game.png" id="ic_new"]
 [ext_resource type="Texture2D" uid="uid://cetj7e768diq4" path="res://assets/ui/icons/settings.png" id="ic_settings"]
 [ext_resource type="Texture2D" uid="uid://1pm8aj1dflag" path="res://assets/ui/icons/start_dark.png" id="ic_start"]
-
-[sub_resource type="Gradient" id="Gradient_overlay"]
-offsets = PackedFloat32Array(0, 0.4, 0.7)
-colors = PackedColorArray(0, 0, 0, 0.62, 0, 0, 0, 0.3, 0, 0, 0, 0)
-
-[sub_resource type="GradientTexture2D" id="GradientTexture2D_overlay"]
-gradient = SubResource("Gradient_overlay")
-width = 256
-height = 16
 
 [node name="MainMenu" type="Control" unique_id=60686527]
 layout_mode = 3
@@ -36,33 +26,10 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+texture_filter = 1
 texture = ExtResource("bg_tex")
 expand_mode = 1
 stretch_mode = 6
-
-[node name="BackgroundVideo" type="VideoStreamPlayer" parent="." unique_id=2094412617]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-stream = ExtResource("bg_video")
-autoplay = true
-expand = true
-loop = true
-
-[node name="Overlay" type="TextureRect" parent="." unique_id=891494266]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-texture = SubResource("GradientTexture2D_overlay")
-expand_mode = 1
 
 [node name="MenuColumn" type="VBoxContainer" parent="." unique_id=1990715131]
 layout_mode = 0

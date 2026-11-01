@@ -3,7 +3,11 @@ extends Control
 ## Art is optional: drop files at the paths below and they're picked up
 ## automatically, or assign textures directly in the Inspector.
 
-const BACKGROUND_PATH := "res://assets/backgrounds/main_menu_bg.png"
+const BACKGROUND_PATH := "res://assets/backgrounds/main_menu_bg_v8.png"
+## "Code Corner" background: 8 frames (4 × 2 sheet, 480×270 each), looped.
+const BG_SHEET_PATH := "res://assets/backgrounds/main_menu_bg_v8_sheet.png"
+const BG_SHEET_GRID := Vector2i(4, 2)
+const BG_FRAME_TIME := 0.22
 const PixelArt := preload("res://scenes/art/pixel_art.gd")
 const LOGO_PATH := "res://assets/ui/logo/logo.png"  # logo + "Cook. Code. Create." in one image
 const ICON_DIR := "res://assets/ui/icons/"
@@ -60,6 +64,8 @@ func _refresh_buttons() -> void:
 func _load_optional_art() -> void:
 	if background.texture == null and ResourceLoader.exists(BACKGROUND_PATH):
 		background.texture = load(BACKGROUND_PATH)
+	background.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST  # crisp pixel art
+	_start_background_animation()
 	if logo.texture == null and ResourceLoader.exists(LOGO_PATH):
 		logo.texture = load(LOGO_PATH)
 	if logo_placeholder:
@@ -92,6 +98,35 @@ func _load_optional_art() -> void:
 			# The gold Start plank uses the dark play icon.
 			var keys: Array = ["start_dark", "start"] if button == start_button else [icons[button]]
 			PixelArt.button_icon(button, keys)
+
+
+# --- Animated background (sprite sheet) --------------------------------------
+
+var _bg_atlas: AtlasTexture
+var _bg_frame := 0
+var _bg_time := 0.0
+
+
+func _start_background_animation() -> void:
+	if not ResourceLoader.exists(BG_SHEET_PATH):
+		return
+	var sheet: Texture2D = load(BG_SHEET_PATH)
+	_bg_atlas = AtlasTexture.new()
+	_bg_atlas.atlas = sheet
+	_bg_atlas.region = Rect2(Vector2.ZERO, sheet.get_size() / Vector2(BG_SHEET_GRID))
+	background.texture = _bg_atlas
+
+
+func _process(delta: float) -> void:
+	if _bg_atlas == null:
+		return
+	_bg_time += delta
+	if _bg_time < BG_FRAME_TIME:
+		return
+	_bg_time -= BG_FRAME_TIME
+	_bg_frame = (_bg_frame + 1) % (BG_SHEET_GRID.x * BG_SHEET_GRID.y)
+	var fs: Vector2 = _bg_atlas.region.size
+	_bg_atlas.region.position = Vector2(_bg_frame % BG_SHEET_GRID.x, _bg_frame / BG_SHEET_GRID.x) * fs
 
 
 func _add_hover_bounce(button: Button) -> void:
