@@ -872,11 +872,28 @@ func _setup_camera() -> void:
 func _camera_target() -> Vector2:
 	var half := get_viewport_rect().size / camera.zoom / 2.0
 	var p := manager.global_position
+	# While the code editor is open and the program runs, keep that staff
+	# member (and their printf thought bubble) in the free part of the screen
+	# beside the editor.
+	# (Sideways only, and allowed past the restaurant's edge: small levels
+	# can't otherwise scroll out from under the editor.)
+	var follow_x := INF
+	var ps = programming_panel
+	if not in_market and ps and ps.visible and ps.staff and ps.staff.is_running():
+		var r: Rect2 = ps.window_rect()
+		var vs := get_viewport_rect().size
+		var left := r.position.x
+		var right := vs.x - r.end.x
+		if maxf(left, right) > 220.0:
+			var want_x: float = left * 0.5 if left >= right else r.end.x + right * 0.5
+			follow_x = ps.staff.global_position.x - (want_x - vs.x * 0.5) / camera.zoom.x
 	var out := Vector2()
 	for axis in 2:
 		var lo: float = _cam_bounds.position[axis] + half[axis]
 		var hi: float = _cam_bounds.end[axis] - half[axis]
 		out[axis] = _cam_bounds.get_center()[axis] if lo > hi else clampf(p[axis], lo, hi)
+	if follow_x != INF:
+		out.x = follow_x
 	return out
 
 

@@ -51,6 +51,7 @@ var _upgrade: Button
 
 func _ready() -> void:
 	hide()
+	title.custom_minimum_size.x = 130  # "Jane · Lv 1" stays readable next to the buttons
 	_setup_editor()
 	PixelArt.button_icon(run_button, ["start_dark", "start"])
 	run_button.pressed.connect(_on_run_pressed)
@@ -308,6 +309,7 @@ func open(for_staff: Staff) -> void:
 	show()
 	_apply_rect(SettingsManager.code_window)
 	code_edit.grab_focus()
+	_close_tab()
 
 
 func close() -> void:
@@ -317,6 +319,8 @@ func close() -> void:
 	_clear_executing()
 	_disconnect_staff()
 	hide()
+	if _pin:
+		_pin.hide()
 	closed.emit()
 
 
@@ -445,6 +449,8 @@ func _build_variables_box() -> void:
 
 
 func _process(delta: float) -> void:
+	_update_tab(delta)
+	_update_pin()
 	if not visible or staff == null or not staff.is_running():
 		return
 	_vars_timer -= delta
@@ -720,6 +726,10 @@ func _apply_rect(r: Rect2) -> void:
 	if r.size == Vector2.ZERO:
 		r = _default_rect()
 	r.size = r.size.clamp(MIN_SIZE, vs)
+	# The title row needs a minimum width: keep the whole window on screen.
+	r.size.x = minf(maxf(r.size.x, _panel.get_combined_minimum_size().x), vs.x)
+	if r.end.x > vs.x and r.position.x > 0.0:
+		r.position.x = maxf(0.0, vs.x - r.size.x)
 	r.position.x = clampf(r.position.x, 120.0 - r.size.x, vs.x - 120.0)
 	r.position.y = clampf(r.position.y, 0.0, vs.y - 60.0)
 	_panel.position = r.position
@@ -816,13 +826,14 @@ func _build_library_drawer() -> void:
 	_lib_toggle.text = "Library"
 	_lib_toggle.toggle_mode = true
 	_lib_toggle.button_pressed = false  # the Library drawer starts closed
-	_lib_toggle.custom_minimum_size = Vector2(110, 40)
+	_lib_toggle.custom_minimum_size = Vector2(0, 40)
 	_lib_toggle.add_theme_font_size_override("font_size", 17)
 	_lib_toggle.toggled.connect(func(on): _lib_panel.visible = on)
 	var head: HBoxContainer = $Panel/VBox/HeaderRow
 	head.add_child(_lib_toggle)
 	head.move_child(_lib_toggle, close_button.get_index())
 	_build_opacity_button(head)
+	_build_hide_button(head)
 
 	_lib_panel = PanelContainer.new()
 	_lib_panel.theme_type_variation = &"WoodPanel"
@@ -969,7 +980,7 @@ var _opacity_slider: HSlider
 ## The value is saved with the other settings.
 func _build_opacity_button(head: HBoxContainer) -> void:
 	_opacity_btn = Button.new()
-	_opacity_btn.custom_minimum_size = Vector2(96, 40)
+	_opacity_btn.custom_minimum_size = Vector2(0, 40)
 	_opacity_btn.focus_mode = Control.FOCUS_NONE
 	_opacity_btn.add_theme_font_size_override("font_size", 17)
 	_opacity_btn.tooltip_text = "Editor opacity"
@@ -1017,3 +1028,186 @@ func _build_opacity_button(head: HBoxContainer) -> void:
 func _update_opacity_btn() -> void:
 	if _opacity_btn:
 		_opacity_btn.text = "◐ %d%%" % roundi(SettingsManager.code_opacity * 100)
+
+
+# --- Seeing what printf says while the editor is open ------------------------------
+# 1. The camera keeps the running staff member beside the editor (game.gd).
+# 2. If their thought bubble is still behind the editor, a copy is pinned at
+#    the editor's edge.
+# 3. "Hide": the editor folds into a tab on the right edge that shows the
+#    program's status and last printf; click it to open the editor again.
+
+## Screen rect of the editor window (for the camera).
+func window_rect() -> Rect2:
+	return _panel.get_global_rect() if _panel else Rect2()
+
+
+var _pin: PanelContainer
+var _pin_label: Label
+
+
+func _speech_of(s: Node) -> Node2D:
+	return s.get("_speech") if s and is_instance_valid(s) else null
+
+
+func _update_pin() -> void:
+	var sp := _speech_of(staff)
+	var show_pin := visible and sp != null and sp.visible and String(sp.text) != ""
+	var at := Vector2.ZERO
+	if show_pin:
+		at = sp.get_global_transform_with_canvas().origin
+		# The bubble is drawn centred over the staff member: if any good part of
+		# it is behind the editor, pin a copy at the editor's edge.
+		var font := ThemeDB.fallback_font
+		var bw := minf(font.get_string_size(String(sp.text), HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x + 26.0, 326.0)
+		var bub := Rect2(at.x - bw / 2.0, at.y - 60.0, bw, 50.0)
+		var cut := bub.intersection(window_rect())
+		show_pin = cut.get_area() > bub.get_area() * 0.2
+	if not show_pin:
+		if _pin:
+			_pin.hide()
+		return
+	if _pin == null:
+		_pin = PanelContainer.new()
+		_pin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(1.0, 0.98, 0.92)
+		sb.border_color = Color(0.24, 0.13, 0.07)
+		sb.set_border_width_all(3)
+		sb.set_corner_radius_all(12)
+		sb.content_margin_left = 12
+		sb.content_margin_right = 12
+		sb.content_margin_top = 6
+		sb.content_margin_bottom = 6
+		sb.shadow_color = Color(0, 0, 0, 0.3)
+		sb.shadow_size = 4
+		_pin.add_theme_stylebox_override("panel", sb)
+		_pin_label = Label.new()
+		_pin_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_pin_label.custom_minimum_size = Vector2(220, 0)
+		_pin_label.add_theme_font_size_override("font_size", 17)
+		_pin_label.add_theme_color_override("font_color", Color(0.24, 0.13, 0.07))
+		_pin.add_child(_pin_label)
+		add_child(_pin)
+	var text := "%s says: %s" % [staff.staff_name, sp.text]
+	if _pin_label.text != text:
+		_pin_label.text = text
+		_pin.reset_size()
+	_pin.show()
+	var r := window_rect()
+	var vs := get_viewport_rect().size
+	var w := minf(_pin.get_combined_minimum_size().x, 340.0)
+	_pin.size.x = w
+	var x := r.position.x - w - 14.0 if r.position.x > w + 30.0 else r.end.x + 14.0
+	_pin.position = Vector2(clampf(x, 8.0, vs.x - w - 8.0), clampf(at.y - 30.0, 90.0, vs.y - 140.0))
+
+
+var _hide_btn: Button
+var _tab: PanelContainer
+var _tab_label: Label
+var _tab_staff: Staff
+var _tab_error := false
+var _tab_timer := 0.0
+
+
+func _build_hide_button(head: HBoxContainer) -> void:
+	_hide_btn = Button.new()
+	_hide_btn.text = "Hide"
+	_hide_btn.custom_minimum_size = Vector2(0, 40)
+	_hide_btn.focus_mode = Control.FOCUS_NONE
+	_hide_btn.add_theme_font_size_override("font_size", 17)
+	_hide_btn.tooltip_text = "Fold the editor into a tab on the right edge (the program keeps running). Click the tab to open it again."
+	_hide_btn.pressed.connect(_hide_to_tab)
+	head.add_child(_hide_btn)
+	head.move_child(_hide_btn, close_button.get_index())
+
+
+func _hide_to_tab() -> void:
+	var s := staff
+	close()
+	if s:
+		_show_tab(s)
+
+
+func _show_tab(s: Staff) -> void:
+	_close_tab()
+	_tab_staff = s
+	_tab_error = false
+	if _tab == null:
+		_tab = PanelContainer.new()
+		_tab.mouse_filter = Control.MOUSE_FILTER_STOP
+		_tab.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		_tab.tooltip_text = "Click to open the code editor again"
+		_tab_label = Label.new()
+		_tab_label.add_theme_font_size_override("font_size", 18)
+		_tab_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+		_tab_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		_tab_label.custom_minimum_size = Vector2(300, 0)
+		_tab.add_child(_tab_label)
+		_tab.gui_input.connect(func(e: InputEvent):
+			if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT and _tab_staff:
+				open(_tab_staff)
+				move_to_front())
+		get_parent().add_child(_tab)
+	if not s.error_at.is_connected(_on_tab_error):
+		s.error_at.connect(_on_tab_error)
+	_style_tab()
+	_refresh_tab()
+	_tab.show()
+
+
+func _close_tab() -> void:
+	if _tab_staff and is_instance_valid(_tab_staff) and _tab_staff.error_at.is_connected(_on_tab_error):
+		_tab_staff.error_at.disconnect(_on_tab_error)
+	_tab_staff = null
+	if _tab:
+		_tab.hide()
+
+
+func _on_tab_error(_line: int, _msg: String) -> void:
+	_tab_error = true
+	_style_tab()
+	_refresh_tab()
+	# Beginners ("new to C") get the editor back right away so they see the error.
+	if not GameState.short_tour and _tab_staff:
+		open.call_deferred(_tab_staff)
+
+
+func _style_tab() -> void:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.55, 0.12, 0.1, 0.95) if _tab_error else Color(0.2, 0.12, 0.08, 0.95)
+	sb.border_color = Color(1, 0.55, 0.45) if _tab_error else Color(0.93, 0.72, 0.38)
+	sb.set_border_width_all(3)
+	sb.border_width_right = 0
+	sb.corner_radius_top_left = 10
+	sb.corner_radius_bottom_left = 10
+	sb.content_margin_left = 14
+	sb.content_margin_right = 14
+	sb.content_margin_top = 8
+	sb.content_margin_bottom = 8
+	_tab.add_theme_stylebox_override("panel", sb)
+	_tab_label.add_theme_color_override("font_color", Color(1, 0.92, 0.85) if _tab_error else Color(1, 0.88, 0.6))
+
+
+func _refresh_tab() -> void:
+	if _tab == null or _tab_staff == null or not is_instance_valid(_tab_staff):
+		return
+	var s := _tab_staff
+	var state := "■ error" if _tab_error else ("▶" if s.is_running() else "■")
+	var said := ""
+	var sp := _speech_of(s)
+	if sp and String(sp.text) != "":
+		said = ": " + String(sp.text)
+	_tab_label.text = "◂ %s %s%s" % [s.staff_name, state, said]
+	var vs := get_viewport_rect().size
+	_tab.reset_size()
+	_tab.position = Vector2(vs.x - _tab.size.x, vs.y * 0.42)
+
+
+func _update_tab(delta: float) -> void:
+	if _tab == null or not _tab.visible:
+		return
+	_tab_timer -= delta
+	if _tab_timer <= 0.0:
+		_tab_timer = 0.25
+		_refresh_tab()
