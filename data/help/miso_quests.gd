@@ -15,10 +15,10 @@ const QUESTS := {
 			"say": "Your first C line! [b]printf[/b] prints text, and the staff member says it. Put the words in double quotes, end with [b]\\n[/b], and greet yourself by name!",
 			"example": "printf(\"Good morning!\\n\");",
 			"do": "Make {who} greet YOU: [b]printf[/b] a line with your name, then press [b]Run[/b]."},
-		{"topic": "Kitchen commands", "check": "kitchen",
-			"say": "Staff work through [b]function calls[/b]: [b]go_to[/b] a station, [b]pick_up[/b] an ingredient, [b]cook()[/b] it. Rice cooks only at the [b]RICE_COOKER[/b].",
-			"example": "go_to(FRIDGE);\npick_up(RICE);\ngo_to(RICE_COOKER);\ncook();",
-			"do": "Make {who} [b]go_to[/b] the FRIDGE, [b]pick_up[/b] an ingredient and [b]cook()[/b] it."},
+		{"topic": "Cook and serve a dish", "check": "serve",
+			"say": "Staff work through [b]kitchen commands[/b]. For Eggsilog: fetch each ingredient, [b]cook()[/b] it (rice at the RICE_COOKER, egg at the GRILL), [b]plate()[/b] it at the ASSEMBLY, then [b]assemble()[/b] and [b]serve()[/b].",
+			"example": "go_to(FRIDGE); pick_up(RICE);\ngo_to(RICE_COOKER); cook();\ngo_to(ASSEMBLY); plate();\ngo_to(FRIDGE); pick_up(EGG);\ngo_to(GRILL); cook();\ngo_to(ASSEMBLY); plate();\nassemble(EGGSILOG);\nserve();",
+			"do": "Make {who} cook and [b]serve()[/b] an Eggsilog."},
 		{"topic": "int variables and %d", "check": "int",
 			"say": "A [b]variable[/b] stores a value. [b]int[/b] holds whole numbers; print it with [b]%d[/b] and put the variable after the quotes.",
 			"example": "int eggs = 3;\nprintf(\"Eggs: %d\\n\", eggs);",
@@ -149,6 +149,8 @@ static func met(check: String, trace: Dictionary) -> bool:
 			for p in printfs:
 				all += String(p.get("text", ""))
 			return _greets_player(all)
+		"serve":
+			return int(trace.get("served", 0)) >= 1
 		"kitchen":
 			return _n(trace, "fn:go_to") + _n(trace, "fn:move_to") >= 1 and _n(trace, "fn:pick_up") >= 1 and _n(trace, "fn:cook") >= 1
 		"int", "float", "char":
@@ -239,6 +241,10 @@ static func why_not(check: String, trace: Dictionary) -> String:
 			if printfs.is_empty():
 				return "I didn't see any printf run. Write it inside main() { } and end the line with ;"
 			return "Nice printf! Now put your name in the text, like printf(\"Hi, %s!\\n\");" % _player_name()
+		"serve":
+			if _n(trace, "fn:assemble") == 0:
+				return "Almost! Plate the rice AND the egg at the ASSEMBLY, then assemble(EGGSILOG); and serve();"
+			return "Almost! After assemble(EGGSILOG); add serve(); so the dish goes out."
 		"kitchen":
 			var miss: Array = []
 			if _n(trace, "fn:go_to") + _n(trace, "fn:move_to") == 0:

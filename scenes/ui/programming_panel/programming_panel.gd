@@ -321,6 +321,8 @@ func close() -> void:
 	hide()
 	if _pin:
 		_pin.hide()
+	if is_instance_valid(_fn_card):
+		_fn_card.queue_free()
 	closed.emit()
 
 
@@ -340,6 +342,7 @@ func _update_hint() -> void:
 		names.append(n + "()")
 	var lv: int = GameState.restaurant_level
 	hint.text = "Functions: %s, printf()\nMenu: %s" % [", ".join(names), ", ".join(GameState.current_menu())]
+	_update_fn_bar()
 
 
 var continue_button: Button
@@ -1211,3 +1214,109 @@ func _update_tab(delta: float) -> void:
 	if _tab_timer <= 0.0:
 		_tab_timer = 0.25
 		_refresh_tab()
+
+
+# --- Clickable function list: click a function for what it does + example ------------
+
+const CRef := preload("res://data/help/c_reference.gd")
+var _fn_bar: RichTextLabel
+var _fn_card: PanelContainer
+
+
+func _update_fn_bar() -> void:
+	if _fn_bar == null:
+		_fn_bar = RichTextLabel.new()
+		_fn_bar.bbcode_enabled = true
+		_fn_bar.fit_content = true
+		_fn_bar.scroll_active = false
+		_fn_bar.add_theme_font_size_override("normal_font_size", 15)
+		_fn_bar.add_theme_font_size_override("bold_font_size", 15)
+		_fn_bar.add_theme_color_override("default_color", Color(0.9, 0.82, 0.66))
+		_fn_bar.meta_underlined = true
+		_fn_bar.meta_clicked.connect(func(m): _show_fn_card(String(m)))
+		hint.add_sibling(_fn_bar)
+		hint.hide()
+	var links: Array = []
+	for n in Builtins.unlocked(GameState.restaurant_level):
+		links.append("[url=%s][color=#ffd27a]%s()[/color][/url]" % [n, n])
+	links.append("[url=printf][color=#ffd27a]printf()[/color][/url]")
+	_fn_bar.text = "Functions [color=#a8957a](click one for help)[/color]: %s\nMenu: %s" % [", ".join(links), ", ".join(GameState.current_menu())]
+
+
+func _show_fn_card(id: String) -> void:
+	var e: Dictionary = {}
+	for x in CRef.entries():
+		if x.id == id:
+			e = x
+			break
+	if e.is_empty():
+		return
+	if is_instance_valid(_fn_card):
+		_fn_card.queue_free()
+	_fn_card = PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.13, 0.09, 0.07, 0.98)
+	sb.border_color = Color(0.93, 0.72, 0.38)
+	sb.set_border_width_all(3)
+	sb.set_corner_radius_all(10)
+	for side in ["left", "right", "top", "bottom"]:
+		sb.set("content_margin_" + side, 14)
+	_fn_card.add_theme_stylebox_override("panel", sb)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 8)
+	_fn_card.add_child(v)
+	var head := HBoxContainer.new()
+	v.add_child(head)
+	var t := Label.new()
+	t.text = String(e.get("syntax", e.title)).split("\n")[0]
+	t.add_theme_font_override("font", preload("res://scenes/ui/common/ui_art.gd").mono())
+	t.add_theme_font_size_override("font_size", 20)
+	t.add_theme_color_override("font_color", Color(1, 0.82, 0.48))
+	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(t)
+	var about := Label.new()
+	about.text = e.about
+	about.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	about.custom_minimum_size = Vector2(420, 0)
+	about.add_theme_font_size_override("font_size", 16)
+	about.add_theme_color_override("font_color", Color(0.95, 0.9, 0.82))
+	v.add_child(about)
+	var ex := Label.new()
+	ex.text = e.example
+	ex.add_theme_font_override("font", preload("res://scenes/ui/common/ui_art.gd").mono())
+	ex.add_theme_font_size_override("font_size", 14)
+	ex.add_theme_color_override("font_color", Color(0.75, 0.9, 1.0))
+	var exbox := PanelContainer.new()
+	var eb := StyleBoxFlat.new()
+	eb.bg_color = Color(0.06, 0.05, 0.07)
+	for side in ["left", "right", "top", "bottom"]:
+		eb.set("content_margin_" + side, 8)
+	exbox.add_theme_stylebox_override("panel", eb)
+	exbox.add_child(ex)
+	v.add_child(exbox)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	v.add_child(row)
+	var ins := Button.new()
+	ins.text = "Insert %s" % String(e.get("syntax", "")).split("\n")[0]
+	ins.focus_mode = Control.FOCUS_NONE
+	ins.add_theme_font_size_override("font_size", 16)
+	ins.pressed.connect(func():
+		_insert_snippet(String(e.get("syntax", "")).split("\n")[0])
+		_fn_card.queue_free())
+	row.add_child(ins)
+	var close_b := Button.new()
+	close_b.text = "Close"
+	close_b.focus_mode = Control.FOCUS_NONE
+	close_b.add_theme_font_size_override("font_size", 16)
+	close_b.pressed.connect(func(): _fn_card.queue_free())
+	row.add_child(close_b)
+	add_child(_fn_card)
+	# Next to the editor, at the height of the function list.
+	await get_tree().process_frame
+	if not is_instance_valid(_fn_card):
+		return
+	var r := window_rect()
+	var w := _fn_card.size.x
+	var x := r.position.x - w - 10.0 if r.position.x > w + 20.0 else r.end.x + 10.0
+	_fn_card.position = Vector2(clampf(x, 8.0, size.x - w - 8.0), clampf(r.position.y + 60.0, 8.0, size.y - _fn_card.size.y - 8.0))
