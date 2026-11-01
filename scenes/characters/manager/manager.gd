@@ -111,14 +111,43 @@ func _in_reach() -> Array:
 	return out
 
 
-## Focus the closest interactable in range.
+## The thought bubble only shows when the manager is right next to something
+## (keeps the screen clean); E still works from a little further away.
+const CLOSE_REACH := 36.0
+var _close_shape := CircleShape2D.new()
+
+
+## Interactables the manager is right next to (a small circle around the body).
+func _close_by() -> Array:
+	var out: Array = []
+	var cs := interaction_area.get_child(0) as CollisionShape2D
+	if cs == null:
+		return out
+	_close_shape.radius = CLOSE_REACH
+	var q := PhysicsShapeQueryParameters2D.new()
+	q.shape = _close_shape
+	q.transform = Transform2D(0.0, global_position)
+	q.collision_mask = interaction_area.collision_mask
+	q.exclude = [get_rid()]
+	for hit in get_world_2d().direct_space_state.intersect_shape(q, 32):
+		var b = hit.collider
+		if b != null and b.has_method("interact") and not b in out:
+			out.append(b)
+	return out
+
+
+## Focus the closest interactable in range (something right next to the
+## manager wins over something further away).
 func _update_focus() -> void:
+	var close := _close_by()
 	var best: Node = null
 	var best_dist := INF
-	for n in _in_reach():
+	for n in _in_reach() + close:
 		if not is_instance_valid(n) or not n.can_interact():
 			continue
 		var d := global_position.distance_squared_to((n as Node2D).global_position)
+		if not n in close:
+			d += 1.0e7  # anything right next to the manager comes first
 		if d < best_dist:
 			best_dist = d
 			best = n
@@ -127,6 +156,6 @@ func _update_focus() -> void:
 	if best != _focus:
 		_focus = best
 		focus_changed.emit(_focus)
-	var want: String = _focus.get_prompt() if _focus != null and is_instance_valid(_focus) else ""
+	var want: String = _focus.get_prompt() if _focus != null and is_instance_valid(_focus) and _focus in close else ""
 	if _bubble and _bubble.text != want:
 		_bubble.text = want
