@@ -145,7 +145,7 @@ func _next_step() -> void:
 			_win_before = Transform2D(0.0, wf.scale, 0.0, wf.position)
 		if st.get("until") == "zoomed":
 			_zoom_before = SettingsManager.code_font_size
-		if st.get("until") == "resized":
+		if st.get("until") in ["resized", "editor_moved"]:
 			_rect_before = game.programming_panel._current_rect()
 		if st.get("until") == "talked":
 			_said_before = _speech_texts()
@@ -210,6 +210,8 @@ func _met(cond: String) -> bool:
 			return absf(_step_window().frame.scale.x - _win_before.get_scale().x) > 0.04
 		"zoomed":
 			return SettingsManager.code_font_size != _zoom_before
+		"editor_moved":
+			return game.programming_panel._current_rect().position.distance_to(_rect_before.position) > 24.0
 		"resized":
 			var r: Rect2 = game.programming_panel._current_rect()
 			return absf(r.size.x - _rect_before.size.x) > 24.0 or absf(r.size.y - _rect_before.size.y) > 24.0
@@ -553,7 +555,10 @@ func _short_tour(level: int) -> Array:
 	var log_step := {"say": "Your [b]Quest Log[/b] (left side, [b]G[/b]) lists Chef Miso's C quests one at a time, then the [b]Level Challenge[/b] and the restaurant goals. Press [b]Show example[/b] there if you need a hint.", "point": "goals"}
 	if level == 1:
 		return [
-			{"do": "Walk to %s ([b]WASD[/b]) and press [b]E[/b]." % who, "say": "Welcome, chef! I'm [b]Chef Miso[/b]. Walk to [b]%s[/b] ([b]WASD[/b]) and press [b]E[/b] to open the code editor." % [who, who], "until": "panel_open", "point": "staff"},
+			{"do": "Move with [b]WASD[/b] or the [b]arrow keys[/b].", "say": "Welcome, chef! I'm [b]Chef Miso[/b]. You're the cat in the apron: walk with [b]WASD[/b] or the [b]arrow keys[/b].", "until": "moved", "point": "manager"},
+			{"do": "Walk to %s and press [b]E[/b]." % who, "say": "Walk up to [b]%s[/b] and press [b]E[/b] to open the code editor." % who, "until": "panel_open", "point": "staff"},
+			{"do": "Drag the editor's [b]title bar[/b] to move it.", "say": "Windows can go anywhere: hold the mouse on the editor's [b]title bar[/b] and drag it.", "until": "editor_moved", "point": "editor_title"},
+			{"do": "Drag the [b]corner grip[/b] (bottom right) to resize the editor.", "say": "Drag the [b]corner grip[/b] at the bottom right to make it bigger or smaller. Every window (Lessons, Recipe Book...) works the same way.", "until": "resized", "point": "grip"},
 			{"say": "Write C and press [b]Run[/b]; printf output shows in %s's thought bubble. Buy ingredients at the Night Market ([b]M[/b])." % who},
 			{"say": "Your [b]Quest Log[/b] ([b]G[/b]) has Chef Miso's C quests, the Level Challenge and the goals. [b]Lessons[/b] ([b]T[/b]) explain every C idea. Have fun!", "point": "goals"},
 		]
@@ -583,7 +588,10 @@ func _walkthrough_steps(level: int) -> Array:
 			# starts at step 4; windows, icons and zoom explain themselves.
 			return [
 				{"say": "Welcome to [b]Byte n' Bite[/b], chef! I'm [b]Chef Miso[/b]. Your staff cook whatever you [b]program[/b] them to do in C."},
-				{"do": "Walk to %s ([b]WASD[/b]) and press [b]E[/b]." % who, "say": "You're the cat in the apron. Walk to [b]%s[/b] with [b]WASD[/b] or the arrow keys and press [b]E[/b] to open the code editor." % who, "until": "panel_open", "point": "staff"},
+				{"do": "Move with [b]WASD[/b] or the [b]arrow keys[/b].", "say": "You're the cat in the apron, the [b]Manager[/b]. Take a little walk with [b]WASD[/b] or the [b]arrow keys[/b].", "until": "moved", "point": "manager"},
+				{"do": "Walk to %s and press [b]E[/b]." % who, "say": "Walk up to [b]%s[/b], your cook, and press [b]E[/b] to open the code editor. The bubble over your head shows what E will do." % who, "until": "panel_open", "point": "staff"},
+				{"do": "Drag the editor's [b]title bar[/b] to move it.", "say": "Windows can go anywhere: hold the mouse on the editor's [b]title bar[/b] and drag it.", "until": "editor_moved", "point": "editor_title"},
+				{"do": "Drag the [b]corner grip[/b] (bottom right) to resize the editor.", "say": "Drag the [b]corner grip[/b] at the bottom right to make it bigger or smaller. Every window (Lessons, Recipe Book...) works the same way.", "until": "resized", "point": "grip"},
 				{"say": "Write C here and press [b]Run[/b]. The [b]Output[/b] box shows messages and mistakes, and whatever [b]printf[/b] prints, %s says in a thought bubble." % who, "point": "code"},
 				{"quests_here": true},
 				{"say": "Customers are coming! At this level they all order [b]Today's Special[/b] (top left). Run your Eggsilog program again for each one.", "point": "board"},
