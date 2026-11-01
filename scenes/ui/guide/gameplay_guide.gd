@@ -66,6 +66,14 @@ func is_running() -> bool:
 	return _i >= 0
 
 
+## The coding quest the guide is on right now (-1 on tour steps).
+func current_quest_index() -> int:
+	if _i < 0 or _i >= _steps.size():
+		return -1
+	var st: Dictionary = _steps[_i]
+	return int(st.get("quest_index", st.get("quest_index_do", -1)))
+
+
 ## True during the tour part (before the coding quests start): the restaurant
 ## holds new customers back so beginners can learn without pressure.
 func is_touring() -> bool:
@@ -75,9 +83,8 @@ func is_touring() -> bool:
 		var st: Dictionary = _steps[k]
 		if st.get("until", "") == "lessons_closed" and k < _i:
 			return false
-		if st.has("quest_index") or st.has("quest_index_do"):
-			return false
-	return true
+	# Customers wait during the tour, and come in while the coding quests run.
+	return not _steps[_i].has("quest_index")
 
 
 ## Plays the guide for a restaurant level; returns when every step is done.
@@ -101,10 +108,16 @@ func run(level: int, replay := false) -> void:
 	var done_q := int(GameState.quest_progress.get(str(level), 0))
 	if done_q > 0 and not replay:
 		_i = _steps.size() - 2  # all quests done: just the closing line
+		var last_q := -1
 		for k in _steps.size():
+			if _steps[k].has("quest_index"):
+				last_q = k
 			if _steps[k].get("quest_index", -1) == done_q:
 				_i = k - 1
+				last_q = -2
 				break
+		if last_q >= 0:
+			_i = last_q  # all quests done: continue with the tour after them
 	_next_step()
 	await finished
 
@@ -505,25 +518,33 @@ func _first_staff() -> String:
 	return "your cook"
 
 
-## The level's tour, then Chef Miso's hands-on coding quest for each new C topic.
+## The level's tour with Chef Miso's hands-on coding quest for each new C topic
+## (at the "quests_here" marker, or after the tour's lesson step).
 func steps_for(level: int) -> Array:
 	if GameState.short_tour:
 		return _short_tour(level)
-	var steps := _walkthrough(level)
+	var tour := _walkthrough(level, true)
 	var quests: Array = MisoQuests.for_level(level)
-	if quests.is_empty():
-		return steps
 	var who := _first_staff()
-	steps.append({"do": "Close the Lessons window when you're ready to code.", "say": "Now let's [b]practise[/b]! For each new C idea I'll give you a small coding quest. Close the Lessons window when you're ready ([b]T[/b] opens it again any time).", "until": "lessons_closed"})
+	var qsteps: Array = []
 	for k in quests.size():
 		var q: Dictionary = quests[k]
-		steps.append({"quest_index": k, "example": q.example, "point": "editor",
-			"say": "[b]C Quest %d of %d: %s[/b]\n%s Here's an example (write it inside [b]main()[/b]):" % [k + 1, quests.size(), q.topic, q.say]})
-		steps.append({"quest_index_do": k, "example": q.example, "point": "editor",
+		qsteps.append({"quest_index": k, "example": q.example, "point": "editor",
 			"do": q.do.replace("{who}", who), "until": "miso:%d" % k,
-			"say": "Open a staff member's program ([b]E[/b]), write it your way and press [b]Run[/b]. I'll check your code while it runs."})
-	steps.append({"say": "Every C quest for this level is done. Great coding, chef! ★"})
-	return steps
+			"say": "[b]C Quest %d of %d: %s[/b]\n%s Write it in [b]main()[/b] and press [b]Run[/b]." % [k + 1, quests.size(), q.topic, q.say]})
+	var out: Array = []
+	var placed := false
+	for st in tour:
+		if st.has("quests_here"):
+			out.append_array(qsteps)
+			placed = true
+		else:
+			out.append(st)
+	if not placed and not qsteps.is_empty():
+		out.append({"do": "Close the Lessons window when you're ready to code.", "say": "Now let's [b]practise[/b]! For each new C idea I'll give you a small coding quest. Close the Lessons window when you're ready ([b]T[/b] opens it again any time).", "until": "lessons_closed"})
+		out.append_array(qsteps)
+		out.append({"say": "Every C quest for this level is done. Great coding, chef! ★"})
+	return out
 
 
 ## "I know some C": a quick tour; Chef Miso's C quests wait in the Quest Log.
@@ -550,40 +571,36 @@ func _short_tour(level: int) -> Array:
 	return out
 
 
-func _walkthrough(level: int) -> Array:
+func _walkthrough(level: int, keep_marker := false) -> Array:
+	var all := _walkthrough_steps(level)
+	if keep_marker:
+		return all
+	return all.filter(func(st): return not st.has("quests_here"))
+
+
+func _walkthrough_steps(level: int) -> Array:
 	var who := _first_staff()
 	match level:
 		1:
+			# Short on purpose: coding starts at step 6. Window moving/resizing and
+			# zoom are mentioned once instead of being drilled.
 			return [
 				{"say": "Welcome to [b]Byte n' Bite[/b], chef! I'm [b]Chef Miso[/b]. You run this little stall, and your staff cook whatever you [b]program[/b] them to do in C. Let me show you around!"},
 				{"do": "Move around with [b]WASD[/b] or the [b]arrow keys[/b].", "say": "That cat in the apron is you, the [b]Manager[/b]. Take a little walk: use [b]WASD[/b] or the [b]arrow keys[/b].", "until": "moved", "point": "manager"},
-				{"say": "See the [b]thought bubble[/b] over your head when you stand next to something? It tells you what pressing [b]E[/b] will do."},
-				{"do": "Walk up to %s and press [b]E[/b]." % who, "say": "This is [b]%s[/b], your cook. Walk up to %s and press [b]E[/b] to open %s program." % [who, who, "her" if who == "Jane" else "their"], "until": "panel_open", "point": "staff"},
-				{"say": "This is the [b]code editor[/b]. You write C here. Under it, the [b]Output[/b] box shows printf messages and mistakes (with the line number)."},
-				{"say": "Buttons control the code: [b]Run[/b] starts it from the top, [b]Stop[/b] freezes %s on the current line, [b]Continue[/b] goes on, and [b]Step[/b] runs just ONE line so you can watch the [b]Variables[/b] box change." % who},
-				{"say": "Stuck on a line? Point at it and read it in plain English just under the code. The [b]Insert[/b] buttons add ready-made code, and suggestions pop up while you type (press [b]Tab[/b] or [b]Enter[/b] to use one).", "point": "code"},
-				{"do": "Press [b]Run[/b].", "say": "Let's see it work. If the editor was empty, I wrote a tiny program for you. Press [b]Run[/b]!", "until": "ran", "point": "run"},
-				{"say": "See the [b]thought bubble[/b] over %s's head? Whatever [b]printf[/b] prints, %s [b]says out loud[/b]. That's how your staff talk to customers!" % [who, who], "point": "staff"},
-				{"do": "Change the words inside printf(\"...\") and press [b]Run[/b].", "say": "Your turn: change the words inside [b]printf(\"...\")[/b], for example [b]printf(\"Welcome to Byte n' Bite!\\n\");[/b], then press [b]Run[/b] to hear %s say it." % who, "until": "talked", "point": "run"},
-				{"say": "You can set the editor up the way you like. Drag its [b]title bar[/b] to move it anywhere on the screen.", "point": "editor_title"},
-				{"do": "Drag the [b]corner grip[/b] (bottom right) to resize the editor.", "say": "Too big or too small? Drag the [b]corner grip[/b] at the bottom right of the editor to make the whole window bigger or smaller.", "until": "resized", "point": "grip"},
-				{"do": "Hold [b]Ctrl[/b] and scroll the [b]mouse wheel[/b] over the code.", "say": "You can zoom the code too: hold [b]Ctrl[/b] and scroll the [b]mouse wheel[/b] over the code ([b]Ctrl+0[/b] puts it back). The Lessons, Recipe Book, Library and Stats windows resize with their corner grip as well.", "until": "zoomed", "point": "code"},
-				{"do": "Close the editor ([b]Close[/b] or [b]Esc[/b]).", "say": "Nice! %s keeps working even after you close the editor. Close it now." % who, "until": "panel_closed"},
-				{"say": "Customers order [b]Today's Special[/b] (the gold button at the top left). Orders appear on the [b]Order board[/b] at the bottom right.", "point": "board"},
-				{"say": "Cooking uses ingredients. When they run out, a notice pops up and you buy more at the [b]Night Market[/b]. Every new game starts with [b]20 coins[/b], so spend wisely!"},
-				{"do": "Open the Night Market ([b]M[/b], the market icon, or the back door).", "say": "Let's visit the market. Press [b]M[/b], click the market icon, or walk out the back door.", "until": "market", "point": "hud:market"},
-				{"say": "Walk to a stall and press [b]E[/b] to shop. Use [b]+ / -[/b] or click the number and type how many you want."},
-				{"say": "A [b]delivery truck[/b] brings what you buy to the delivery area by the back door. Walk to the crates and press [b]E[/b] to put them away."},
-				{"do": "Go back to the restaurant (the glowing pad or [b]M[/b]).", "say": "Step on the glowing pad, or press [b]M[/b], to go back to the restaurant.", "until": "back", "point": "hud:market"},
-				{"say": "The icons at the top right open everything: Market [b]M[/b], Lessons [b]T[/b], Recipe Book [b]R[/b], Library [b]L[/b], Stats [b]Tab[/b] and Pause [b]Esc[/b]. Hover one to see its name.", "point": "buttons"},
-				{"say": "Your [b]goals[/b] are at the top left. Finish them, then upgrade the restaurant at the [b]chalkboard[/b]. Every new level teaches new C, and I'll show you what's new.", "point": "goals"},
-				{"say": "One challenge is [b]Talk to the customer[/b]: after serve(), use printf so %s says the dish with [b]%%s[/b] and its price with [b]%%.2f[/b], like [b]printf(\"Here's your %%s, for a price of %%.2f\\n\", dish, price);[/b]" % who, "point": "goals"},
-				{"do": "Press [b]T[/b] to open your first C lesson.", "say": "Last thing: your first C lesson! Press [b]T[/b] or click the cap icon.", "until": "lessons", "point": "hud:tutorial"},
-				{"say": "This is a [b]window[/b]. Every window (Lessons, Recipe Book, Library, Stats and the code editor) can be moved and resized, so you can set up your screen your way."},
-				{"do": "Drag the Lessons window (hold on its wooden frame) to move it.", "say": "Hold the mouse on the window's [b]wooden frame[/b] (not on a button) and [b]drag[/b] it somewhere else.", "until": "win_moved"},
-				{"do": "Drag the [b]corner grip[/b] (bottom right) to resize the Lessons window.", "say": "Now drag the [b]corner grip[/b] at the bottom right of the window to make it [b]bigger or smaller[/b].", "until": "win_resized", "point": "win_grip"},
-				{"say": "The [b]Recipe Book (R)[/b], [b]Library (L)[/b], [b]Stats (Tab)[/b] and the [b]code editor[/b] work the same way, and the game remembers where you put them."},
-				{"say": "Read a page, press [b]Try it[/b] to run the example, and answer the quick check to earn a [b]star[/b]. Have fun, chef!"},
+				{"do": "Walk up to %s and press [b]E[/b]." % who, "say": "This is [b]%s[/b], your cook. Walk up to %s and press [b]E[/b] (the bubble over your head shows what E will do)." % [who, who], "until": "panel_open", "point": "staff"},
+				{"say": "This is the [b]code editor[/b]. You write C here, and the [b]Output[/b] box under it shows messages and mistakes. Point at any line to read it in plain English.", "point": "code"},
+				{"do": "Press [b]Run[/b].", "say": "I wrote a tiny program for you. Press [b]Run[/b] and watch %s!" % who, "until": "ran", "point": "run"},
+				{"say": "Whatever [b]printf[/b] prints, %s [b]says[/b] in a thought bubble. That's how your staff talk to customers. Now let's learn C, one small quest at a time!" % who, "point": "staff"},
+				{"quests_here": true},
+				{"do": "Close the editor ([b]Close[/b] or [b]Esc[/b]).", "say": "Great coding! Close the editor now; %s keeps working even when it's closed." % who, "until": "panel_closed"},
+				{"say": "Customers are coming! They all order [b]Today's Special[/b] (the gold button at the top left), and orders show on the [b]Order board[/b]. Program %s to cook and [b]serve()[/b] it." % who, "point": "board"},
+				{"do": "Open the Night Market ([b]M[/b] or the market icon).", "say": "Cooking uses ingredients, and you start with [b]20 coins[/b]. When stock runs low, buy more at the [b]Night Market[/b]: press [b]M[/b].", "until": "market", "point": "hud:market"},
+				{"say": "Walk to a stall and press [b]E[/b] to shop. A [b]delivery truck[/b] brings what you buy to the back door: walk to the crates and press [b]E[/b] to put them away."},
+				{"do": "Go back to the restaurant (the glowing pad or [b]M[/b]).", "say": "Step on the glowing pad, or press [b]M[/b], to go back.", "until": "back", "point": "hud:market"},
+				{"say": "The icons at the top right open everything (hover one to see its name). Every window can be [b]dragged[/b] by its frame and [b]resized[/b] with its corner grip, and [b]Ctrl + mouse wheel[/b] zooms code.", "point": "buttons"},
+				{"say": "Your [b]Quest Log[/b] (left side, [b]G[/b]) has the [b]Level Challenge[/b] and the restaurant goals. Finish them, then upgrade at the [b]chalkboard[/b] to learn new C.", "point": "goals"},
+				{"do": "Press [b]T[/b] to open the Lessons.", "say": "Stuck on any C idea? The [b]Lessons[/b] explain it with examples you can try. Press [b]T[/b] or click the cap icon.", "until": "lessons", "point": "hud:tutorial"},
+				{"say": "Read a page, press [b]Try it[/b] to run its example, and answer the quick check to earn a [b]star[/b]. Have fun, chef!"},
 			]
 		2:
 			return [

@@ -534,7 +534,7 @@ func counter_full() -> bool:
 ## A dish nobody ordered yet waits on the serving counter.
 func put_on_counter(dish: String) -> void:
 	counter_dishes.append(dish)
-	hud.show_toast("%s is waiting on the counter: no customer has ordered it yet." % Kitchen.title_of(dish))
+	hud.show_toast("%s is waiting on the counter: the next customer who orders it gets it." % Kitchen.title_of(dish))
 
 
 ## Path to stand next to a point (a customer's seat).
@@ -1047,6 +1047,20 @@ func check_challenges(staff: Node) -> void:
 			hud.show_toast("Challenge done: %s!  +%d coins  +%d EXP%s" % [g.title, g.coins, g.exp, _all_done_text(lv)])
 
 
+## After a Run that served food but finished no new challenge: what's still
+## to do, so a beginner knows why nothing happened ("" when nothing to say).
+func challenge_tip(staff: Node) -> String:
+	var lv: int = GameState.restaurant_level
+	if not GameState.miso_done(lv) or int(staff.run_trace.get("served", 0)) < 1:
+		return ""
+	if GameState.challenges_done.size() > int(staff.run_trace.get("challenges_before", 0)):
+		return ""
+	for g in LevelChallenges.for_level(lv):
+		if not ("%d:%s" % [lv, g.id]) in GameState.challenges_done:
+			return "Level Challenge still to do: %s. %s (Quest Log: G)" % [g.title, g.task]
+	return ""
+
+
 ## Level goal reached (a sale counted toward it): toast with the reward.
 func _on_goal_reached(level: int, id: String) -> void:
 	var g: Dictionary = LevelGoals.find(level, id)
@@ -1488,6 +1502,8 @@ var _miso_level := 0
 var _miso_runs := {}       # staff name -> run_count when that quest started
 var _miso_timer := 0.0
 var _miso_hinted := {}    # staff name -> run_count already given a hint
+var _miso_active := false  # the current quest has been given (not mid-tour)
+var _miso_ok := {}         # staff name -> run_count seen meeting the quest once
 
 
 ## The current Chef Miso quest is done when any staff member's NEW run (Run
@@ -1504,28 +1520,48 @@ func _check_miso_quest(delta: float) -> void:
 	if q.is_empty():
 		return
 	var k: int = GameState.miso_progress(lv)
-	if k != _miso_k or lv != _miso_level:
+	# Only the quest Chef Miso has actually given counts: during the tour (and
+	# while he explains a quest) runs are not checked, so no hints for quests
+	# the player hasn't seen yet.
+	var active: bool = guide == null or not guide.is_running() or guide.current_quest_index() == k
+	if k != _miso_k or lv != _miso_level or (active and not _miso_active):
 		_miso_k = k
 		_miso_level = lv
+		_miso_active = active
 		_miso_runs = {}
+		_miso_ok = {}
 		for s in _staff_list():
 			_miso_runs[s.staff_name] = s.run_count
 		return
+	_miso_active = active
+	if not active:
+		return
 	for s in _staff_list():
-		var fresh: bool = s.run_count > int(_miso_runs.get(s.staff_name, 0))
-		# A new Run finished without the quest's C idea: say what's missing.
-		if fresh and not s.is_running() and _miso_hinted.get(s.staff_name, -1) != s.run_count \
-				and not MisoQuests.met(q.check, s.run_trace):
-			_miso_hinted[s.staff_name] = s.run_count
-			hud.notify("Chef Miso: not quite yet", MisoQuests.why_not(q.check, s.run_trace),
-				load("res://assets/ui/windows/tutorial/mentor.png"), Color(0.55, 0.65, 0.9), 8.0)
+		if s.run_count <= int(_miso_runs.get(s.staff_name, 0)):
 			continue
-		if fresh and MisoQuests.met(q.check, s.run_trace):
+		var err := bool(s.run_trace.get("error", false))
+		var ok: bool = not err and MisoQuests.met(q.check, s.run_trace)
+		if ok and s.is_running() and _miso_ok.get(s.staff_name, -1) != s.run_count:
+			# Met while running: wait one more check, so a line that fails right
+			# after (cook() in the wrong place) doesn't pass the quest.
+			_miso_ok[s.staff_name] = s.run_count
+			continue
+		if ok:
 			if GameState.complete_miso_quest(lv, k):
+				hud.clear_notices("Chef Miso: not quite yet")
 				var left: int = MisoQuests.for_level(lv).size() - (k + 1)
 				hud.notify("Chef Miso Quest done!", "%s  ✔%s" % [q.topic, ("   Next quest is in your Quest Log." if left > 0 else "   Level Challenge unlocked!")],
 					load("res://assets/ui/windows/tutorial/mentor.png"), Color(0.95, 0.7, 0.25), 5.0)
 			return
+		# A new Run finished without the quest's C idea: say what's missing
+		# (a red error in the Output already explains itself).
+		if not s.is_running() and _miso_hinted.get(s.staff_name, -1) != s.run_count:
+			_miso_hinted[s.staff_name] = s.run_count
+			if err:
+				continue
+			hud.clear_notices("Chef Miso: not quite yet")
+			hud.notify("Chef Miso: not quite yet", MisoQuests.why_not(q.check, s.run_trace),
+				load("res://assets/ui/windows/tutorial/mentor.png"), Color(0.55, 0.65, 0.9), 8.0)
 
 
 

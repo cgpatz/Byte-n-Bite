@@ -1125,7 +1125,10 @@ func _printf(n: Dictionary):
 				if v is String:
 					out += (spec + "s") % v
 				else:
+					# Dishes print their menu name ("Eggsilog"); other kitchen names as written.
 					var nm := Kitchen.name_of(int(v))
+					if Kitchen.DISHES.has(nm):
+						nm = Kitchen.title_of(nm)
 					out += (spec + "s") % (nm if nm != "" else str(v))
 	if vi < values.size():
 		_fail("printf got more values than % codes.", n.line)

@@ -12,7 +12,7 @@ extends RefCounted
 const QUESTS := {
 	1: [
 		{"topic": "Output with printf", "check": "printf",
-			"say": "Your first C line! [b]printf[/b] prints text, and the staff member says it out loud. Put the words in double quotes and end with [b]\\n[/b] for a new line. Try greeting yourself by name!",
+			"say": "Your first C line! [b]printf[/b] prints text, and the staff member says it. Put the words in double quotes, end with [b]\\n[/b], and greet yourself by name!",
 			"example": "printf(\"Good morning!\\n\");",
 			"do": "Make {who} greet YOU: [b]printf[/b] a line with your name, then press [b]Run[/b]."},
 		{"topic": "Kitchen commands", "check": "kitchen",
@@ -148,7 +148,7 @@ static func met(check: String, trace: Dictionary) -> bool:
 			var all := ""
 			for p in printfs:
 				all += String(p.get("text", ""))
-			return all.to_lower().contains(_player_name().to_lower())
+			return _greets_player(all)
 		"kitchen":
 			return _n(trace, "fn:go_to") + _n(trace, "fn:move_to") >= 1 and _n(trace, "fn:pick_up") >= 1 and _n(trace, "fn:cook") >= 1
 		"int", "float", "char":
@@ -209,6 +209,19 @@ static func met(check: String, trace: Dictionary) -> bool:
 			return _n(trace, "library_call") >= 1
 	return false
 
+
+
+## A greeting counts if it has any part of the Manager's name ("CG" in
+## "CG Patz") or introduces someone ("I'm Sam", "my name is Sam"), since
+## beginners often use a nickname.
+static func _greets_player(text: String) -> bool:
+	var t := text.to_lower()
+	for part in _player_name().to_lower().replace(",", " ").split(" ", false):
+		if part.length() >= 2 and t.contains(part):
+			return true
+	var r := RegEx.new()
+	r.compile("(i'm|i am|my name is|name's)\\s+[a-z]{2,}")
+	return r.search(t) != null and not t.contains("i'm jane! off to the fridge")
 
 
 static func _player_name() -> String:

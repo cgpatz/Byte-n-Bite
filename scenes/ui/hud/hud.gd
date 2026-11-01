@@ -690,6 +690,11 @@ func notify(title: String, body: String, icon: Texture2D = null, accent := Color
 		holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		layer.add_child(holder)
 		holder.add_child(_notes)
+	# The same message already on screen: don't stack a copy.
+	var key := title + "|" + body
+	for c in _notes.get_children():
+		if c.has_meta("key") and c.get_meta("key") == key and not c.is_queued_for_deletion():
+			return
 	Sfx.play("pop", -4.0)
 	while _notes.get_child_count() >= 3:
 		var old := _notes.get_child(0)
@@ -711,6 +716,8 @@ func notify(title: String, body: String, icon: Texture2D = null, accent := Color
 	st.shadow_size = 6
 	card.add_theme_stylebox_override("panel", st)
 	card.custom_minimum_size = Vector2(600, 0)
+	card.set_meta("key", key)
+	card.set_meta("title", title)
 	card.mouse_filter = Control.MOUSE_FILTER_STOP
 	card.gui_input.connect(func(e: InputEvent):
 		if e is InputEventMouseButton and e.pressed:
@@ -751,6 +758,17 @@ func notify(title: String, body: String, icon: Texture2D = null, accent := Color
 	tw.tween_interval(seconds)
 	tw.tween_property(card, "modulate:a", 0.0, 0.5)
 	tw.tween_callback(card.queue_free)
+
+
+## Removes notices whose title starts with prefix (e.g. an old "not quite yet"
+## once that quest is done), so the player never sees mixed messages.
+func clear_notices(prefix: String) -> void:
+	if _notes == null:
+		return
+	for c in _notes.get_children():
+		if String(c.get_meta("title", "")).begins_with(prefix):
+			_notes.remove_child(c)
+			c.queue_free()
 
 
 # --- Order board (serving counter orders, 3 columns × 4 rows, scrolls) ---------------
@@ -824,9 +842,20 @@ func _build_order_board() -> void:
 ## Hide (just the title bar stays) or show the Order board.
 func set_orders_open(on: bool) -> void:
 	_board_open = on
-	_board_scroll.visible = on
 	_board_toggle.text = "Hide ▾" if on else "Show ▴"
-	var h := BOARD_ROWS * TILE.y + (BOARD_ROWS - 1) * 8 + 60 if on else 52.0
+	_fit_board()
+
+
+## The board is only as tall as its orders (up to 4 rows; scroll for more),
+## and just a title bar when there are none, so it doesn't hide the kitchen.
+var _board_count := 0
+func _fit_board() -> void:
+	var rows := clampi(ceili(_board_count / float(BOARD_COLS)), 0, BOARD_ROWS)
+	var show := _board_open and rows > 0
+	_board_scroll.visible = show
+	var grid_h := rows * TILE.y + maxi(rows - 1, 0) * 8
+	_board_scroll.custom_minimum_size.y = grid_h
+	var h := grid_h + 60.0 if show else 52.0
 	_board.offset_top = -h - 24
 
 
@@ -846,6 +875,8 @@ func refresh_orders() -> void:
 	for c in _board_grid.get_children():
 		c.queue_free()
 	_board_title.text = "Orders (%d)" % list.size() if not list.is_empty() else "Orders: none yet"
+	_board_count = list.size()
+	_fit_board()
 	for o in list:
 		_board_grid.add_child(_order_tile(o))
 

@@ -325,7 +325,8 @@ func run_program() -> void:
 		_say(t))
 	if _speech:
 		_speech.clear()
-	run_trace = {"served": 0, "printfs": [], "stats": interp.stats, "dishes": {}, "tickets": 0}
+	run_trace = {"served": 0, "printfs": [], "stats": interp.stats, "dishes": {}, "tickets": 0,
+		"challenges_before": GameState.challenges_done.size()}
 	run_count += 1
 	last_variables = []
 	interp.line_changed.connect(func(l: int):
@@ -338,9 +339,11 @@ func run_program() -> void:
 		GameState.staff_programs[staff_name] = program_source
 	if not interp.compile(program_source, GameState.library_slots):
 		_log("[color=#b9a58a]▶ %s reads the program...[/color]" % staff_name)
+		run_trace["error"] = true
 		_report_error(interp.error)
 		return
-	_log("[color=#b9a58a]▶ %s starts working (hands and plate cleared).[/color]" % staff_name)
+	var back := _return_unused()
+	_log("[color=#b9a58a]▶ %s starts working (hands and plate cleared%s).[/color]" % [staff_name, back])
 	held = {}
 	plate_items = {}
 	_interp = interp
@@ -363,10 +366,15 @@ func run_program() -> void:
 	if _stop_requested:
 		_log("[color=#b9a58a]■ Stopped.[/color]")
 	elif not interp.error.is_empty():
+		run_trace["error"] = true
 		_report_error(interp.error)
 	else:
 		_log("[color=#9fd67a]✔ Program finished.[/color]")
 		_mistakes.clear()
+	if not _stop_requested and world and world.has_method("challenge_tip"):
+		var tip: String = world.challenge_tip(self)
+		if tip != "":
+			_log("[color=#e8c46a]%s[/color]" % tip.replace("[", "[lb]"))
 	var fin: Array = interp.visible_variables()
 	if not fin.is_empty():
 		last_variables = fin
@@ -460,6 +468,50 @@ func restart_program() -> void:
 	run_program()
 
 
+## Food left in the hands or on the plate from an earlier Run that didn't end
+## in a sale goes back to the kitchen stock, so a beginner's mistakes don't
+## cost ingredients. Returns a note for the Output ("" when nothing went back).
+func _return_unused() -> String:
+	var back := {}
+	if not held.is_empty():
+		var hid := Kitchen.name_of(held.id)
+		if Kitchen.is_dish(held.id):
+			for ing in Kitchen.DISHES[hid].recipe:
+				back[ing] = int(back.get(ing, 0)) + int(Kitchen.DISHES[hid].recipe[ing])
+		elif Kitchen.INGREDIENTS.has(hid):
+			back[hid] = int(back.get(hid, 0)) + 1
+	for ing in plate_items:
+		if Kitchen.INGREDIENTS.has(ing):
+			back[ing] = int(back.get(ing, 0)) + int(plate_items[ing])
+	if back.is_empty() or GameState.unlimited_ingredients:
+		return ""
+	var parts: Array = []
+	for ing in back:
+		GameState.add_ingredient(ing, back[ing])
+		parts.append("%d %s" % [back[ing], ing])
+	return "; unused %s went back to stock" % ", ".join(parts)
+
+
+## The station in this restaurant that cooks an ingredient ("" if none).
+func _cook_here(ing: String) -> String:
+	for st in Kitchen.cook_stations(ing):
+		if world and world.get_station(st) != null:
+			return st
+	return ""
+
+
+## Station names that exist in this restaurant.
+func _stations_here() -> Array:
+	var out: Array = []
+	if world:
+		for st in Kitchen.STATIONS:
+			if st in ["RECEIVING", "BACK_DOOR"]:
+				continue
+			if world.get_station(st) != null:
+				out.append(st)
+	return out
+
+
 ## Called on level change: forget position-based state and empty the hands.
 func reset_work() -> void:
 	stop_program()
@@ -512,7 +564,7 @@ func _mistake_kind(msg: String) -> String:
 		return "braces"
 	if m.contains("doesn't know what") or m.contains("hasn't been declared") or m.contains("did you mean"):
 		return "unknown"
-	if m.contains("station") or m.contains("holding") or m.contains("fridge") or m.contains("hands"):
+	if m.contains("there is no") or m.contains("station") or m.contains("holding") or m.contains("fridge") or m.contains("hands"):
 		return "kitchen"
 	if m.contains("expected"):
 		return "syntax"
@@ -725,7 +777,10 @@ func _do_move_to(id: int) -> Dictionary:
 		return {"error": "%s isn't in a restaurant." % staff_name}
 	var station: Station = world.get_station(sname)
 	if station == null:
-		return {"error": "There is no %s in the %s." % [sname, _here_name()]}
+		var tip := ""
+		if not held.is_empty() and Kitchen.is_item(held.id) and _cook_here(Kitchen.name_of(held.id)) != "" and Kitchen.COOKING.has(sname):
+			tip = " %s holds %s: it cooks at the %s here." % [staff_name, Kitchen.name_of(held.id), _cook_here(Kitchen.name_of(held.id))]
+		return {"error": "There is no %s in the %s.%s Stations here: %s." % [sname, _here_name(), tip, ", ".join(_stations_here())]}
 	# Stand exactly in front of (below) the station; fall back to "near it"
 	# for places like a door set in a wall.
 	_going_to = ""
@@ -789,6 +844,10 @@ func _do_pick_up(id: int) -> Dictionary:
 func _do_cook() -> Dictionary:
 	if not Kitchen.COOKING.has(_at_station):
 		var where := "not at a station" if _at_station == "" else "at the %s" % _at_station
+		var hint_st := "GRILL"
+		if not held.is_empty() and Kitchen.is_item(held.id) and _cook_here(Kitchen.name_of(held.id)) != "":
+			hint_st = _cook_here(Kitchen.name_of(held.id))
+			return {"error": "cook() needs a cooking station, but %s is %s. %s cooks at the %s: go_to(%s); first." % [staff_name, where, Kitchen.name_of(held.id), hint_st, hint_st]}
 		return {"error": "cook() needs a cooking station like the GRILL, but %s is %s." % [staff_name, where]}
 	if held.is_empty():
 		return {"error": "%s isn't holding anything to cook. pick_up() an ingredient first." % staff_name}
@@ -923,4 +982,6 @@ func _do_serve() -> Dictionary:
 		return {"value": 0}
 	world.put_on_counter(dish)
 	held = {}
+	_log("[color=#b9a58a]%s is on the counter: the next customer who orders it gets it (it still counts as served).[/color]" % Kitchen.title_of(dish))
+	_served_one(dish)
 	return {"value": 0}

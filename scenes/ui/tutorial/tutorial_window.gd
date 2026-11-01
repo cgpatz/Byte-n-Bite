@@ -96,6 +96,7 @@ class SandboxHost:
 
 
 func _build() -> void:
+	default_scale = 0.74  # bigger on first open so lesson text is easy to read
 	Art.panel(frame, "library/board.png", Rect2(152, 40, 1616, 1000), [6, 6, 6, 6], true)
 	add_title_card("library/title_paper.png", "C Lessons", Vector2(184, 64))
 	add_close_button(Vector2(1572, 66))

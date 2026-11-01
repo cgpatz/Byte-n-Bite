@@ -16,6 +16,8 @@ const DESIGN := Vector2(1920, 1080)
 const GRIP := 34.0
 const MIN_SCALE := 0.3
 const DEFAULT_SCALE := 0.54
+## First-open size; reading windows (Lessons) start bigger so text is readable.
+var default_scale := DEFAULT_SCALE
 
 var frame: Control
 var close_button: Button
@@ -79,7 +81,7 @@ func open() -> void:
 			_place(Vector2(saved[0], saved[1]), saved[2])
 		else:
 			# New windows cascade so they don't hide each other.
-			var s := DEFAULT_SCALE
+			var s := default_scale
 			var c := (size - window_rect.size * s) / 2.0 - window_rect.position * s
 			_place(c + Vector2(40, 30) * (_opened_count % 5) - Vector2(80, 60), s)
 			_opened_count += 1

@@ -94,7 +94,7 @@ func _run_all() -> void:
 	await check("globals + scopes", 'int total = 10;\nvoid add(int n){ total += n; }\nvoid main(){ add(5); int total2 = total; { int x = 1; total2 += x; } printf("%d %d\\n", total, total2); }', "15 16\n")
 	await check("printf width + %s kitchen name", 'void main(){ printf("[%5d][%-3d][%s]\\n", 42, 7, GRILL); }', "[   42][7  ][GRILL]\n")
 	await check("kitchen calls in order", 'void main(){ move_to(FRIDGE); pick_up(RICE); if (holding() == RICE) { move_to(GRILL); cook(); } assemble(EGGSILOG); }', "", "", 1, ["move_to(1)", "pick_up(101)", "holding()", "move_to(4)", "cook()", "assemble(201)"])
-	await check("dish names print", 'void main(){ printf("%s %s\\n", EGGSILOG, SIGNATURE_BOWL); }', "EGGSILOG SIGNATURE_BOWL\n")
+	await check("dish names print", 'void main(){ printf("%s %s\\n", EGGSILOG, SIGNATURE_BOWL); }', "Eggsilog Byte n' Bite Signature Bowl\n")
 	# --- Library (shared functions) ---
 	await check("library function", 'void main(){ printf("%d\\n", twice(21)); }', "42\n", "", 1, [], "int twice(int x) { return x * 2; }")
 	await check("program overrides library", 'int twice(int x){ return 0; }\nvoid main(){ printf("%d\\n", twice(21)); }', "0\n", "", 1, [], "int twice(int x) { return x * 2; }")

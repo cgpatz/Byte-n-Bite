@@ -426,7 +426,10 @@ func _build_variables_box() -> void:
 	console.reparent(row)
 	console.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var box := PanelContainer.new()
-	box.custom_minimum_size = Vector2(230, 0)
+	# Grows with the window (about a third of the row) so values aren't cut off.
+	box.custom_minimum_size = Vector2(200, 0)
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.size_flags_stretch_ratio = 0.55
 	box.add_theme_stylebox_override("panel", console.get_theme_stylebox("normal"))
 	row.add_child(box)
 	_vars_label = RichTextLabel.new()
@@ -456,7 +459,7 @@ func _refresh_variables() -> void:
 	var t := "[color=#c9b48f][b]Variables[/b][/color]\n"
 	var vars: Array = staff.variables() if staff else []
 	if vars.is_empty():
-		t += "[color=#8f8270]None yet. Variables you make (int eggs = 3;) show up here while the code runs.[/color]"
+		t += "[color=#8f8270]None yet. Try: int eggs = 3;[/color]"
 	for v in vars:
 		t += "[color=#7fb4e8]%s[/color] [b]%s[/b] = [color=#ffd98a]%s[/color]\n" % [v.type, v.name, _fmt_value(v.v, v.type)]
 	_vars_label.text = t.strip_edges()
