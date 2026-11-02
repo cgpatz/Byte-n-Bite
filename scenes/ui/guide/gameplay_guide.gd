@@ -74,17 +74,12 @@ func current_quest_index() -> int:
 	return int(st.get("quest_index", st.get("quest_index_do", -1)))
 
 
-## True during the tour part (before the coding quests start): the restaurant
-## holds new customers back so beginners can learn without pressure.
+## True while Chef Miso's tutorial runs (tour AND coding quests): the
+## restaurant holds new customers back until the whole tutorial is over, so
+## beginners can learn without pressure. (serve() with nobody waiting puts the
+## dish on the counter, which still counts for the quests.)
 func is_touring() -> bool:
-	if _i < 0 or _i >= _steps.size():
-		return false
-	for k in range(0, _i + 1):
-		var st: Dictionary = _steps[k]
-		if st.get("until", "") == "lessons_closed" and k < _i:
-			return false
-	# Customers wait during the tour, and come in while the coding quests run.
-	return not _steps[_i].has("quest_index")
+	return _i >= 0 and _i < _steps.size()
 
 
 ## Plays the guide for a restaurant level; returns when every step is done.
@@ -594,7 +589,7 @@ func _walkthrough_steps(level: int) -> Array:
 				{"do": "Drag the [b]corner grip[/b] (bottom right) to resize the editor.", "say": "Drag the [b]corner grip[/b] at the bottom right to make it bigger or smaller. Every window (Lessons, Recipe Book...) works the same way.", "until": "resized", "point": "grip"},
 				{"say": "Write C here and press [b]Run[/b]. The [b]Output[/b] box shows messages and mistakes, and whatever [b]printf[/b] prints, %s says in a thought bubble." % who, "point": "code"},
 				{"quests_here": true},
-				{"say": "Customers are coming! At this level they all order [b]Today's Special[/b] (top left). Run your Eggsilog program again for each one.", "point": "board"},
+				{"say": "When we're done, customers come in! At this level they all order [b]Today's Special[/b] (top left). Run your Eggsilog program again for each one.", "point": "board"},
 				{"say": "Out of ingredients? Buy more at the [b]Night Market[/b] ([b]M[/b]), then press [b]E[/b] on the crates the truck drops off.", "point": "hud:market"},
 				{"say": "Your [b]Quest Log[/b] ([b]G[/b]) shows the Level Challenge and goals for the next upgrade, and the [b]Lessons[/b] ([b]T[/b]) explain every C idea. Have fun, chef!", "point": "goals"},
 			]
