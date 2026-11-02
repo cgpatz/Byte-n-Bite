@@ -221,7 +221,7 @@ func _on_level_changed(level: int) -> void:
 ## profit, always running); 4) optional Mastery quests for bonus coins.
 ## The Challenge and the Goals unlock the next restaurant upgrade.
 const MisoQuests := preload("res://data/help/miso_quests.gd")
-const QL_W := 340.0
+const QL_W := 412.0  # the quest card width (460) minus the paper panel padding
 # Paper Notebook colours: dark ink on cream paper.
 const QL_INK := Color("3a2a1e")
 const QL_SOFT := Color("6b5442")
@@ -366,12 +366,22 @@ func _ql_layout() -> void:
 	if _ql_body == null:
 		return
 	var vs := get_viewport_rect().size
-	var max_h := maxf(200.0, vs.y - 200.0 - 260.0)
-	_ql_scroll.custom_minimum_size = Vector2(QL_W, minf(_ql_body.get_combined_minimum_size().y, max_h))
-	_goals.reset_size()
-	# The full log opens beside the quest card.
+	# The full log opens under the quest card (left column), so the middle of
+	# the screen stays clear; it scrolls when it is taller than the space left.
+	var top := 200.0
 	if _qcard:
-		_goals.position = Vector2(_qcard.position.x + _qcard.size.x + 10, _qcard.position.y)
+		top = _qcard.position.y + _qcard.size.y + 10.0
+	var want := _ql_body.get_combined_minimum_size().y
+	_ql_scroll.custom_minimum_size = Vector2(QL_W, want)
+	_goals.reset_size()
+	# Shrink the scroll area by however much the panel would run off the bottom.
+	var extra := _goals.get_combined_minimum_size().y - want   # header + panel padding
+	var room := maxf(160.0, vs.y - top - 16.0 - extra)
+	if want > room:
+		_ql_scroll.custom_minimum_size = Vector2(QL_W, room)
+		_goals.reset_size()
+	if _qcard:
+		_goals.position = Vector2(_qcard.position.x, top)
 
 
 ## A section card: coloured header bar + VBox for its rows (returned).

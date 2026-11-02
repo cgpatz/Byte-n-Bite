@@ -149,3 +149,103 @@ static func label(text: String, font_size := 20, color := INK, bold := false) ->
 	if bold:
 		l.add_theme_font_override("font", preload("res://scenes/ui/common/ui_art.gd").bold_font())
 	return l
+
+
+# --- Re-skinning older (dark wood) UI to the paper look --------------------------
+
+## A light colour made dark enough to read on cream paper (dark colours stay).
+static func ink_of(c: Color) -> Color:
+	if c.get_luminance() < 0.45:
+		return c
+	if c.s < 0.18:
+		return INK
+	return Color.from_hsv(c.h, minf(1.0, c.s + 0.35), 0.42, c.a)
+
+
+static var _bb_color := RegEx.create_from_string("\\[color=#([0-9a-fA-F]{6})\\]")
+
+
+## The same BBCode with every light [color=#rrggbb] darkened for paper.
+static func ink_bb(bb: String) -> String:
+	var out := ""
+	var at := 0
+	for m in _bb_color.search_all(bb):
+		out += bb.substr(at, m.get_start() - at)
+		out += "[color=#%s]" % ink_of(Color("#" + m.get_string(1))).to_html(false)
+		at = m.get_end()
+	return out + bb.substr(at)
+
+
+## Plain paper box (for pop-ups and cards): cream face, ink border.
+static func flat(pad := 12.0, face := FACE, radius := 8) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = face
+	sb.border_color = INK
+	sb.set_border_width_all(3)
+	sb.set_corner_radius_all(radius)
+	sb.set_content_margin_all(pad)
+	sb.shadow_color = Color(0, 0, 0, 0.25)
+	sb.shadow_size = 4
+	sb.shadow_offset = Vector2(2, 3)
+	return sb
+
+
+## The receipt look for program output: off-white slip, soft ink border.
+static func receipt(pad := 10.0) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color("fbf4e2")
+	sb.border_color = INK_SOFT
+	sb.set_border_width_all(2)
+	sb.border_width_top = 4
+	sb.set_corner_radius_all(3)
+	sb.set_content_margin_all(pad)
+	return sb
+
+
+## True for a dark box that holds code (a mono-font label): those stay dark.
+static func _is_code_box(n: Node) -> bool:
+	for c in n.get_children():
+		if (c is Label or c is RichTextLabel) and c.has_theme_font_override("font" if c is Label else "normal_font"):
+			var f: Font = c.get_theme_font("font" if c is Label else "normal_font")
+			if f == preload("res://scenes/ui/common/ui_art.gd").mono():
+				return true
+	return false
+
+
+## Walks a node tree and moves it to the paper look: wood panels and dark flat
+## boxes become paper, buttons become paper buttons (meta "paper_gold" = gold),
+## light text becomes ink. Nodes in `skip` (and their children) and code boxes
+## are left as they are.
+static func paperize(root: Node, skip: Array = []) -> void:
+	if root == null or root in skip:
+		return
+	if root is Button and not (root is CheckBox or root is CheckButton or root is OptionButton):
+		if not root.has_meta("paper_skip"):
+			var fs: int = (root as Control).get_theme_font_size("font_size")
+			style_button(root, root.has_meta("paper_gold"), clampi(fs, 12, 24))
+		return
+	if root is CheckBox or root is CheckButton:
+		root.add_theme_color_override("font_color", INK)
+		root.add_theme_color_override("font_hover_color", INK)
+		root.add_theme_color_override("font_pressed_color", INK)
+		root.add_theme_constant_override("outline_size", 0)
+	elif root is Label:
+		if not (root.get_parent() is PanelContainer and _is_code_box(root.get_parent())):
+			root.add_theme_color_override("font_color", ink_of(root.get_theme_color("font_color")))
+			root.add_theme_constant_override("outline_size", 0)
+	elif root is RichTextLabel:
+		if not (root.get_parent() is PanelContainer and _is_code_box(root.get_parent())):
+			root.add_theme_color_override("default_color", ink_of(root.get_theme_color("default_color")))
+			root.add_theme_constant_override("outline_size", 0)
+	elif root is PanelContainer or root is PopupPanel:
+		var key := "panel"
+		if root is PanelContainer and root.theme_type_variation == &"WoodPanel":
+			root.theme_type_variation = &""
+			root.add_theme_stylebox_override(key, panel(Vector4(24, 30, 24, 16)))
+		else:
+			var sb: StyleBox = root.get_theme_stylebox(key)
+			if sb is StyleBoxFlat and sb.bg_color.get_luminance() < 0.3 and sb.bg_color.a > 0.3 and not _is_code_box(root):
+				var f := flat(maxf(sb.content_margin_left, 8.0))
+				root.add_theme_stylebox_override(key, f)
+	for c in root.get_children():
+		paperize(c, skip)

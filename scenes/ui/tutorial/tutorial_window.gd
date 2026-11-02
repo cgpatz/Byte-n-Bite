@@ -18,6 +18,7 @@ const Kitchen := preload("res://systems/kitchen/kitchen_rules.gd")
 const CInterpreter := preload("res://systems/c_interpreter/c_interpreter.gd")
 const PANEL_SCRIPT := preload("res://scenes/ui/programming_panel/programming_panel.gd")
 const MENTOR := "res://assets/ui/windows/tutorial/mentor.png"
+const Paper := preload("res://scenes/ui/common/paper.gd")
 
 ## Cheerful lines Chef Miso uses to open each page (picked by page number).
 const CHEERS := ["Let's go!", "You're doing great!", "This one is fun.", "Almost a pro already!",
@@ -82,7 +83,7 @@ class SandboxHost:
 			if a is int and (Kitchen.is_item(a) or Kitchen.is_dish(a) or (name in ["go_to", "move_to"] and Kitchen.is_station(a))):
 				n = Kitchen.name_of(a)
 			shown.append(n)
-		said.call("[color=#7a9a5a]→ %s: %s(%s)[/color]\n" % [staff_name, name, ", ".join(shown)])
+		said.call("[color=#3f6a2a]→ %s: %s(%s)[/color]\n" % [staff_name, name, ", ".join(shown)])
 		await tree.create_timer(0.12).timeout
 		match name:
 			"pick_up":
@@ -97,12 +98,24 @@ class SandboxHost:
 
 func _build() -> void:
 	default_scale = 0.74  # bigger on first open so lesson text is easy to read
-	Art.panel(frame, "library/board.png", Rect2(152, 40, 1616, 1000), [6, 6, 6, 6], true)
+	# Paper Notebook look: a paper sheet instead of the wood board (the
+	# note papers inside stay); buttons are paper buttons (see _btn).
+	var sheet := Panel.new()
+	sheet.position = Vector2(152, 40)
+	sheet.size = Vector2(1616, 1000)
+	sheet.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Notebook cover: plain kraft paper, a shade darker than the pages inside.
+	var cover := Paper.flat(0.0, Color("dcc79d"), 18)
+	cover.set_border_width_all(6)
+	cover.shadow_size = 8
+	sheet.add_theme_stylebox_override("panel", cover)
+	frame.add_child(sheet)
 	add_title_card("library/title_paper.png", "C Lessons", Vector2(184, 64))
 	add_close_button(Vector2(1572, 66))
+	Paper.style_button(close_button, false, 28)
 	var tx := 184 + maxf(Art.size_of("library/title_paper.png").x, 300) + 40
-	_mode_tabs.append(Art.button(frame, "Lessons", Rect2(tx, 80, 220, 68), true, 26))
-	_mode_tabs.append(Art.button(frame, "Kitchen Functions", Rect2(tx + 236, 80, 330, 68), false, 26))
+	_mode_tabs.append(_btn(frame, "Lessons", Rect2(tx, 80, 220, 68), true, 26))
+	_mode_tabs.append(_btn(frame, "Kitchen Functions", Rect2(tx + 236, 80, 330, 68), false, 26))
 	for i in _mode_tabs.size():
 		_mode_tabs[i].pressed.connect(_show_mode.bind(i))
 	_lessons_root = _layer()
@@ -110,6 +123,11 @@ func _build() -> void:
 	_build_lessons()
 	_build_functions()
 	_show_mode(Mode.LESSONS)
+
+
+## An art-window button in the paper style (gold = the main action).
+func _btn(parent: Control, text: String, rect: Rect2, gold := false, fs := 26) -> Button:
+	return Paper.style_button(Art.button(parent, text, rect, gold, fs), gold, fs)
 
 
 func _layer() -> Control:
@@ -125,7 +143,7 @@ func _show_mode(m: int) -> void:
 	_lessons_root.visible = m == Mode.LESSONS
 	_functions_root.visible = m == Mode.FUNCTIONS
 	for i in _mode_tabs.size():
-		Art.set_button_look(_mode_tabs[i], i == m, 26)
+		Paper.style_button(_mode_tabs[i], i == m, 26)
 	if m == Mode.FUNCTIONS:
 		_entries = Reference.entries()
 		_fill_entries()
@@ -182,13 +200,13 @@ func _build_lessons() -> void:
 	_body.add_theme_constant_override("separation", 16)
 	_scroll.add_child(_body)
 
-	_w3 = Art.button(root, "Read more on W3Schools", Rect2(700, 924, 330, 64), false, 20)
+	_w3 = _btn(root, "Read more on W3Schools", Rect2(700, 924, 330, 64), false, 20)
 	_w3.pressed.connect(func(): OS.shell_open(_w3_url))
-	_copy = Art.button(root, "Copy practice code", Rect2(1040, 924, 300, 64), false, 20)
+	_copy = _btn(root, "Copy practice code", Rect2(1040, 924, 300, 64), false, 20)
 	_copy.pressed.connect(_copy_practice)
-	_prev = Art.button(root, "Back", Rect2(1350, 924, 170, 64), false, 24)
+	_prev = _btn(root, "Back", Rect2(1350, 924, 170, 64), false, 24)
 	_prev.pressed.connect(func(): _show_lesson(_lesson, _page - 1))
-	_next = Art.button(root, "Next", Rect2(1530, 924, 190, 64), true, 24)
+	_next = _btn(root, "Next", Rect2(1530, 924, 190, 64), true, 24)
 	_next.pressed.connect(_on_next)
 	_gate = Art.label(root, "", Vector2(1040, 880), 18, Color(0.6, 0.22, 0.1), false, 680, HORIZONTAL_ALIGNMENT_RIGHT)
 
@@ -472,10 +490,10 @@ func _example(code: String) -> Control:
 	tip.add_theme_font_size_override("font_size", 18)
 	tip.add_theme_color_override("font_color", Art.INK_SOFT)
 	head.add_child(tip)
-	var try_it := Art.button(head, "▶ Try it", Rect2(0, 0, 170, 52), true, 22)
+	var try_it := _btn(head, "▶ Try it", Rect2(0, 0, 170, 52), true, 22)
 	try_it.custom_minimum_size = Vector2(170, 52)
 	try_it.tooltip_text = "Run the code here. Kitchen commands are only shown, not done."
-	var reset := Art.button(head, "↺ Reset", Rect2(0, 0, 150, 52), false, 22)
+	var reset := _btn(head, "↺ Reset", Rect2(0, 0, 150, 52), false, 22)
 	reset.custom_minimum_size = Vector2(150, 52)
 	reset.tooltip_text = "Put the original example back"
 	head.move_child(reset, try_it.get_index())
@@ -490,10 +508,9 @@ func _example(code: String) -> Control:
 	out.visible = false
 	out.add_theme_font_override("normal_font", Art.mono())
 	out.add_theme_font_size_override("normal_font_size", 19)
-	out.add_theme_color_override("default_color", Color(0.85, 0.95, 0.8))
+	out.add_theme_color_override("default_color", Paper.INK)
 	var outbox := PanelContainer.new()
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.13, 0.1, 0.08)
+	var sb := Paper.receipt()  # output looks like the code editor's receipt slip
 	sb.set_corner_radius_all(8)
 	sb.content_margin_left = 18
 	sb.content_margin_right = 18
@@ -521,7 +538,7 @@ func _try_code(code: String, out: RichTextLabel, box: Control, btn: Button) -> v
 	_run_id += 1
 	var my_id := _run_id
 	box.visible = true
-	out.text = "[color=#b9a58a]Output[/color]\n"
+	out.text = "[color=#6b5442]Output[/color]\n"
 	btn.disabled = true
 	var host := SandboxHost.new()
 	host.tree = get_tree()
@@ -534,7 +551,7 @@ func _try_code(code: String, out: RichTextLabel, box: Control, btn: Button) -> v
 		if my_id == _run_id and is_instance_valid(out):
 			out.append_text(t.replace("[", "[lb]")))
 	if not interp.compile(code, GameState.library_slots):
-		out.append_text("[color=#ff8a6a]%s[/color]\n" % interp.error.get("msg", "Error"))
+		out.append_text("[color=#a8321e]%s[/color]\n" % interp.error.get("msg", "Error"))
 		btn.disabled = false
 		return
 	# Stop runaway examples (shift loops) after a short preview.
@@ -552,11 +569,11 @@ func _try_code(code: String, out: RichTextLabel, box: Control, btn: Button) -> v
 	if my_id != _run_id:
 		interp.stop()
 	elif host.actions >= 24:
-		out.append_text("[color=#e8b04a]… preview stopped here: in the kitchen this keeps going all shift.[/color]\n")
+		out.append_text("[color=#8a5a00]… preview stopped here: in the kitchen this keeps going all shift.[/color]\n")
 	elif not interp.error.is_empty():
-		out.append_text("[color=#ff8a6a]Line %d: %s[/color]\n" % [interp.error.get("line", 0), interp.error.get("msg", "")])
+		out.append_text("[color=#a8321e]Line %d: %s[/color]\n" % [interp.error.get("line", 0), interp.error.get("msg", "")])
 	else:
-		out.append_text("[color=#9fd67a]✔ Done![/color]\n")
+		out.append_text("[color=#2f6a1f]✔ Done![/color]\n")
 	btn.disabled = false
 	if my_id == _run_id and _mode == Mode.LESSONS and _need_try:
 		_need_try = false
@@ -834,7 +851,7 @@ func _show_entry(i: int) -> void:
 			rel.append(r + "()")
 		_help.add_child(_text("See also: " + ", ".join(rel), 19, Art.INK_SOFT, true))
 	if e.get("w3", "") != "":
-		var link := Art.button(_help, "Learn more on W3Schools", Rect2(0, 0, 340, 56), false, 20)
+		var link := _btn(_help, "Learn more on W3Schools", Rect2(0, 0, 340, 56), false, 20)
 		link.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 		link.custom_minimum_size = Vector2(340, 56)
 		link.tooltip_text = e.w3
