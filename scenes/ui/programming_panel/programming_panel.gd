@@ -174,7 +174,10 @@ func _apply_opacity() -> void:
 		_panel.self_modulate.a = o
 	if _lib_panel:
 		_lib_panel.self_modulate.a = o
-	for pair in [[code_edit, "normal"], [code_edit, "focus"], [console, "normal"]]:
+	var boxes := [[code_edit, "normal"], [code_edit, "focus"], [console, "normal"]]
+	if _vars_label and _vars_label.get_parent() is PanelContainer:
+		boxes.append([_vars_label.get_parent(), "panel"])
+	for pair in boxes:
 		var c: Control = pair[0]
 		var key: String = c.name + pair[1]
 		if not _code_styles.has(key):
@@ -715,6 +718,9 @@ func _paper_skin() -> void:
 	if vars_box:
 		vars_box.add_theme_stylebox_override("panel", Paper.receipt(10))
 		_vars_label.add_theme_color_override("default_color", Paper.INK)
+	# _apply_opacity() already ran once (from _setup_editor) and cached copies of
+	# the old dark boxes: forget them so the opacity setting reaches these.
+	_code_styles.clear()
 	_refresh_variables()
 
 
