@@ -6,7 +6,7 @@ extends Node2D
 const Kitchen := preload("res://systems/kitchen/kitchen_rules.gd")
 const K := 4.0
 ## The outside picture's world rect (Art/Outside).
-var area := Rect2(-704, -244, 1920, 1080)
+var area := Rect2(-704, -212, 1920, 1080)
 ## Sidewalk: feet at art y 201; road lanes centred at art y 224 and 254.
 const WALK_Y := 201.0
 const LANE_Y := [224.0, 254.0]

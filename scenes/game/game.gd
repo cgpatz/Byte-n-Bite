@@ -296,7 +296,7 @@ func _spawn_tables() -> void:
 
 
 func _place_characters() -> void:
-	manager.global_position = restaurant.get_manager_spawn()
+	manager.global_position = _outside_start() if _level_has_outside() else restaurant.get_manager_spawn()
 	var i := 0
 	for staff in _staff_list():
 		_place_staff(staff, i)
@@ -884,9 +884,8 @@ func set_zoom_step(step: int) -> void:
 		return
 	SettingsManager.zoom_step = step
 	SettingsManager.save_settings()
-	if not in_market:
-		var z: float = view_zoom()
-		create_tween().tween_property(camera, "zoom", Vector2(z, z), 0.2)
+	var z: float = view_zoom()
+	create_tween().tween_property(camera, "zoom", Vector2(z, z), 0.2)
 	zoom_changed.emit(step)
 var _cam_outside := false
 ## How quickly the camera catches up with the manager (higher = snappier).
@@ -910,15 +909,25 @@ func _setup_camera() -> void:
 	_setup_street()
 	camera.zoom = Vector2(view_zoom(), view_zoom())
 	if in_market and market:
-		_cam_bounds = market.bounds().grow_individual(0, 110, 0, 0)  # room under the HUD
-		var z := maxf(FOLLOW_ZOOM, get_viewport_rect().size.x / market.bounds().size.x)
-		camera.zoom = Vector2(z, z)
+		# The square is as big as the screen at 4x: the camera follows the
+		# manager at the same zoom steps as the restaurant.
+		_cam_bounds = market.bounds()
+		camera.zoom = Vector2(view_zoom(), view_zoom())
 	camera.global_position = _camera_target()  # jump there on level load
 
 
-## Levels with an outside picture: an invisible line just below the room keeps
-## the Manager (and staff) inside; customers walk on the nav grid, not physics,
-## so they still come in through the entrance.
+## Levels with an outside picture: the Manager can walk out and explore the
+## street. Invisible edges keep him on the picture: the fence and trees at the
+## top, the road at the bottom, the locked patio, and the picture's sides.
+## (Rects in art px of the 480 x 270 picture; 1 art px = 4 world units.)
+const OUTSIDE_SOLIDS := [
+	Rect2(-16, -16, 512, 70),    # fence + trees along the top
+	Rect2(166, 54, 148, 8),      # roof edge above the room
+	Rect2(-16, 206, 512, 80),    # the road (stay on the sidewalk)
+	Rect2(-16, 0, 16, 270),      # left edge
+	Rect2(480, 0, 16, 270),      # right edge
+]
+const PATIO_RECT := Rect2(12, 72, 142, 107)  # locked at Restaurant Lv 1
 var _room_fence: StaticBody2D
 func _fence_room() -> void:
 	if _room_fence:
@@ -926,17 +935,30 @@ func _fence_room() -> void:
 		_room_fence = null
 	if not _cam_outside:
 		return
-	var b: Rect2 = restaurant.get_bounds()
+	var origin: Vector2 = _cam_bounds.position
 	_room_fence = StaticBody2D.new()
-	_room_fence.name = "RoomFence"
+	_room_fence.name = "OutsideEdges"
 	_room_fence.collision_layer = 1
-	var cs := CollisionShape2D.new()
-	var rs := RectangleShape2D.new()
-	rs.size = Vector2(b.size.x + 128.0, 32.0)
-	cs.shape = rs
-	cs.position = Vector2(b.get_center().x, b.end.y + 16.0)
-	_room_fence.add_child(cs)
+	var rects: Array = OUTSIDE_SOLIDS.duplicate()
+	if GameState.restaurant_level <= 1:
+		rects.append(PATIO_RECT)
+	for r: Rect2 in rects:
+		var cs := CollisionShape2D.new()
+		var rs := RectangleShape2D.new()
+		rs.size = r.size * 4.0
+		cs.shape = rs
+		cs.position = origin + r.get_center() * 4.0
+		_room_fence.add_child(cs)
 	add_child(_room_fence)
+
+
+func _level_has_outside() -> bool:
+	return restaurant != null and restaurant.has_method("outside_rect") and restaurant.outside_rect().size != Vector2.ZERO
+
+
+## Where the Manager starts: outside, beside the entrance, on levels with a street.
+func _outside_start() -> Vector2:
+	return Vector2(150, 600)
 
 
 ## Level 1 v2 street: the locked-patio sign text, people and cars, and the
@@ -1326,7 +1348,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	# zoom step in / out.
 	if event is InputEventMouseButton and event.pressed and not event.ctrl_pressed \
 			and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN] \
-			and not in_market and get_viewport().gui_get_hovered_control() == null:
+			and get_viewport().gui_get_hovered_control() == null:
 		get_viewport().set_input_as_handled()
 		set_zoom_step(SettingsManager.zoom_step + (1 if event.button_index == MOUSE_BUTTON_WHEEL_UP else -1))
 		return
@@ -1496,6 +1518,9 @@ func _spawn_crates() -> void:
 		return
 	var cap := maxi(GameState.crate_capacity(), GameState.crates.size())
 	var r := Rect2(area.global_position - area.size / 2.0, area.size)
+	# Level 1 v2: crates are dropped in the parking yard outside the STAFF door.
+	if _level_has_outside():
+		r = _yard_crate_rect()
 	var cols := clampi(ceili(sqrt(cap * r.size.x / maxf(r.size.y, 1.0))), 1, cap)
 	var rows := ceili(cap / float(cols))
 	var step := Vector2(r.size.x / cols, r.size.y / rows)
@@ -1533,6 +1558,9 @@ var _truck: Sprite2D
 ## opens up, the crates pop out, and it drives away.
 func _drive_truck() -> void:
 	Sfx.play("truck", -4.0)
+	if _level_has_outside():
+		_drive_truck_street()
+		return
 	var area := get_station("RECEIVING")
 	var door := get_station("BACK_DOOR")
 	var sheet := PixelArt.find(["res://assets/delivery/delivery_truck_drive_sheet.png"])
@@ -1574,6 +1602,71 @@ func _drive_truck() -> void:
 	tw.tween_property(_truck, "global_position", from, 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	tw.parallel().tween_property(_truck, "modulate:a", 0.0, 1.0)
 	tw.tween_callback(func():
+		_truck.queue_free()
+		_truck = null)
+
+
+## Level 1 v2 yard (art px of the street picture): where the truck parks and
+## where it leaves the crates, and the driveway from the road.
+const YARD_PARK := Vector2(368, 94)     # truck centre when parked
+const YARD_CRATES := Rect2(336, 118, 70, 28)
+const YARD_GATE_X := 447.0
+const ROAD_LANE_Y := 222.0
+
+
+func _art_to_world(p: Vector2) -> Vector2:
+	return _cam_bounds.position + p * 4.0
+
+
+func _yard_crate_rect() -> Rect2:
+	return Rect2(_art_to_world(YARD_CRATES.position), YARD_CRATES.size * 4.0)
+
+
+## Street delivery: the truck drives along the road, turns up the driveway into
+## the yard, parks, opens, drops the crates, and drives away the same way.
+func _drive_truck_street() -> void:
+	var sheet := PixelArt.find(["res://assets/delivery/delivery_truck_drive_sheet.png"])
+	if sheet == null or _truck != null:
+		if _truck == null:
+			_unload_crates()
+		return
+	var road_start := _art_to_world(Vector2(-40, ROAD_LANE_Y))
+	var gate_road := _art_to_world(Vector2(YARD_GATE_X, ROAD_LANE_Y))
+	var gate_in := _art_to_world(Vector2(YARD_GATE_X, YARD_PARK.y))
+	var park := _art_to_world(YARD_PARK)
+	_truck = Sprite2D.new()
+	_truck.texture = sheet
+	_truck.hframes = 2
+	_truck.scale = Vector2(4, 4)
+	_truck.z_index = 4
+	_truck.flip_h = false
+	_truck.global_position = road_start
+	add_child(_truck)
+	var anim := create_tween().set_loops(60)
+	anim.tween_callback(func():
+		if is_instance_valid(_truck) and _truck.hframes == 2:
+			_truck.frame = 1 - _truck.frame).set_delay(0.12)
+	var tw := create_tween()
+	tw.tween_property(_truck, "global_position", gate_road, 2.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_property(_truck, "global_position", gate_in, 1.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_callback(func(): _truck.flip_h = true)
+	tw.tween_property(_truck, "global_position", park, 0.9).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_callback(func():
+		_truck.hframes = 1
+		_truck.frame = 0
+		var open_tex := PixelArt.find(["res://assets/delivery/delivery_truck_open.png"])
+		_truck.texture = open_tex if open_tex else sheet
+		_unload_crates())
+	tw.tween_interval(1.6)
+	tw.tween_callback(func():
+		_truck.texture = sheet
+		_truck.hframes = 2
+		_truck.flip_h = false)
+	tw.tween_property(_truck, "global_position", gate_in, 0.9).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tw.tween_property(_truck, "global_position", gate_road, 1.0)
+	tw.tween_property(_truck, "global_position", _art_to_world(Vector2(520, ROAD_LANE_Y)), 1.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tw.tween_callback(func():
+		anim.kill()
 		_truck.queue_free()
 		_truck = null)
 

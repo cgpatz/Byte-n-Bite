@@ -11,14 +11,16 @@ const STATION_SCENE := preload("res://scenes/stations/Station.tscn")
 const STALL_SCRIPT := preload("res://scenes/market/stall.gd")
 const ART := "res://assets/market/"
 const TILE := 64.0
-const SIZE := Vector2(1024, 768)
+## A bigger square (30 x 17 tiles, the size of the 1920 x 1080 screen at 4x
+## zoom) so the camera can follow the manager at 5x / 6x zoom.
+const SIZE := Vector2(1920, 1080)
 ## Where the manager appears (just below the teleport pad), in local px.
-const ARRIVE := Vector2(512, 568)
-const PAD_CENTER := Vector2(512, 448)
+const ARRIVE := Vector2(960, 760)
+const PAD_CENTER := Vector2(960, 640)
 
 ## Tent top-left tile for each stall (tents are 3 × 3 tiles).
-const STALL_TILES := {"GRAINS": Vector2i(1, 1), "DAIRY": Vector2i(6, 1), "BUTCHER": Vector2i(11, 1),
-	"GREENS": Vector2i(1, 8), "CAFE": Vector2i(11, 8)}
+const STALL_TILES := {"GRAINS": Vector2i(3, 2), "DAIRY": Vector2i(13, 2), "BUTCHER": Vector2i(23, 2),
+	"GREENS": Vector2i(6, 10), "CAFE": Vector2i(20, 10)}
 const TENT_ART := {"GRAINS": "tent_grains", "DAIRY": "tent_dairy", "BUTCHER": "tent_butcher",
 	"GREENS": "tent_greens", "CAFE": "tent_cafe"}
 
@@ -32,7 +34,7 @@ func _ready() -> void:
 	y_sort_enabled = true
 	var bg := Sprite2D.new()
 	bg.name = "Background"
-	bg.texture = _tex("market_bg")
+	bg.texture = _tex("market_bg_wide") if _tex("market_bg_wide") else _tex("market_bg")
 	bg.centered = false
 	bg.scale = Vector2(4, 4)
 	bg.z_index = -10
@@ -58,7 +60,7 @@ func _ready() -> void:
 		add_child(st)
 		stalls[key] = st
 	# Price board (shows what's in stock and when the Market restocks).
-	var board := _decor("PriceBoard", "price_board", Vector2(64, 480), Vector2(128, 64), true)
+	var board := _decor("PriceBoard", "price_board", Vector2(192, 640), Vector2(128, 64), true)
 	board.display_name = "Price Board"
 	board.opens = "price_board"
 	board.interactable = true
@@ -80,17 +82,23 @@ func _ready() -> void:
 	_pad_sprite.position = PAD_CENTER
 	_pad_sprite.z_index = -5
 	add_child(_pad_sprite)
-	# Lantern posts, snack corner, crates.
-	for p in [Vector2(352, 352), Vector2(672, 352), Vector2(352, 672), Vector2(672, 672)]:
+	# Lantern posts, trees, the snack corner and crates.
+	for p in [Vector2(160, 448), Vector2(704, 448), Vector2(1216, 448), Vector2(1760, 448),
+			Vector2(704, 896), Vector2(1216, 896)]:
 		_decor("LanternPost", "lantern_post", p, Vector2(32, 24), true)
-	_decor("Barrel", "barrel", Vector2(416, 672), Vector2(48, 40), true)
-	_decor("Barrel", "barrel", Vector2(544, 672), Vector2(48, 40), true)
-	_decor("Bench", "bench", Vector2(480, 712), Vector2(112, 32), true)
-	_decor("Crate", "crate", Vector2(928, 480), Vector2(56, 48), true)
-	_decor("Crate", "crate", Vector2(992, 480), Vector2(56, 48), true)
+	for p in [Vector2(96, 960), Vector2(1824, 960), Vector2(1824, 640)]:
+		_decor("Tree", "tree", p, Vector2(64, 40), true)
+	_decor("Hedge", "hedge", Vector2(480, 1008), Vector2(160, 40), true)
+	_decor("Hedge", "hedge", Vector2(1440, 1008), Vector2(160, 40), true)
+	_decor("Barrel", "barrel", Vector2(864, 896), Vector2(48, 40), true)
+	_decor("Barrel", "barrel", Vector2(1056, 896), Vector2(48, 40), true)
+	_decor("Bench", "bench", Vector2(960, 936), Vector2(112, 32), true)
+	_decor("Crate", "crate", Vector2(1600, 704), Vector2(56, 48), true)
+	_decor("Crate", "crate", Vector2(1664, 704), Vector2(56, 48), true)
+	_decor("Crate", "crate", Vector2(1632, 752), Vector2(56, 48), true)
 	# Hanging string lights (drawn above people).
-	for y in [168.0, 360.0]:
-		for i in 4:
+	for y in [232.0, 552.0]:
+		for i in 8:
 			var s := Sprite2D.new()
 			s.texture = _tex("string_lanterns")
 			s.centered = false
@@ -99,8 +107,9 @@ func _ready() -> void:
 			s.z_index = 5
 			add_child(s)
 	# A couple of shoppers.
-	_shopper("taro", Vector2(288, 540))
-	_shopper("coco", Vector2(800, 492))
+	_shopper("taro", Vector2(416, 620))
+	_shopper("coco", Vector2(1440, 560))
+	_shopper("bao", Vector2(1120, 400))
 	refresh()
 
 

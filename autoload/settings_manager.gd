@@ -22,6 +22,8 @@ var goals_open := true
 var zoom_step := 1
 ## Quest card (top left) folded to one line.
 var quest_collapsed := false
+## Order tickets shown under the ORDERS tab.
+var orders_open := true
 
 
 const MUSIC_PLAYER := preload("res://autoload/music_player.gd")
@@ -61,6 +63,7 @@ func load_settings() -> void:
 	goals_open = cfg.get_value("editor", "goals_open", goals_open)
 	zoom_step = clampi(int(cfg.get_value("view", "zoom_step", zoom_step)), 0, 2)
 	quest_collapsed = bool(cfg.get_value("view", "quest_collapsed", quest_collapsed))
+	orders_open = bool(cfg.get_value("view", "orders_open", orders_open))
 	# Compact UI (v2): smaller code editor and windows. Old saved sizes and the
 	# old default code font size are reset once.
 	if not cfg.get_value("editor", "compact_ui", false):
@@ -83,6 +86,7 @@ func save_settings() -> void:
 	cfg.set_value("editor", "goals_open", goals_open)
 	cfg.set_value("view", "zoom_step", zoom_step)
 	cfg.set_value("view", "quest_collapsed", quest_collapsed)
+	cfg.set_value("view", "orders_open", orders_open)
 	cfg.set_value("editor", "compact_ui", true)
 	cfg.save(PATH)
 

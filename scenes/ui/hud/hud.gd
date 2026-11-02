@@ -823,7 +823,8 @@ var _board_row: HFlowContainer
 var _board_sig := ""
 var _board_open := true
 var _ticket_bars: Array = []  # [ProgressBar, customer]
-const TICKET := Vector2(128, 172)
+const TICKET := Vector2(100, 136)
+var _board_toggle: Button
 
 
 func _build_order_board() -> void:
@@ -839,18 +840,31 @@ func _build_order_board() -> void:
 	sb.border_color = Paper.INK
 	sb.set_border_width_all(3)
 	sb.set_corner_radius_all(10)
-	sb.content_margin_left = 22
-	sb.content_margin_right = 22
-	sb.content_margin_top = 4
-	sb.content_margin_bottom = 6
+	sb.content_margin_left = 16
+	sb.content_margin_right = 8
+	sb.content_margin_top = 0
+	sb.content_margin_bottom = 2
 	sb.shadow_color = Color(0, 0, 0, 0.2)
 	sb.shadow_size = 3
 	tab.add_theme_stylebox_override("panel", sb)
 	tab.size_flags_horizontal = Control.SIZE_SHRINK_END
 	tab.tooltip_text = "Orders waiting, oldest first. Badge = table number (# = ticket posted with post_order()); ? = order not taken yet. The bar is the customer's patience."
 	_board.add_child(tab)
-	_board_title = Paper.label("ORDERS (0)", 20, Paper.INK, true)
-	tab.add_child(_board_title)
+	var trow := HBoxContainer.new()
+	trow.add_theme_constant_override("separation", 8)
+	tab.add_child(trow)
+	_board_title = Paper.label("ORDERS (0)", 17, Paper.INK, true)
+	_board_title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	trow.add_child(_board_title)
+	_board_toggle = Button.new()
+	_board_toggle.flat = true
+	_board_toggle.focus_mode = Control.FOCUS_NONE
+	_board_toggle.add_theme_font_size_override("font_size", 16)
+	_board_toggle.add_theme_color_override("font_color", Paper.INK)
+	_board_toggle.add_theme_color_override("font_hover_color", Paper.RED)
+	_board_toggle.tooltip_text = "Hide or show the order tickets"
+	_board_toggle.pressed.connect(func(): set_orders_open(not _board_open))
+	trow.add_child(_board_toggle)
 	_board_row = HFlowContainer.new()
 	_board_row.alignment = FlowContainer.ALIGNMENT_END
 	_board_row.add_theme_constant_override("h_separation", 10)
@@ -858,7 +872,7 @@ func _build_order_board() -> void:
 	_board_row.custom_minimum_size = Vector2(TICKET.x * 5 + 40, 0)
 	_board_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_board.add_child(_board_row)
-	_place_board()
+	set_orders_open(SettingsManager.orders_open)
 
 
 func _place_board() -> void:
@@ -873,8 +887,15 @@ func _place_board() -> void:
 ## Kept for older callers: the board now shrinks to its tab by itself.
 func set_orders_open(on: bool) -> void:
 	_board_open = on
+	if SettingsManager.orders_open != on:
+		SettingsManager.orders_open = on
+		SettingsManager.save_settings()
 	if _board_row:
 		_board_row.visible = on
+	if _board_toggle:
+		_board_toggle.text = "▾" if on else "▸"
+	if _board:
+		_place_board()
 
 
 func refresh_orders() -> void:
@@ -922,10 +943,10 @@ func _order_tile(o: Dictionary) -> Control:
 	sb.border_color = Color(0.32, 0.6, 0.26) if busy else Paper.INK
 	sb.set_border_width_all(4 if busy else 3)
 	sb.set_corner_radius_all(8)
-	sb.content_margin_left = 6
-	sb.content_margin_right = 6
-	sb.content_margin_top = 14
-	sb.content_margin_bottom = 8
+	sb.content_margin_left = 5
+	sb.content_margin_right = 5
+	sb.content_margin_top = 12
+	sb.content_margin_bottom = 6
 	sb.shadow_color = Color(0, 0, 0, 0.25)
 	sb.shadow_size = 4
 	t.add_theme_stylebox_override("panel", sb)
@@ -941,20 +962,20 @@ func _order_tile(o: Dictionary) -> Control:
 		ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		ic.custom_minimum_size = Vector2(96, 64)
+		ic.custom_minimum_size = Vector2(76, 48)
 		ic.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		v.add_child(ic)
-		var nm := Paper.label(Kitchen.title_of(o.dish), 17, Paper.INK, true)
+		var nm := Paper.label(Kitchen.title_of(o.dish), 14, Paper.INK, true)
 		nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		nm.clip_text = true
 		nm.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		v.add_child(nm)
 		holder.tooltip_text = "%s%s%s" % [Kitchen.title_of(o.dish), "  (ticket #%d)" % o.ticket if o.posted else "", "  · being made" if busy else ""]
 	else:
-		var q := Paper.label("?", 52, Paper.INK_SOFT, true)
+		var q := Paper.label("?", 40, Paper.INK_SOFT, true)
 		q.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		q.custom_minimum_size.y = 86
+		q.custom_minimum_size.y = 66
 		q.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		v.add_child(q)
 		holder.tooltip_text = "Order not taken yet: use take_order()"
@@ -963,7 +984,7 @@ func _order_tile(o: Dictionary) -> Control:
 	bar.step = 0.001
 	bar.value = 1.0
 	bar.show_percentage = false
-	bar.custom_minimum_size = Vector2(0, 14)
+	bar.custom_minimum_size = Vector2(0, 10)
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var bg := StyleBoxFlat.new()
 	bg.bg_color = Color(0.3, 0.24, 0.2)
@@ -1002,11 +1023,11 @@ func _order_tile(o: Dictionary) -> Control:
 	bsb.content_margin_bottom = 4
 	badge.add_theme_stylebox_override("panel", bsb)
 	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var bl := Paper.label(badge_text, 20, Color(1, 0.97, 0.92), true)
+	var bl := Paper.label(badge_text, 16, Color(1, 0.97, 0.92), true)
 	bl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	badge.add_child(bl)
 	badge.position = Vector2(0, 0)
-	badge.custom_minimum_size = Vector2(44, 44)
+	badge.custom_minimum_size = Vector2(36, 36)
 	holder.add_child(badge)
 	return holder
 
