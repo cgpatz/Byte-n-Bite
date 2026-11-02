@@ -729,6 +729,9 @@ func _apply_rect(r: Rect2) -> void:
 	var vs := size
 	if r.size == Vector2.ZERO:
 		r = _default_rect()
+	# A window saved taller than the screen (an old layout bug): back to the default height.
+	if r.size.y >= vs.y - 8.0:
+		r.size.y = _default_rect().size.y
 	r.size = r.size.clamp(MIN_SIZE, vs)
 	# The title row needs a minimum width: keep the whole window on screen.
 	r.size.x = minf(maxf(r.size.x, _panel.get_combined_minimum_size().x), vs.x)
@@ -750,6 +753,32 @@ func _apply_rect(r: Rect2) -> void:
 	_lib_panel.set_deferred("size", Vector2(lib_w, r.size.y))
 	_grip.position = _panel.position + _panel.size - Vector2(GRIP, GRIP)
 	_grip.queue_redraw()
+	_refit_later(r)
+
+
+## Wrapped text (the clickable function list) measures itself only after a
+## frame or two; until then the window can grow very tall. Size it again once
+## the layout has settled, and always keep it inside the screen.
+var _refit_id := 0
+func _refit_later(r: Rect2) -> void:
+	_refit_id += 1
+	var id := _refit_id
+	for i in 2:
+		await get_tree().process_frame
+	if id != _refit_id or not is_instance_valid(_panel):
+		return
+	var vs := size
+	var want := Vector2(maxf(r.size.x, _panel.get_combined_minimum_size().x), maxf(r.size.y, _panel.get_combined_minimum_size().y))
+	want.y = minf(want.y, vs.y)
+	_panel.size = want
+	var pos := _panel.position
+	if pos.y + want.y > vs.y:
+		pos.y = maxf(0.0, vs.y - want.y)
+	_panel.position = pos
+	_grip.position = _panel.position + _panel.size - Vector2(GRIP, GRIP)
+	_grip.queue_redraw()
+	_lib_panel.position.y = _panel.position.y
+	_lib_panel.size.y = _panel.size.y
 
 
 func _on_header_input(e: InputEvent) -> void:
