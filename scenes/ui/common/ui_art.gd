@@ -161,6 +161,7 @@ static func serif() -> Font:
 		f.font_names = PackedStringArray(["Georgia", "Cambria", "DejaVu Serif", "Times New Roman", "serif"])
 		f.font_weight = 700
 		f.fallbacks = [preload("res://assets/fonts/DejaVuSans.ttf")]
+		_sharp(f)
 		_serif = f
 		# The web build can't see system fonts: use the bundled serif.
 		if OS.has_feature("web"):
@@ -170,14 +171,16 @@ static func serif() -> Font:
 
 static func bold_font() -> Font:
 	if _bold == null:
-		var base: Font = ThemeDB.fallback_font
-		var theme_font = ThemeDB.get_project_theme().default_font if ThemeDB.get_project_theme() else null
-		if theme_font:
-			base = theme_font
-		var v := FontVariation.new()
-		v.base_font = base
-		v.variation_embolden = 0.9
-		_bold = v
+		# A real bold face (embolden on sharp MSDF text smears the letters):
+		# Open Sans / Segoe UI Bold from the system, else the bundled DejaVu Bold.
+		var f := SystemFont.new()
+		f.font_names = PackedStringArray(["Open Sans", "Segoe UI", "Noto Sans", "DejaVu Sans"])
+		f.font_weight = 700
+		f.fallbacks = [preload("res://assets/fonts/DejaVuSans-Bold.ttf")]
+		_sharp(f)
+		_bold = f
+		if OS.has_feature("web"):
+			_bold = preload("res://assets/fonts/DejaVuSans-Bold.ttf")
 	return _bold
 
 
@@ -186,6 +189,7 @@ static func mono() -> Font:
 		var f := SystemFont.new()
 		f.font_names = PackedStringArray(["Consolas", "Cascadia Mono", "DejaVu Sans Mono", "Courier New", "monospace"])
 		f.fallbacks = [preload("res://assets/fonts/DejaVuSans.ttf")]
+		_sharp(f)
 		_mono = f
 		if OS.has_feature("web"):
 			_mono = preload("res://assets/fonts/DejaVuSansMono.ttf")
@@ -218,3 +222,13 @@ static func c_highlighter(keywords: Array, unsupported: Array) -> CodeHighlighte
 	hl.add_color_region("/*", "*/", Color(0.5, 0.6, 0.45))
 	hl.add_color_region("\"", "\"", Color(0.95, 0.85, 0.5))
 	return hl
+
+
+## Sharp text at any size: windows are scaled (Lessons at 0.74x), the world
+## camera zooms in, and Windows display scaling shrinks the whole game, so the
+## fonts are drawn as MSDF (crisp edges at every scale) instead of a bitmap
+## that gets stretched and goes blurry. 16 px range keeps outlines up to 8.
+static func _sharp(f: SystemFont) -> void:
+	f.multichannel_signed_distance_field = true
+	f.msdf_pixel_range = 16
+	f.msdf_size = 48

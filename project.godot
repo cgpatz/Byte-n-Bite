@@ -37,6 +37,7 @@ project/assembly_name="Byte n- Bite"
 [gui]
 
 theme/custom="res://assets/ui/game_theme.tres"
+theme/default_font_multichannel_signed_distance_field=true
 
 [input]
 

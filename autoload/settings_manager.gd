@@ -40,6 +40,12 @@ func _ready() -> void:
 		var fb := base.fallbacks.duplicate()
 		fb.append(SYMBOL_FONT)
 		base.fallbacks = fb
+	# [b] in rich text: a real bold face (the default fake-bold smears sharp text).
+	var th := ThemeDB.get_project_theme()
+	if th:
+		var bold: Font = preload("res://scenes/ui/common/ui_art.gd").bold_font()
+		th.set_font("bold_font", "RichTextLabel", bold)
+		th.set_font("bold_italics_font", "RichTextLabel", bold)
 	load_settings()
 	apply()
 	# Background music lives here so it plays in every scene.
