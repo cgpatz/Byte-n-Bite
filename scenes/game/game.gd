@@ -54,6 +54,7 @@ const Kitchen := preload("res://systems/kitchen/kitchen_rules.gd")
 const Progression := preload("res://data/progression/progression.gd")
 const STAFF_SCENE := preload("res://scenes/characters/staff/Staff.tscn")
 const PixelArt := preload("res://scenes/art/pixel_art.gd")
+const Art := preload("res://scenes/ui/common/ui_art.gd")
 const BACKGROUND := Color(0.16, 0.12, 0.1)
 ## Screen margin (px) kept around small restaurants.
 const AUTOSAVE_SECONDS := 60.0
@@ -906,6 +907,7 @@ func _setup_camera() -> void:
 			_cam_bounds = o
 			_cam_outside = true
 	_fence_room()
+	_setup_street()
 	camera.zoom = Vector2(view_zoom(), view_zoom())
 	if in_market and market:
 		_cam_bounds = market.bounds().grow_individual(0, 110, 0, 0)  # room under the HUD
@@ -935,6 +937,63 @@ func _fence_room() -> void:
 	cs.position = Vector2(b.get_center().x, b.end.y + 16.0)
 	_room_fence.add_child(cs)
 	add_child(_room_fence)
+
+
+## Level 1 v2 street: the locked-patio sign text, people and cars, and the
+## evening picture once the Level 1 challenge is done.
+const PATIO_SIGN := Rect2(37, 141, 94, 16)  # art px in the outside picture
+func _setup_street() -> void:
+	if not _cam_outside:
+		return
+	var o := restaurant.get_node("Art/Outside") as Sprite2D
+	var art := restaurant.get_node("Art")
+	if not art.has_node("PatioSign"):
+		var sign := VBoxContainer.new()
+		sign.name = "PatioSign"
+		sign.add_theme_constant_override("separation", -4)
+		sign.position = o.position + (PATIO_SIGN.position + Vector2(17, 1)) * 4.0
+		sign.size = (PATIO_SIGN.size - Vector2(19, 2)) * 4.0
+		sign.alignment = BoxContainer.ALIGNMENT_CENTER
+		sign.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var t := Label.new()
+		t.text = "Patio seating"
+		t.add_theme_font_override("font", Art.bold_font())
+		t.add_theme_font_size_override("font_size", 22)
+		t.add_theme_color_override("font_color", Color("3a2a1e"))
+		t.add_theme_constant_override("outline_size", 0)
+		sign.add_child(t)
+		var u := Label.new()
+		u.text = "Unlocks at Restaurant Lv 2"
+		u.add_theme_font_size_override("font_size", 15)
+		u.add_theme_color_override("font_color", Color("6b5442"))
+		u.add_theme_constant_override("outline_size", 0)
+		sign.add_child(u)
+		art.add_child(sign)
+	(art.get_node("PatioSign") as Control).visible = GameState.restaurant_level <= 1
+	if not restaurant.has_node("StreetLife"):
+		var life := Node2D.new()
+		life.name = "StreetLife"
+		life.set_script(preload("res://scenes/restaurant/street_life.gd"))
+		life.area = _cam_bounds
+		restaurant.add_child(life)
+	_update_evening()
+	if not GameState.challenge_completed.is_connected(_on_street_challenge):
+		GameState.challenge_completed.connect(_on_street_challenge)
+
+
+func _on_street_challenge(_lv: int, _id: String) -> void:
+	_update_evening()
+
+
+## After every Level 1 challenge is done, the street turns to evening.
+func _update_evening() -> void:
+	if not _cam_outside or restaurant == null or not restaurant.has_node("Art/Outside"):
+		return
+	var o := restaurant.get_node("Art/Outside") as Sprite2D
+	var evening: bool = GameState.restaurant_level == 1 and GameState.challenges_left(1).is_empty()
+	var path := "res://assets/design/l1_v2/outside/L1_outside_%s_480x270.png" % ("evening" if evening else "day")
+	if o.texture == null or o.texture.resource_path != path:
+		o.texture = load(path)
 
 
 ## Where the camera should be: on the manager, kept inside the restaurant.
