@@ -50,49 +50,91 @@ func _ready() -> void:
 	var hint := get_node_or_null("ControlsHint") as Label
 	if hint:
 		hint.hide()  # keys are shown in each button's tooltip and in the tutorial
-	_add_icon(money_label, "coin")
-	_add_icon(level_label, "restaurant")
-	_add_icon(_player_label, "manager_level")
-	_add_icon(_exp_bar, "exp")
+	_style_top_bar()
 	GameState.player_exp_changed.connect(_on_player_exp_changed)
 	_on_player_exp_changed(GameState.player_level, GameState.player_exp, GameState.exp_needed())
 
 
-## Manager level + EXP bar, added next to coins and restaurant level.
+## Manager level + EXP: a rounded bar with "Lv 1   40/100 EXP" under it.
 func _build_player_level() -> void:
 	var row := money_label.get_parent()
-	_player_label = Label.new()
-	_player_label.name = "PlayerLevelLabel"
-	_player_label.label_settings = money_label.label_settings
-	for key in ["font_size"]:
-		if money_label.has_theme_font_size_override(key):
-			_player_label.add_theme_font_size_override(key, money_label.get_theme_font_size(key))
-	_player_label.theme_type_variation = money_label.theme_type_variation
-	row.add_child(_player_label)
+	var col := VBoxContainer.new()
+	col.name = "ExpColumn"
+	col.add_theme_constant_override("separation", 2)
+	col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(col)
 	_exp_bar = ProgressBar.new()
 	_exp_bar.name = "ExpBar"
-	_exp_bar.custom_minimum_size = Vector2(180, 22)
-	_exp_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_exp_bar.custom_minimum_size = Vector2(170, 20)
 	_exp_bar.show_percentage = false
 	var bg := StyleBoxFlat.new()
-	bg.bg_color = Color(0.12, 0.08, 0.06)
-	bg.set_corner_radius_all(6)
-	bg.set_border_width_all(2)
-	bg.border_color = Color(0.35, 0.22, 0.12)
+	bg.bg_color = Color(0.2, 0.15, 0.12)
+	bg.set_corner_radius_all(10)
+	bg.set_border_width_all(3)
+	bg.border_color = Paper.INK
 	var fill := StyleBoxFlat.new()
-	fill.bg_color = Color(0.55, 0.85, 0.4)
-	fill.set_corner_radius_all(6)
+	fill.bg_color = Color(0.42, 0.72, 0.33)
+	fill.set_corner_radius_all(8)
 	_exp_bar.add_theme_stylebox_override("background", bg)
 	_exp_bar.add_theme_stylebox_override("fill", fill)
-	row.add_child(_exp_bar)
+	col.add_child(_exp_bar)
+	_player_label = Paper.label("", 15, Paper.INK_SOFT)
+	_player_label.name = "PlayerLevelLabel"
+	col.add_child(_player_label)
+
+
+## Top bar (Paper Notebook): coin + coins, house + "Lv 1 · Tiny Stall",
+## manager + EXP bar, on a taped paper strip.
+func _style_top_bar() -> void:
+	var plank := money_label.get_parent().get_parent() as PanelContainer
+	plank.theme_type_variation = &""
+	plank.add_theme_stylebox_override("panel", Paper.panel(Vector4(24, 30, 32, 14)))
+	var row := money_label.get_parent() as HBoxContainer
+	row.add_theme_constant_override("separation", 12)
+	money_label.add_theme_font_size_override("font_size", 32)
+	money_label.add_theme_color_override("font_color", Paper.RED)
+	money_label.add_theme_constant_override("outline_size", 0)
+	money_label.add_theme_font_override("font", Art.bold_font())
+	money_label.custom_minimum_size.x = 70
+	level_label.add_theme_font_size_override("font_size", 24)
+	level_label.add_theme_color_override("font_color", Paper.INK)
+	level_label.add_theme_constant_override("outline_size", 0)
+	level_label.add_theme_font_override("font", Art.bold_font())
+	var coin := Paper.icon("coin")
+	row.add_child(coin)
+	row.move_child(coin, money_label.get_index())
+	var sep1 := _ink_sep()
+	row.add_child(sep1)
+	row.move_child(sep1, level_label.get_index())
+	var house := Paper.icon("house")
+	row.add_child(house)
+	row.move_child(house, level_label.get_index())
+	var exp_col := row.get_node("ExpColumn")
+	var sep2 := _ink_sep()
+	row.add_child(sep2)
+	row.move_child(sep2, exp_col.get_index())
+	var mgr := Paper.icon("manager")
+	row.add_child(mgr)
+	row.move_child(mgr, exp_col.get_index())
+	plank.reset_size()
+	plank.position = Vector2(16, 12)
+
+
+func _ink_sep() -> ColorRect:
+	var c := ColorRect.new()
+	c.color = Color(Paper.INK, 0.35)
+	c.custom_minimum_size = Vector2(3, 40)
+	c.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return c
 
 
 ## Icon buttons in the top-right corner (no text): Market, Lessons, Recipes,
 ## Library, Stats, Pause. Each has a tooltip and a small key badge.
 const WINDOW_BUTTONS := [
 	["market", "market", "M", "Market: go to the Night Market to buy ingredients"],
-	["tutorial", "tutorial", "T", "Lessons: Chef Miso's C lessons and Kitchen Functions"],
-	["recipe_book", "recipe_book", "R", "Recipe Book: dishes and their ingredients"],
+	["tutorial", "lessons", "T", "Lessons: Chef Miso's C lessons and Kitchen Functions"],
+	["recipe_book", "recipes", "R", "Recipe Book: dishes and their ingredients"],
 	["library", "library", "L", "Library: your reusable functions"],
 	["stats", "stats", "Tab", "Stats: your progress and staff"],
 	["pause", "pause", "Esc", "Pause menu"],
@@ -103,51 +145,32 @@ const WINDOW_BUTTONS := [
 var window_buttons := {}
 
 
+## Rounded paper icon buttons (84 x 80), each with a key chip under it.
 func _build_buttons() -> void:
 	var row := HBoxContainer.new()
 	row.name = "WindowButtons"
-	row.add_theme_constant_override("separation", 10)
-	row.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	row.offset_left = -680
-	row.offset_right = -24
-	row.offset_top = 24
-	row.offset_bottom = 88
+	row.add_theme_constant_override("separation", 8)
 	row.alignment = BoxContainer.ALIGNMENT_END
-	row.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(row)
 	for spec in WINDOW_BUTTONS:
-		var b := _icon_button(spec[1], spec[2], spec[3])
+		var col := VBoxContainer.new()
+		col.add_theme_constant_override("separation", -6)
+		col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(col)
+		var b := Paper.icon_button(spec[1], spec[0] == "market")
+		b.tooltip_text = "%s  (%s)" % [spec[3], spec[2]]
 		b.pressed.connect(func(): window_requested.emit(spec[0]))
-		row.add_child(b)
+		col.add_child(b)
+		var chip := Paper.key_chip(spec[2], 14)
+		chip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		col.add_child(chip)
 		window_buttons[spec[0]] = b
 		if spec[0] == "market":
 			_market_button = b
-
-
-func _icon_button(icon_key: String, key: String, tip: String) -> Button:
-	var b := Button.new()
-	b.focus_mode = Control.FOCUS_NONE
-	b.custom_minimum_size = Vector2(64, 64)
-	b.add_theme_constant_override("icon_max_width", 40)
-	b.tooltip_text = "%s  (%s)" % [tip, key]
-	b.icon = PixelArt.find(["res://assets/ui/icons/%s.png" % icon_key])
-	b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	b.expand_icon = false
-	var badge := Label.new()
-	badge.text = key
-	badge.add_theme_font_size_override("font_size", 12)
-	badge.add_theme_color_override("font_color", Color(1, 0.93, 0.8))
-	badge.add_theme_constant_override("outline_size", 4)
-	badge.add_theme_color_override("font_outline_color", Color(0.16, 0.08, 0.04))
-	badge.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	badge.offset_left = -40
-	badge.offset_top = -22
-	badge.offset_right = -6
-	badge.offset_bottom = -4
-	badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	b.add_child(badge)
-	return b
+	row.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, 12)
+	row.offset_top = 10
+	row.offset_bottom = row.offset_top + row.get_combined_minimum_size().y
 
 
 ## Puts assets/ui/hud/<key>.png in front of a HUD item, if that file exists.
@@ -168,23 +191,26 @@ func _add_icon(before: Control, key: String) -> void:
 
 
 func _on_player_exp_changed(level: int, exp_now: int, needed: int) -> void:
-	_player_label.text = "Manager Lv %d" % level
 	if needed <= 0:
 		_exp_bar.max_value = 1
 		_exp_bar.value = 1
-		_exp_bar.tooltip_text = "Max level!"
+		_exp_bar.tooltip_text = "Manager Lv %d: max level!" % level
+		_player_label.text = "Lv %d   MAX" % level
 	else:
 		_exp_bar.max_value = needed
 		_exp_bar.value = exp_now
-		_exp_bar.tooltip_text = "EXP %d / %d" % [exp_now, needed]
+		_exp_bar.tooltip_text = "Manager Lv %d: EXP %d / %d" % [level, exp_now, needed]
+		_player_label.text = "Lv %d   %d/%d EXP" % [level, exp_now, needed]
 
 
 func _on_money_changed(amount: int) -> void:
-	money_label.text = "Coins: %d" % amount
+	money_label.text = "%d" % amount
+	money_label.tooltip_text = "Coins"
 
 
 func _on_level_changed(level: int) -> void:
-	level_label.text = "Restaurant Lv %d" % level
+	level_label.text = "Lv %d · %s" % [level, GameState.level_data().display_name]
+	level_label.tooltip_text = "Restaurant level"
 	_refresh_special()
 	_refresh_challenges()
 
@@ -247,6 +273,8 @@ func _build_challenges() -> void:
 	_goals_tab.tooltip_text = "Quest Log: click or press G to open / close"
 	_goals_tab.pressed.connect(toggle_goals)
 	add_child(_goals_tab)
+	_goals_tab.hide()  # the quest card's "All quests" button (or G) opens the log
+	_build_quest_card()
 	GameState.challenge_completed.connect(func(_l, _i): _refresh_challenges())
 	GameState.goal_reached.connect(func(_l, _i): _refresh_challenges())
 	GameState.stats_changed.connect(_refresh_challenges)
@@ -279,8 +307,9 @@ func _refresh_challenges() -> void:
 	var chals: Array = LevelChallenges.for_level(lv)
 	var quests: Array = MisoQuests.for_level(lv)
 	var any := not (goals.is_empty() and chals.is_empty() and quests.is_empty())
-	_goals_tab.visible = any
+	_goals_tab.visible = false
 	_goals.visible = any
+	_refresh_quest_card()
 	if not any:
 		return
 	for c in _ql_body.get_children():
@@ -337,7 +366,9 @@ func _ql_layout() -> void:
 	var max_h := maxf(200.0, vs.y - 200.0 - 260.0)
 	_ql_scroll.custom_minimum_size = Vector2(QL_W, minf(_ql_body.get_combined_minimum_size().y, max_h))
 	_goals.reset_size()
-	_goals_tab.position = Vector2(_goals.size.x - 4 if SettingsManager.goals_open else 0.0, _goals.position.y)
+	# The full log opens beside the quest card.
+	if _qcard:
+		_goals.position = Vector2(_qcard.position.x + _qcard.size.x + 10, _qcard.position.y)
 
 
 ## A section card: coloured header bar + VBox for its rows (returned).
@@ -510,8 +541,9 @@ func _ql_goal(title: String, have: int, total: int, done: bool) -> Control:
 
 ## Today's Special (Restaurant Levels 1-2): click to change what every customer orders.
 func _build_special() -> void:
-	_special = Art.button(self, "", Rect2(24, 128, 470, 60), true, 22)
-	_special.focus_mode = Control.FOCUS_NONE
+	# A gold rounded pill; the quest card (below) holds it.
+	_special = Paper.button("", true, 22)
+	_special.custom_minimum_size = Vector2(0, 56)
 	_special.tooltip_text = "Until Restaurant Level 2, every customer orders Today's Special.\nClick to pick another dish from your menu."
 	_special.pressed.connect(func(): GameState.next_special())
 	GameState.special_changed.connect(func(_d): _refresh_special())
@@ -522,7 +554,7 @@ func _refresh_special() -> void:
 	if _special == null:
 		return
 	_special.visible = GameState.special_active()
-	_special.text = "Today's Special: %s  ▸" % Kitchen.title_of(GameState.todays_special)
+	_special.text = "Today's Special: %s ▸" % Kitchen.title_of(GameState.todays_special)
 
 
 ## Shows "[E] <prompt>" for the focused object, or hides it when target is null.
@@ -564,10 +596,15 @@ func set_in_market(on: bool) -> void:
 func _build_deliveries() -> void:
 	_deliveries_box = VBoxContainer.new()
 	_deliveries_box.name = "Deliveries"
-	_deliveries_box.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	_deliveries_box.offset_left = -312
-	_deliveries_box.offset_right = -24
-	_deliveries_box.offset_top = 150
+	# Bottom right, above the zoom control (the Orders hang at the top right).
+	_deliveries_box.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	_deliveries_box.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_deliveries_box.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_deliveries_box.offset_left = -304
+	_deliveries_box.offset_right = -16
+	_deliveries_box.offset_top = -190
+	_deliveries_box.offset_bottom = -190
+	_deliveries_box.alignment = BoxContainer.ALIGNMENT_END
 	_deliveries_box.add_theme_constant_override("separation", 8)
 	_deliveries_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_deliveries_box)
@@ -773,92 +810,71 @@ func clear_notices(prefix: String) -> void:
 			c.queue_free()
 
 
-# --- Order board (serving counter orders, 3 columns × 4 rows, scrolls) ---------------
+# --- Orders (top right, under the icon buttons) ---------------------------------------
+# A paper tab "ORDERS (n)" and hanging paper tickets: a red badge with the table
+# number (or the posted ticket #), the dish picture and name, and a patience
+# bar (green > yellow > red). Only the tab shows when there are no orders.
 
 ## Set by Game so the board can read the order queue.
 var game: Node
-var _board: PanelContainer
-var _board_grid: GridContainer
+var _board: VBoxContainer
 var _board_title: Label
-var _board_scroll: ScrollContainer
+var _board_row: HFlowContainer
 var _board_sig := ""
-var _board_toggle: Button
 var _board_open := true
-const BOARD_COLS := 3
-const BOARD_ROWS := 4
-const TILE := Vector2(96, 92)
+var _ticket_bars: Array = []  # [ProgressBar, customer]
+const TICKET := Vector2(128, 172)
 
 
 func _build_order_board() -> void:
-	_board = PanelContainer.new()
+	_board = VBoxContainer.new()
 	_board.name = "OrderBoard"
-	var st := StyleBoxFlat.new()
-	st.bg_color = Color(0.2, 0.12, 0.08, 0.93)
-	st.border_color = Color(0.1, 0.05, 0.03)
-	st.set_border_width_all(4)
-	st.set_corner_radius_all(6)
-	st.content_margin_left = 10
-	st.content_margin_right = 10
-	st.content_margin_top = 8
-	st.content_margin_bottom = 10
-	_board.add_theme_stylebox_override("panel", st)
-	_board.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	var w := BOARD_COLS * TILE.x + (BOARD_COLS - 1) * 8 + 20 + 14
-	var h := BOARD_ROWS * TILE.y + (BOARD_ROWS - 1) * 8 + 60
-	_board.offset_left = -w - 200
-	_board.offset_right = -200
-	_board.offset_top = -h - 24
-	_board.offset_bottom = -24
+	_board.add_theme_constant_override("separation", 6)
+	_board.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_board.alignment = BoxContainer.ALIGNMENT_BEGIN
 	add_child(_board)
-	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 6)
-	_board.add_child(v)
-	_board_title = Label.new()
-	_board_title.text = "Orders"
-	_board_title.add_theme_font_size_override("font_size", 22)
-	_board_title.add_theme_color_override("font_color", Color(1, 0.86, 0.52))
-	_board_title.tooltip_text = "Orders waiting at the serving counter, oldest first. # = ticket posted with post_order(); ? = order not taken yet. Scroll for more."
-	_board_title.mouse_filter = Control.MOUSE_FILTER_PASS
-	_board_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var head := HBoxContainer.new()
-	v.add_child(head)
-	head.add_child(_board_title)
-	_board_toggle = Button.new()
-	_board_toggle.focus_mode = Control.FOCUS_NONE
-	_board_toggle.add_theme_font_size_override("font_size", 18)
-	_board_toggle.tooltip_text = "Hide or show the Order board"
-	_board_toggle.pressed.connect(func(): set_orders_open(not _board_open))
-	head.add_child(_board_toggle)
-	_board_scroll = ScrollContainer.new()
-	_board_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_board_scroll.custom_minimum_size = Vector2(BOARD_COLS * TILE.x + (BOARD_COLS - 1) * 8 + 14, BOARD_ROWS * TILE.y + (BOARD_ROWS - 1) * 8)
-	v.add_child(_board_scroll)
-	_board_grid = GridContainer.new()
-	_board_grid.columns = BOARD_COLS
-	_board_grid.add_theme_constant_override("h_separation", 8)
-	_board_grid.add_theme_constant_override("v_separation", 8)
-	_board_scroll.add_child(_board_grid)
-	set_orders_open(_board_open)
+	var tab := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Paper.FACE_HOVER
+	sb.border_color = Paper.INK
+	sb.set_border_width_all(3)
+	sb.set_corner_radius_all(10)
+	sb.content_margin_left = 22
+	sb.content_margin_right = 22
+	sb.content_margin_top = 4
+	sb.content_margin_bottom = 6
+	sb.shadow_color = Color(0, 0, 0, 0.2)
+	sb.shadow_size = 3
+	tab.add_theme_stylebox_override("panel", sb)
+	tab.size_flags_horizontal = Control.SIZE_SHRINK_END
+	tab.tooltip_text = "Orders waiting, oldest first. Badge = table number (# = ticket posted with post_order()); ? = order not taken yet. The bar is the customer's patience."
+	_board.add_child(tab)
+	_board_title = Paper.label("ORDERS (0)", 20, Paper.INK, true)
+	tab.add_child(_board_title)
+	_board_row = HFlowContainer.new()
+	_board_row.alignment = FlowContainer.ALIGNMENT_END
+	_board_row.add_theme_constant_override("h_separation", 10)
+	_board_row.add_theme_constant_override("v_separation", 10)
+	_board_row.custom_minimum_size = Vector2(TICKET.x * 5 + 40, 0)
+	_board_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_board.add_child(_board_row)
+	_place_board()
 
 
-## Hide (just the title bar stays) or show the Order board.
+func _place_board() -> void:
+	var row: Control = get_node_or_null("WindowButtons")
+	var top: float = (row.position.y + row.size.y + 8.0) if row else 120.0
+	_board.reset_size()
+	var w: float = maxf(_board.get_combined_minimum_size().x, TICKET.x * 5 + 40)
+	_board.position = Vector2(get_viewport_rect().size.x - w - 14.0, top)
+	_board.size.x = w
+
+
+## Kept for older callers: the board now shrinks to its tab by itself.
 func set_orders_open(on: bool) -> void:
 	_board_open = on
-	_board_toggle.text = "Hide ▾" if on else "Show ▴"
-	_fit_board()
-
-
-## The board is only as tall as its orders (up to 4 rows; scroll for more),
-## and just a title bar when there are none, so it doesn't hide the kitchen.
-var _board_count := 0
-func _fit_board() -> void:
-	var rows := clampi(ceili(_board_count / float(BOARD_COLS)), 0, BOARD_ROWS)
-	var show := _board_open and rows > 0
-	_board_scroll.visible = show
-	var grid_h := rows * TILE.y + maxi(rows - 1, 0) * 8
-	_board_scroll.custom_minimum_size.y = grid_h
-	var h := grid_h + 60.0 if show else 52.0
-	_board.offset_top = -h - 24
+	if _board_row:
+		_board_row.visible = on
 
 
 func refresh_orders() -> void:
@@ -867,69 +883,132 @@ func refresh_orders() -> void:
 	if game == null:
 		return
 	var list: Array = game.orders.duplicate()
-	# Posted tickets first (queue order), then the rest in arrival order.
 	var sig := ""
 	for o in list:
 		sig += "%s%s%s%s%s;" % [o.dish, o.taken, o.posted, o.ticket, o.claimed_by != null or o.serving != null]
-	if sig == _board_sig:
-		return
-	_board_sig = sig
-	for c in _board_grid.get_children():
-		c.queue_free()
-	_board_title.text = "Orders (%d)" % list.size() if not list.is_empty() else "Orders: none yet"
-	_board_count = list.size()
-	_fit_board()
-	for o in list:
-		_board_grid.add_child(_order_tile(o))
+	if sig != _board_sig:
+		_board_sig = sig
+		for c in _board_row.get_children():
+			c.queue_free()
+		_ticket_bars.clear()
+		_board_title.text = "ORDERS (%d)" % list.size()
+		for o in list:
+			_board_row.add_child(_order_tile(o))
+		_place_board()
+	# Patience bars move every refresh.
+	for tb in _ticket_bars:
+		var bar: ProgressBar = tb[0]
+		var c = tb[1]
+		if c == null or not is_instance_valid(c) or not is_instance_valid(bar):
+			continue
+		var left: float = clampf(1.0 - float(c.waited) / maxf(float(c.patience), 0.01), 0.0, 1.0)
+		bar.value = left
+		var fill := bar.get_theme_stylebox("fill") as StyleBoxFlat
+		if fill:
+			fill.bg_color = Color(0.42, 0.72, 0.33) if left > 0.5 else (Color(0.93, 0.76, 0.2) if left > 0.25 else Color(0.84, 0.27, 0.22))
 
 
 func _order_tile(o: Dictionary) -> Control:
+	var holder := Control.new()
+	holder.custom_minimum_size = TICKET + Vector2(10, 12)
+	holder.mouse_filter = Control.MOUSE_FILTER_PASS
 	var t := PanelContainer.new()
-	t.custom_minimum_size = TILE
+	t.position = Vector2(10, 12)
+	t.size = TICKET
+	t.custom_minimum_size = TICKET
 	var busy: bool = o.claimed_by != null or o.serving != null
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(1, 0.95, 0.75) if o.posted else (Color(0.98, 0.94, 0.86) if o.taken else Color(0.78, 0.74, 0.7))
-	sb.border_color = Color(0.35, 0.7, 0.3) if busy else Color(0.45, 0.3, 0.18)
-	sb.set_border_width_all(4 if busy else 2)
-	sb.set_corner_radius_all(4)
+	sb.bg_color = Color(1, 0.97, 0.88) if (o.taken or o.posted) else Color(0.88, 0.84, 0.78)
+	sb.border_color = Color(0.32, 0.6, 0.26) if busy else Paper.INK
+	sb.set_border_width_all(4 if busy else 3)
+	sb.set_corner_radius_all(8)
+	sb.content_margin_left = 6
+	sb.content_margin_right = 6
+	sb.content_margin_top = 14
+	sb.content_margin_bottom = 8
+	sb.shadow_color = Color(0, 0, 0, 0.25)
+	sb.shadow_size = 4
 	t.add_theme_stylebox_override("panel", sb)
+	holder.add_child(t)
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 0)
+	v.add_theme_constant_override("separation", 4)
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	t.add_child(v)
-	var top := Label.new()
-	top.text = ("#%d" % o.ticket) if o.posted else ("making" if busy else ("taken" if o.taken else "waiting"))
-	top.add_theme_font_size_override("font_size", 14)
-	top.add_theme_color_override("font_color", Color(0.3, 0.18, 0.08))
-	top.add_theme_constant_override("outline_size", 0)
-	v.add_child(top)
+	var c = o.customer
 	if o.taken or o.posted:
 		var ic := TextureRect.new()
 		ic.texture = Art.dish_art(o.dish)
 		ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		ic.custom_minimum_size = Vector2(80, 44)
+		ic.custom_minimum_size = Vector2(96, 64)
+		ic.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		v.add_child(ic)
-		var nm := Label.new()
-		nm.text = Kitchen.title_of(o.dish)
+		var nm := Paper.label(Kitchen.title_of(o.dish), 17, Paper.INK, true)
+		nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		nm.clip_text = true
 		nm.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-		nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		nm.custom_minimum_size = Vector2(80, 0)
-		nm.add_theme_font_size_override("font_size", 12)
-		nm.add_theme_color_override("font_color", Color(0.3, 0.18, 0.08))
-		nm.add_theme_constant_override("outline_size", 0)
 		v.add_child(nm)
-		t.tooltip_text = "%s%s" % [Kitchen.title_of(o.dish), "  (ticket #%d)" % o.ticket if o.posted else ""]
+		holder.tooltip_text = "%s%s%s" % [Kitchen.title_of(o.dish), "  (ticket #%d)" % o.ticket if o.posted else "", "  · being made" if busy else ""]
 	else:
-		var q := Label.new()
-		q.text = "?"
+		var q := Paper.label("?", 52, Paper.INK_SOFT, true)
 		q.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		q.add_theme_font_size_override("font_size", 40)
-		q.add_theme_color_override("font_color", Color(0.4, 0.3, 0.25))
+		q.custom_minimum_size.y = 86
+		q.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		v.add_child(q)
-		t.tooltip_text = "Order not taken yet: use take_order()"
-	return t
+		holder.tooltip_text = "Order not taken yet: use take_order()"
+	var bar := ProgressBar.new()
+	bar.max_value = 1.0
+	bar.step = 0.001
+	bar.value = 1.0
+	bar.show_percentage = false
+	bar.custom_minimum_size = Vector2(0, 14)
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var bg := StyleBoxFlat.new()
+	bg.bg_color = Color(0.3, 0.24, 0.2)
+	bg.set_corner_radius_all(7)
+	bg.set_border_width_all(2)
+	bg.border_color = Paper.INK
+	var fill := StyleBoxFlat.new()
+	fill.bg_color = Color(0.42, 0.72, 0.33)
+	fill.set_corner_radius_all(6)
+	bar.add_theme_stylebox_override("background", bg)
+	bar.add_theme_stylebox_override("fill", fill)
+	v.add_child(bar)
+	if c != null and is_instance_valid(c):
+		_ticket_bars.append([bar, c])
+	else:
+		bar.visible = false
+	# Red badge: table number (or the posted ticket number).
+	var badge_text := "?"
+	if o.posted:
+		badge_text = "#%d" % o.ticket
+	elif c != null and is_instance_valid(c) and c.get("seat") is Dictionary:
+		var key := String(c.seat.get("key", ""))
+		if key.begins_with("t"):
+			badge_text = str(int(key.substr(1).get_slice("_", 0)) + 1)
+		else:
+			badge_text = "S"
+	var badge := PanelContainer.new()
+	var bsb := StyleBoxFlat.new()
+	bsb.bg_color = Paper.RED
+	bsb.border_color = Paper.INK
+	bsb.set_border_width_all(3)
+	bsb.set_corner_radius_all(22)
+	bsb.content_margin_left = 10
+	bsb.content_margin_right = 10
+	bsb.content_margin_top = 2
+	bsb.content_margin_bottom = 4
+	badge.add_theme_stylebox_override("panel", bsb)
+	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var bl := Paper.label(badge_text, 20, Color(1, 0.97, 0.92), true)
+	bl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	badge.add_child(bl)
+	badge.position = Vector2(0, 0)
+	badge.custom_minimum_size = Vector2(44, 44)
+	holder.add_child(badge)
+	return holder
 
 
 # --- Zoom control (bottom right): - / + and the current zoom (4x / 5x / 6x) -----------
@@ -969,3 +1048,177 @@ func _build_zoom() -> void:
 func on_zoom_changed(step: int) -> void:
 	if _zoom_label:
 		_zoom_label.text = ZOOM_NAMES[clampi(step, 0, 2)]
+
+
+# --- Quest card (left, under the top bar) -------------------------------------------
+# "QUEST k/n" tab, the current Chef Miso quest (title, task, progress), Example
+# and All quests buttons, and Today's Special at the bottom. ▾ folds it to one
+# line (remembered).
+
+var _qcard: PanelContainer
+var _qc_v: VBoxContainer
+const SEG_DONE := Color(0.42, 0.66, 0.33)
+const SEG_TODO := Color(0.85, 0.78, 0.62)
+
+
+func _build_quest_card() -> void:
+	_qcard = PanelContainer.new()
+	_qcard.name = "QuestCard"
+	_qcard.mouse_filter = Control.MOUSE_FILTER_STOP
+	_qcard.custom_minimum_size = Vector2(460, 0)
+	add_child(_qcard)
+	_qc_v = VBoxContainer.new()
+	_qc_v.add_theme_constant_override("separation", 8)
+	_qcard.add_child(_qc_v)
+
+
+func _qc_who() -> String:
+	if game and game.has_method("_staff_list") and not game._staff_list().is_empty():
+		return game._staff_list()[0].staff_name
+	return "your staff"
+
+
+func _refresh_quest_card() -> void:
+	if _qcard == null:
+		return
+	for c in _qc_v.get_children():
+		if c != _special:
+			_qc_v.remove_child(c)
+			c.queue_free()
+	if _special and _special.get_parent():
+		_special.get_parent().remove_child(_special)
+	var lv: int = GameState.restaurant_level
+	var quests: Array = MisoQuests.for_level(lv)
+	var k: int = GameState.miso_progress(lv)
+	var n := quests.size()
+	var done_all := k >= n
+	var title := ""
+	var task := ""
+	if n == 0:
+		title = "Restaurant goals"
+		task = "Open your Quest Log to see what's next."
+	elif done_all:
+		title = "All quests done! ✔"
+		var left: Array = GameState.challenges_left(lv)
+		if left.is_empty():
+			task = "Finish the goals, then upgrade at the chalkboard."
+		else:
+			var c0 = left[0]
+			var ct: String = String(c0.get("title", "")) if c0 is Dictionary else String(LevelChallenges.find(lv, String(c0)).get("title", ""))
+			task = "Level Challenge: %s" % ct
+	else:
+		title = quests[k].topic
+		task = _plain(String(quests[k].do).replace("{who}", _qc_who()))
+	var tab_text := "QUEST %d/%d" % [mini(k + 1, n), n] if n > 0 else "QUESTS"
+	var collapsed: bool = SettingsManager.quest_collapsed
+	var paper := Paper.panel(Vector4(22, 30, 22, 16) if not collapsed else Vector4(20, 24, 20, 10))
+	_qcard.add_theme_stylebox_override("panel", paper)
+	if collapsed:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 10)
+		_qc_v.add_child(row)
+		row.add_child(Paper.icon("chef"))
+		var l := Paper.label("Quest %d/%d · %s" % [mini(k + 1, n), n, title] if n > 0 else title, 20, Paper.RED, true)
+		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		l.clip_text = true
+		row.add_child(l)
+		var open_b := Paper.button("▸", false, 18)
+		open_b.tooltip_text = "Show the quest card"
+		open_b.custom_minimum_size = Vector2(52, 44)
+		open_b.pressed.connect(_toggle_quest_card)
+		row.add_child(open_b)
+	else:
+		var head := HBoxContainer.new()
+		_qc_v.add_child(head)
+		var tab := PanelContainer.new()
+		var tsb := StyleBoxFlat.new()
+		tsb.bg_color = Paper.RED
+		tsb.set_corner_radius_all(8)
+		tsb.content_margin_left = 14
+		tsb.content_margin_right = 14
+		tsb.content_margin_top = 2
+		tsb.content_margin_bottom = 4
+		tab.add_theme_stylebox_override("panel", tsb)
+		tab.add_child(Paper.label(tab_text, 17, Color(1, 0.96, 0.9), true))
+		tab.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		head.add_child(tab)
+		var sp := Control.new()
+		sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		head.add_child(sp)
+		var fold := Paper.button("▾", false, 18)
+		fold.tooltip_text = "Fold the quest card to one line"
+		fold.custom_minimum_size = Vector2(52, 44)
+		fold.pressed.connect(_toggle_quest_card)
+		head.add_child(fold)
+		var row2 := HBoxContainer.new()
+		row2.add_theme_constant_override("separation", 10)
+		_qc_v.add_child(row2)
+		var face := Paper.icon("chef")
+		face.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		row2.add_child(face)
+		var col := VBoxContainer.new()
+		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		col.add_theme_constant_override("separation", 2)
+		row2.add_child(col)
+		var tl := Paper.label(title, 26, SEG_DONE.darkened(0.2) if done_all else Paper.RED, true)
+		tl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		col.add_child(tl)
+		var tk := Paper.label(task, 18, Paper.INK)
+		tk.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		tk.custom_minimum_size.x = 340
+		col.add_child(tk)
+		if n > 0:
+			var segs := HBoxContainer.new()
+			segs.add_theme_constant_override("separation", 6)
+			_qc_v.add_child(segs)
+			for i in n:
+				var seg := Panel.new()
+				seg.custom_minimum_size = Vector2(0, 12)
+				seg.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				var ssb := StyleBoxFlat.new()
+				ssb.bg_color = SEG_DONE if i < k else (Paper.RED if i == k else SEG_TODO)
+				ssb.set_corner_radius_all(6)
+				seg.add_theme_stylebox_override("panel", ssb)
+				seg.tooltip_text = quests[i].topic
+				segs.add_child(seg)
+		var btns := HBoxContainer.new()
+		btns.add_theme_constant_override("separation", 10)
+		_qc_v.add_child(btns)
+		if not done_all and n > 0:
+			var ex := Paper.button("Example", false, 18)
+			ex.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			ex.custom_minimum_size.y = 52
+			ex.pressed.connect(_ql_show_example.bind(quests[k], ex))
+			btns.add_child(ex)
+		var all := Paper.button("All quests %s" % ("◂" if SettingsManager.goals_open else "▸"), false, 18)
+		all.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		all.custom_minimum_size.y = 52
+		all.tooltip_text = "Quest Log: Level Challenge, goals and Mastery quests (G)"
+		all.pressed.connect(toggle_goals)
+		btns.add_child(all)
+	if _special:
+		_qc_v.add_child(_special)
+		_refresh_special()
+	_qcard.reset_size()
+	_place_quest_card.call_deferred()
+
+
+func _place_quest_card() -> void:
+	var plank := money_label.get_parent().get_parent() as Control
+	_qcard.position = Vector2(16, plank.position.y + plank.size.y + 10)
+	_qcard.reset_size()
+	_ql_layout()
+
+
+func _toggle_quest_card() -> void:
+	SettingsManager.quest_collapsed = not SettingsManager.quest_collapsed
+	SettingsManager.save_settings()
+	_refresh_quest_card()
+
+
+## BBCode -> plain text for labels.
+func _plain(bb: String) -> String:
+	var r := RegEx.new()
+	r.compile("\\[/?[a-z_]+[^\\]]*\\]")
+	return r.sub(bb, "", true)

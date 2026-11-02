@@ -17,10 +17,11 @@ signal finished
 
 const MENTOR := "res://assets/ui/windows/tutorial/mentor.png"
 const MisoQuests := preload("res://data/help/miso_quests.gd")
-const BOX_W := 1040.0
+const BOX_W := 770.0
+const Paper := preload("res://scenes/ui/common/paper.gd")
 ## Put in an empty editor for the "Press Run" quest (a program that surely runs).
 const STARTER := "// Chef Miso's first program for you\nvoid main() {\n    printf(\"Hi, I'm %s! Off to the fridge.\\n\");\n    go_to(FRIDGE);\n}\n"
-const BOX_H := 236.0
+const BOX_H := 196.0
 
 var game: Node
 var _steps: Array = []
@@ -161,7 +162,10 @@ func _next_step() -> void:
 		_quest.hide()
 	_show_example(st.get("example", ""))
 	_type(st.get("say", st.get("do", "")))
-	_more.text = "▼ Click or press Space" if _waiting_click else "Do the quest to continue"
+	_more.text = "Space = next" if _waiting_click else "Do the quest to continue"
+	if _next_btn:
+		_next_btn.visible = _waiting_click
+		_skip_btn.visible = _level == 1 or not st.has("quest_index")
 
 
 func _end() -> void:
@@ -290,7 +294,8 @@ func _target(id: String) -> Rect2:
 			var sp = hud.get("_special")
 			return sp.get_global_rect() if sp is Control and sp.is_visible_in_tree() else Rect2()
 		"goals":
-			return Rect2(40, 240, 300, 40)
+			var qc = hud.get("_qcard")
+			return qc.get_global_rect() if qc is Control and qc.is_visible_in_tree() else Rect2(40, 240, 300, 40)
 		"buttons":
 			var row: Control = hud.get_node_or_null("WindowButtons")
 			return row.get_global_rect() if row else Rect2()
@@ -309,11 +314,9 @@ func _world_rect(n: Node2D, off: Vector2) -> Rect2:
 ## The box sits bottom-centre, or bottom-left while the code editor is open.
 func _place_box() -> void:
 	var vs := _root.get_viewport_rect().size
-	var x := (vs.x - BOX_W) * 0.5
-	if game.programming_panel.visible:
-		x = 24.0
-	_box.position = _box.position.lerp(Vector2(x, vs.y - BOX_H - 20), 0.25)
-	_quest.position = Vector2(x + 200, vs.y - BOX_H - 20 - 66)
+	var x := 16.0  # docked bottom-left, clear of the entrance
+	_box.position = _box.position.lerp(Vector2(x, vs.y - BOX_H - 16), 0.25)
+	_quest.position = Vector2(x + 130, vs.y - BOX_H - 16 - 62)
 
 
 # --- Input ---------------------------------------------------------------------------
@@ -348,54 +351,69 @@ func _advance() -> void:
 
 # --- Building the UI -----------------------------------------------------------------
 
+## Chef Miso's box: paper card docked bottom-LEFT (so the restaurant entrance
+## stays visible), portrait, gold name tab, step counter, Skip tour and Next.
+var _next_btn: Button
+var _skip_btn: Button
+
+
 func _build_box() -> void:
 	_box = PanelContainer.new()
 	_box.size = Vector2(BOX_W, BOX_H)
 	_box.custom_minimum_size = Vector2(BOX_W, BOX_H)
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.17, 0.11, 0.08, 0.97)
-	sb.border_color = Color(0.93, 0.72, 0.38)
-	sb.set_border_width_all(4)
-	sb.set_corner_radius_all(14)
-	sb.shadow_color = Color(0, 0, 0, 0.45)
-	sb.shadow_size = 10
-	sb.content_margin_left = 16
-	sb.content_margin_right = 20
-	sb.content_margin_top = 14
-	sb.content_margin_bottom = 12
-	_box.add_theme_stylebox_override("panel", sb)
+	_box.add_theme_stylebox_override("panel", Paper.panel(Vector4(22, 30, 26, 14)))
 	_box.mouse_filter = Control.MOUSE_FILTER_STOP
 	_box.gui_input.connect(_on_box_input)
 	_root.add_child(_box)
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 18)
+	row.add_theme_constant_override("separation", 16)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_box.add_child(row)
+	var frame := PanelContainer.new()
+	var fsb := StyleBoxFlat.new()
+	fsb.bg_color = Color("e8d6a8")
+	fsb.border_color = Paper.INK
+	fsb.set_border_width_all(3)
+	fsb.set_corner_radius_all(10)
+	frame.add_theme_stylebox_override("panel", fsb)
+	frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(frame)
 	var face := TextureRect.new()
 	face.texture = load(MENTOR) if ResourceLoader.exists(MENTOR) else null
-	face.custom_minimum_size = Vector2(134, 182)
+	face.custom_minimum_size = Vector2(100, 120)
 	face.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	face.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	face.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	face.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(face)
+	frame.add_child(face)
 	var v := VBoxContainer.new()
 	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	v.add_theme_constant_override("separation", 6)
+	v.add_theme_constant_override("separation", 4)
 	row.add_child(v)
 	var head := HBoxContainer.new()
 	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(head)
-	var name_plate := Label.new()
-	name_plate.text = "Chef Miso"
-	name_plate.add_theme_font_size_override("font_size", 26)
-	name_plate.add_theme_color_override("font_color", Color(1, 0.8, 0.45))
-	name_plate.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	head.add_child(name_plate)
-	_step_label = Label.new()
-	_step_label.add_theme_font_size_override("font_size", 18)
-	_step_label.add_theme_color_override("font_color", Color(0.75, 0.65, 0.55))
+	var tab := PanelContainer.new()
+	var tsb := StyleBoxFlat.new()
+	tsb.bg_color = Paper.GOLD
+	tsb.border_color = Paper.INK
+	tsb.set_border_width_all(3)
+	tsb.set_corner_radius_all(10)
+	tsb.content_margin_left = 14
+	tsb.content_margin_right = 14
+	tsb.content_margin_top = 0
+	tsb.content_margin_bottom = 2
+	tab.add_theme_stylebox_override("panel", tsb)
+	tab.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tab.add_child(Paper.label("Chef Miso", 20, Paper.INK, true))
+	head.add_child(tab)
+	var sp := Control.new()
+	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	head.add_child(sp)
+	_step_label = Paper.label("", 17, Paper.INK_SOFT)
 	head.add_child(_step_label)
 	_text = RichTextLabel.new()
 	_text.bbcode_enabled = true
@@ -403,18 +421,46 @@ func _build_box() -> void:
 	_text.scroll_active = false
 	_text.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_text.add_theme_font_size_override("normal_font_size", 23)
-	_text.add_theme_font_size_override("bold_font_size", 23)
-	_text.add_theme_color_override("default_color", Color(1, 0.95, 0.86))
-	_text.add_theme_constant_override("line_separation", 4)
+	_text.add_theme_font_size_override("normal_font_size", 21)
+	_text.add_theme_font_size_override("bold_font_size", 21)
+	_text.add_theme_color_override("default_color", Paper.INK)
+	_text.add_theme_constant_override("line_separation", 2)
 	v.add_child(_text)
-	_more = Label.new()
-	_more.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_more.add_theme_font_size_override("font_size", 18)
-	_more.add_theme_color_override("font_color", Color(1, 0.8, 0.45))
-	v.add_child(_more)
+	var foot := HBoxContainer.new()
+	foot.add_theme_constant_override("separation", 10)
+	v.add_child(foot)
+	_more = Paper.label("", 15, Paper.INK_SOFT)
+	_more.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_more.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	foot.add_child(_more)
+	_skip_btn = Paper.button("Skip tour", false, 17)
+	_skip_btn.custom_minimum_size = Vector2(130, 46)
+	_skip_btn.tooltip_text = "Skip the tour (Chef Miso's C quests stay in your Quest Log)"
+	_skip_btn.pressed.connect(_skip_tour)
+	foot.add_child(_skip_btn)
+	_next_btn = Paper.button("Next ▸", true, 17)
+	_next_btn.custom_minimum_size = Vector2(118, 46)
+	_next_btn.pressed.connect(_advance)
+	foot.add_child(_next_btn)
 	var vs := Vector2(1920, 1080)
-	_box.position = Vector2((vs.x - BOX_W) * 0.5, vs.y - BOX_H - 20)
+	_box.position = Vector2(16, vs.y - BOX_H - 16)
+
+
+## Skip tour: jump to Chef Miso's first coding quest, or end the tour if the
+## quests are already under way (they stay in the Quest Log).
+func _skip_tour() -> void:
+	if _i < 0:
+		return
+	for k in range(_i + 1, _steps.size()):
+		if _steps[k].has("quest_index") and not _steps[_i].has("quest_index"):
+			var done_q := GameState.miso_progress(_level)
+			# Skip straight to the first unfinished quest.
+			for j in range(k, _steps.size()):
+				if int(_steps[j].get("quest_index", -1)) >= done_q:
+					_i = j - 1
+					_next_step()
+					return
+	_end()
 
 
 func _build_quest() -> void:

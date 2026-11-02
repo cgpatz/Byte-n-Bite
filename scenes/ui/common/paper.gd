@@ -108,14 +108,17 @@ static func icon_button(icon: String, gold := false) -> Button:
 ## A small key chip ("M", "Tab"...) like a keyboard key.
 static func key_chip(key: String, font_size := 14) -> PanelContainer:
 	var p := PanelContainer.new()
-	p.add_theme_stylebox_override("panel", box("key_chip", Vector4(3, 2, 3, 2), Vector4(8, 0, 8, 0)))
+	p.add_theme_stylebox_override("panel", box("key_chip", Vector4(3, 2, 3, 2), Vector4(10, 2, 10, 2)))
+	p.custom_minimum_size = Vector2(44, 28)
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var l := Label.new()
 	l.text = key
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	l.add_theme_font_size_override("font_size", font_size)
 	l.add_theme_color_override("font_color", INK)
 	l.add_theme_constant_override("outline_size", 0)
+	l.add_theme_constant_override("line_spacing", 0)
 	p.add_child(l)
 	return p
 

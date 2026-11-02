@@ -159,3 +159,5 @@ func _update_focus() -> void:
 	var want: String = _focus.get_prompt() if _focus != null and is_instance_valid(_focus) and _focus in close else ""
 	if _bubble and _bubble.text != want:
 		_bubble.text = want
+	if _bubble:
+		_bubble.target = _focus if want != "" else null

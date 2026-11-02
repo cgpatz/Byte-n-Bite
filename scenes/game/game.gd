@@ -122,6 +122,7 @@ func _ready() -> void:
 	add_child(ticket_rail)
 	hud.game = self
 	zoom_changed.connect(hud.on_zoom_changed)
+	hud._refresh_challenges.call_deferred()  # the quest card names the first staff member
 	manager.focus_changed.connect(hud.show_prompt_for)
 	manager.interacted.connect(_on_manager_interacted)
 	for staff in staff_root.get_children():
