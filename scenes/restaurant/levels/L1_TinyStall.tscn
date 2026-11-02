@@ -5,11 +5,13 @@
 [ext_resource type="Script" path="res://scenes/restaurant/grid_overlay.gd" id="3_grid"]
 [ext_resource type="Script" path="res://scenes/restaurant/art_background.gd" id="90_artbg"]
 [ext_resource type="TileSet" path="res://assets/tiles/restaurant_tileset.tres" id="91_tiles"]
+[ext_resource type="Texture2D" path="res://assets/design/l1_v2/outside/L1_outside_day_480x270.png" id="92_outside"]
 
 [node name="L1_TinyStall" type="Node2D"]
 script = ExtResource("1_layout")
 level_name = "Tiny Stall"
 grid_size = Vector2i(8, 8)
+outside_view = true
 
 [node name="Floor" type="Node2D" parent="."]
 
@@ -46,6 +48,14 @@ mouse_filter = 2
 color = Color(0.5, 0.35, 0.24, 1)
 
 [node name="Art" type="Node2D" parent="."]
+
+[node name="Outside" type="Sprite2D" parent="Art"]
+z_index = -10
+texture_filter = 1
+position = Vector2(-704, -244)
+scale = Vector2(4, 4)
+texture = ExtResource("92_outside")
+centered = false
 
 [node name="Background" type="Sprite2D" parent="Art"]
 centered = false

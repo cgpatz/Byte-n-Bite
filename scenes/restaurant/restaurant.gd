@@ -28,6 +28,9 @@ const PixelArt := preload("res://scenes/art/pixel_art.gd")
 @export var level_name := "Tiny Stall"
 ## Size in tiles, walls included (from the Restaurant Evolution Reference Sheet).
 @export var grid_size := Vector2i(8, 8)
+## Level 1 v2: a picture of the street around the restaurant (Art/Outside).
+## Only levels that turn this on show it; the camera then stops at its edges.
+@export var outside_view := false
 ## Hide every placeholder rectangle at once when the art is ready.
 @export var show_greybox := true:
 	set(v):
@@ -211,6 +214,18 @@ func get_bounds() -> Rect2:
 		if w is Station:
 			r = r.merge(Rect2(w.global_position - w.size / 2.0, w.size))
 	return r
+
+
+## World rect of the Art/Outside picture (decoration only; walls keep everyone
+## inside the room). Empty when this level has no outside view.
+func outside_rect() -> Rect2:
+	var o := get_node_or_null("Art/Outside") as Sprite2D
+	if not outside_view or o == null or o.texture == null:
+		if o:
+			o.visible = false
+		return Rect2()
+	o.visible = true
+	return Rect2(o.global_position, o.texture.get_size() * o.scale)
 
 
 ## Returns the station with this id (e.g. "GRILL"), or null. Searches Stations

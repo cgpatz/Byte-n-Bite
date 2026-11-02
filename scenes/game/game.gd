@@ -864,6 +864,7 @@ func _clear_customers() -> void:
 
 ## Camera zoom. 1.5 keeps pixel art crisp (16 px art × 4 × 1.5 = 6 px per art pixel).
 const FOLLOW_ZOOM := 1.5
+var _cam_outside := false
 ## How quickly the camera catches up with the manager (higher = snappier).
 const FOLLOW_SPEED := 6.0
 ## Extra space (px) shown past the restaurant's walls.
@@ -874,12 +875,43 @@ var _cam_bounds := Rect2()
 
 func _setup_camera() -> void:
 	_cam_bounds = restaurant.get_bounds().grow(EDGE_MARGIN)
+	# Level 1 v2: the street picture around the room is the camera's limit.
+	_cam_outside = false
+	if restaurant.has_method("outside_rect"):
+		var o: Rect2 = restaurant.outside_rect()
+		if o.size != Vector2.ZERO:
+			_cam_bounds = o
+			_cam_outside = true
+	_fence_room()
 	camera.zoom = Vector2(FOLLOW_ZOOM, FOLLOW_ZOOM)
 	if in_market and market:
 		_cam_bounds = market.bounds().grow_individual(0, 110, 0, 0)  # room under the HUD
 		var z := maxf(FOLLOW_ZOOM, get_viewport_rect().size.x / market.bounds().size.x)
 		camera.zoom = Vector2(z, z)
 	camera.global_position = _camera_target()  # jump there on level load
+
+
+## Levels with an outside picture: an invisible line just below the room keeps
+## the Manager (and staff) inside; customers walk on the nav grid, not physics,
+## so they still come in through the entrance.
+var _room_fence: StaticBody2D
+func _fence_room() -> void:
+	if _room_fence:
+		_room_fence.queue_free()
+		_room_fence = null
+	if not _cam_outside:
+		return
+	var b: Rect2 = restaurant.get_bounds()
+	_room_fence = StaticBody2D.new()
+	_room_fence.name = "RoomFence"
+	_room_fence.collision_layer = 1
+	var cs := CollisionShape2D.new()
+	var rs := RectangleShape2D.new()
+	rs.size = Vector2(b.size.x + 128.0, 32.0)
+	cs.shape = rs
+	cs.position = Vector2(b.get_center().x, b.end.y + 16.0)
+	_room_fence.add_child(cs)
+	add_child(_room_fence)
 
 
 ## Where the camera should be: on the manager, kept inside the restaurant.
@@ -908,6 +940,10 @@ func _camera_target() -> Vector2:
 		out[axis] = _cam_bounds.get_center()[axis] if lo > hi else clampf(p[axis], lo, hi)
 	if follow_x != INF:
 		out.x = follow_x
+		if _cam_outside:  # never past the picture's edges
+			var lo_x: float = _cam_bounds.position.x + half.x
+			var hi_x: float = _cam_bounds.end.x - half.x
+			out.x = _cam_bounds.get_center().x if lo_x > hi_x else clampf(follow_x, lo_x, hi_x)
 	return out
 
 
