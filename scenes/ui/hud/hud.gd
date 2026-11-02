@@ -222,10 +222,11 @@ func _on_level_changed(level: int) -> void:
 ## The Challenge and the Goals unlock the next restaurant upgrade.
 const MisoQuests := preload("res://data/help/miso_quests.gd")
 const QL_W := 340.0
-const QL_INK := Color(1, 0.93, 0.8)
-const QL_SOFT := Color(0.79, 0.7, 0.56)
-const QL_GOLD := Color(1, 0.85, 0.54)
-const QL_GREEN := Color(0.62, 0.82, 0.54)
+# Paper Notebook colours: dark ink on cream paper.
+const QL_INK := Color("3a2a1e")
+const QL_SOFT := Color("6b5442")
+const QL_GOLD := Color("e0a63a")
+const QL_GREEN := Color("4f8a3a")
 var _ql_body: VBoxContainer
 var _ql_scroll: ScrollContainer
 var _ql_example: PopupPanel
@@ -235,7 +236,7 @@ var _ql_example_text: Label
 func _build_challenges() -> void:
 	# A drawer on the left edge: a sideways tab, and the log beside it when open.
 	_goals = PanelContainer.new()
-	_goals.theme_type_variation = &"WoodPanel"
+	_goals.add_theme_stylebox_override("panel", Paper.panel(Vector4(24, 30, 24, 16)))
 	_goals.position = Vector2(0, 200)
 	_goals.mouse_filter = Control.MOUSE_FILTER_PASS
 	add_child(_goals)
@@ -248,7 +249,8 @@ func _build_challenges() -> void:
 	t.text = "QUEST LOG"
 	t.add_theme_font_override("font", Art.serif())
 	t.add_theme_font_size_override("font_size", 22)
-	t.add_theme_color_override("font_color", QL_GOLD)
+	t.add_theme_color_override("font_color", Paper.INK)
+	t.add_theme_constant_override("outline_size", 0)
 	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(t)
 	_chal_label = RichTextLabel.new()   # level name, right side of the header
@@ -258,6 +260,7 @@ func _build_challenges() -> void:
 	_chal_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	_chal_label.custom_minimum_size = Vector2(150, 0)
 	_chal_label.add_theme_font_size_override("normal_font_size", 13)
+	_chal_label.add_theme_constant_override("outline_size", 0)
 	_chal_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	head.add_child(_chal_label)
 	_ql_scroll = ScrollContainer.new()
@@ -314,7 +317,7 @@ func _refresh_challenges() -> void:
 		return
 	for c in _ql_body.get_children():
 		c.queue_free()
-	_chal_label.text = "[right][color=#c9b48f]Lv %d · %s[/color][/right]" % [lv, GameState.level_data().display_name]
+	_chal_label.text = "[right][color=#6b5442]Lv %d · %s[/color][/right]" % [lv, GameState.level_data().display_name]
 	var miso_left := quests.size() - GameState.miso_progress(lv)
 	var unlocked: bool = GameState.miso_done(lv)
 	# 1) Chef Miso quest
@@ -325,7 +328,7 @@ func _refresh_challenges() -> void:
 		var cl: int = GameState.challenges_left(lv).size()
 		var sec := _ql_section("Level Challenge", "%d / %d" % [chals.size() - cl, chals.size()], Color(0.95, 0.62, 0.3))
 		if not unlocked:
-			sec.add_child(_ql_line("[img=16x16]res://assets/ui/windows/recipe_book/lock.png[/img] [color=#c9b48f]Finish Chef Miso's quests to unlock (%d left).[/color]" % miso_left, 14))
+			sec.add_child(_ql_line("[img=16x16]res://assets/ui/windows/recipe_book/lock.png[/img] [color=#6b5442]Finish Chef Miso's quests to unlock (%d left).[/color]" % miso_left, 14))
 		else:
 			for g in chals:
 				var done: bool = GameState.challenge_done(lv, g.id)
@@ -347,10 +350,10 @@ func _refresh_challenges() -> void:
 			if unlocked:
 				sec3.add_child(_ql_item("★ " + m.title, m.task, "+%d coins · +%d EXP" % [m.coins, m.exp], GameState.mastery_done(lv, m.id), m.how))
 			else:
-				sec3.add_child(_ql_line("[color=#8f8270]★ %s: unlocks with the Level Challenge.[/color]" % m.title, 13))
+				sec3.add_child(_ql_line("[color=#8a7a66]★ %s: unlocks with the Level Challenge.[/color]" % m.title, 13))
 		_ql_body.add_child(sec3.get_parent())
 	if lv < GameState.MAX_RESTAURANT_LEVEL and GameState.goals_left(lv).is_empty() and GameState.challenges_left(lv).is_empty() and unlocked:
-		_ql_body.add_child(_ql_line("[color=#9fd18a][b]All done: upgrade the restaurant at the chalkboard![/b][/color]", 15))
+		_ql_body.add_child(_ql_line("[color=#3f7a2e][b]All done: upgrade the restaurant at the chalkboard![/b][/color]", 15))
 	var open: bool = SettingsManager.goals_open
 	var left: int = GameState.goals_left(lv).size() + GameState.challenges_left(lv).size() + miso_left
 	_goals_tab.text = "%s Quests  ·  %d left" % ["◂" if open else "▸", left]
@@ -375,9 +378,12 @@ func _ql_layout() -> void:
 func _ql_section(title: String, count: String, accent: Color) -> VBoxContainer:
 	var card := PanelContainer.new()
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.13, 0.08, 0.05, 0.6)
-	sb.border_color = accent.darkened(0.2)
-	sb.border_width_left = 4
+	sb.bg_color = Color(1, 0.98, 0.92, 0.92)
+	sb.border_color = accent.darkened(0.3)
+	sb.border_width_left = 5
+	sb.border_width_top = 1
+	sb.border_width_right = 1
+	sb.border_width_bottom = 1
 	sb.set_corner_radius_all(6)
 	sb.content_margin_left = 10
 	sb.content_margin_right = 8
@@ -393,13 +399,15 @@ func _ql_section(title: String, count: String, accent: Color) -> VBoxContainer:
 	l.text = title
 	l.add_theme_font_override("font", Art.bold_font())
 	l.add_theme_font_size_override("font_size", 16)
-	l.add_theme_color_override("font_color", accent.lightened(0.25))
+	l.add_theme_color_override("font_color", accent.darkened(0.45))
+	l.add_theme_constant_override("outline_size", 0)
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	h.add_child(l)
 	var c := Label.new()
 	c.text = count
 	c.add_theme_font_size_override("font_size", 13)
 	c.add_theme_color_override("font_color", QL_SOFT)
+	c.add_theme_constant_override("outline_size", 0)
 	h.add_child(c)
 	return v
 
@@ -425,13 +433,13 @@ func _ql_miso_card(lv: int, quests: Array) -> Control:
 	col.add_theme_constant_override("separation", 2)
 	row.add_child(col)
 	if k >= quests.size():
-		col.add_child(_ql_line("[color=#9fd18a][b]All quests done! ✔[/b][/color]\n[color=#c9b48f]The Level Challenge is open.[/color]", 14))
+		col.add_child(_ql_line("[color=#3f7a2e][b]All quests done! ✔[/b][/color]\n[color=#6b5442]The Level Challenge is open.[/color]", 14))
 	else:
 		var q: Dictionary = quests[k]
 		var who := "your staff"
 		if game and game.has_method("_staff_list") and not game._staff_list().is_empty():
 			who = game._staff_list()[0].staff_name
-		col.add_child(_ql_line("[b][color=#ffd98a]%s[/color][/b]" % q.topic, 15))
+		col.add_child(_ql_line("[b][color=#8a4b12]%s[/color][/b]" % q.topic, 15))
 		col.add_child(_ql_line(q.do.replace("{who}", who), 13))
 	# Progress pips.
 	var pips := HBoxContainer.new()
@@ -439,15 +447,13 @@ func _ql_miso_card(lv: int, quests: Array) -> Control:
 	for n in quests.size():
 		var d := ColorRect.new()
 		d.custom_minimum_size = Vector2(maxf(8.0, (QL_W - 60.0) / quests.size() - 4.0), 6)
-		d.color = QL_GREEN if n < k else (QL_GOLD if n == k else Color(1, 1, 1, 0.15))
+		d.color = QL_GREEN if n < k else (QL_GOLD if n == k else Color(0.23, 0.16, 0.12, 0.15))
 		d.tooltip_text = quests[n].topic
 		pips.add_child(d)
 	v.add_child(pips)
 	if k < quests.size():
-		var ex := Button.new()
-		ex.text = "Show example"
-		ex.focus_mode = Control.FOCUS_NONE
-		ex.add_theme_font_size_override("font_size", 14)
+		var ex := Paper.button("Show example", false, 15)
+		ex.custom_minimum_size = Vector2(0, 44)
 		ex.size_flags_horizontal = Control.SIZE_SHRINK_END
 		ex.pressed.connect(_ql_show_example.bind(quests[k], ex))
 		v.add_child(ex)
@@ -458,8 +464,8 @@ func _ql_show_example(q: Dictionary, from: Control) -> void:
 	if _ql_example == null:
 		_ql_example = PopupPanel.new()
 		var sb := StyleBoxFlat.new()
-		sb.bg_color = Color(0.1, 0.08, 0.07, 0.98)
-		sb.border_color = QL_GOLD
+		sb.bg_color = Color("2b211b")
+		sb.border_color = Paper.INK
 		sb.set_border_width_all(3)
 		sb.set_corner_radius_all(8)
 		sb.content_margin_left = 14
@@ -474,10 +480,9 @@ func _ql_show_example(q: Dictionary, from: Control) -> void:
 		_ql_example_text.add_theme_font_size_override("font_size", 16)
 		_ql_example_text.add_theme_color_override("font_color", Color(0.85, 0.95, 0.78))
 		v.add_child(_ql_example_text)
-		var copy := Button.new()
-		copy.text = "Copy"
-		copy.focus_mode = Control.FOCUS_NONE
-		copy.add_theme_font_size_override("font_size", 14)
+		var copy := Paper.button("Copy", false, 15)
+		copy.custom_minimum_size = Vector2(0, 44)
+		copy.size_flags_horizontal = Control.SIZE_SHRINK_END
 		copy.pressed.connect(func():
 			DisplayServer.clipboard_set(_ql_example_text.get_meta("code", ""))
 			copy.text = "Copied!")
@@ -502,6 +507,7 @@ func _ql_line(bbcode: String, fs: int) -> RichTextLabel:
 	r.add_theme_font_size_override("normal_font_size", fs)
 	r.add_theme_font_size_override("bold_font_size", fs)
 	r.add_theme_color_override("default_color", QL_INK)
+	r.add_theme_constant_override("outline_size", 0)
 	r.mouse_filter = Control.MOUSE_FILTER_PASS
 	r.text = bbcode
 	return r
@@ -509,9 +515,9 @@ func _ql_line(bbcode: String, fs: int) -> RichTextLabel:
 
 ## A challenge row: tick box, title, reward, and the task (hover for an example).
 func _ql_item(title: String, task: String, reward: String, done: bool, how: String) -> Control:
-	var r := _ql_line("%s [b][color=%s]%s[/color][/b]  [color=#c9b48f][font_size=12]%s[/font_size][/color]%s" % [
-		"☑" if done else "☐", "#9fd18a" if done else "#f2e3c4", title, reward,
-		"" if done else "\n[color=#bfae92][font_size=12]%s[/font_size][/color]" % task], 14)
+	var r := _ql_line("%s [b][color=%s]%s[/color][/b]  [color=#6b5442][font_size=12]%s[/font_size][/color]%s" % [
+		"☑" if done else "☐", "#3f7a2e" if done else "#3a2a1e", title, reward,
+		"" if done else "\n[color=#6b5442][font_size=12]%s[/font_size][/color]" % task], 14)
 	r.tooltip_text = "%s\n\nExample: %s" % [task, how]
 	return r
 
@@ -520,18 +526,18 @@ func _ql_item(title: String, task: String, reward: String, done: bool, how: Stri
 func _ql_goal(title: String, have: int, total: int, done: bool) -> Control:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 2)
-	v.add_child(_ql_line("%s [color=%s]%s[/color]  [color=#c9b48f]%d / %d[/color]" % [
-		"☑" if done else "☐", "#9fd18a" if done else "#f2e3c4", title, have, total], 14))
+	v.add_child(_ql_line("%s [color=%s]%s[/color]  [color=#6b5442]%d / %d[/color]" % [
+		"☑" if done else "☐", "#3f7a2e" if done else "#3a2a1e", title, have, total], 14))
 	var bar := ProgressBar.new()
 	bar.max_value = maxi(1, total)
 	bar.value = have
 	bar.show_percentage = false
 	bar.custom_minimum_size = Vector2(0, 6)
 	var bg := StyleBoxFlat.new()
-	bg.bg_color = Color(1, 1, 1, 0.12)
+	bg.bg_color = Color(0.23, 0.16, 0.12, 0.15)
 	bg.set_corner_radius_all(3)
 	var fg := StyleBoxFlat.new()
-	fg.bg_color = QL_GREEN if done else Color(0.45, 0.7, 0.9)
+	fg.bg_color = QL_GREEN if done else Color("3f7fb0")
 	fg.set_corner_radius_all(3)
 	bar.add_theme_stylebox_override("background", bg)
 	bar.add_theme_stylebox_override("fill", fg)
