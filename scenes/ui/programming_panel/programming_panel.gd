@@ -122,6 +122,7 @@ func _update_title() -> void:
 	var sp: String = GameState.staff_spec(staff.staff_name)
 	var spec := (" " + sp) if sp != "" else ""
 	title.text = "%s · Lv %d%s" % [staff.staff_name, GameState.staff_level(staff.staff_name), spec]
+	_update_face()
 	title.tooltip_text = "%s's program" % staff.staff_name
 	var cost: int = GameState.staff_upgrade_cost(staff.staff_name)
 	_upgrade.text = "Upgrade %d" % cost if cost > 0 else "Max Lv"
@@ -1320,3 +1321,46 @@ func _show_fn_card(id: String) -> void:
 	var w := _fn_card.size.x
 	var x := r.position.x - w - 10.0 if r.position.x > w + 20.0 else r.end.x + 10.0
 	_fn_card.position = Vector2(clampf(x, 8.0, size.x - w - 8.0), clampf(r.position.y + 60.0, 8.0, size.y - _fn_card.size.y - 8.0))
+
+
+# --- Staff portrait in the title row (face from their walk sheet) ----------------
+
+var _face_box: PanelContainer
+var _face: TextureRect
+
+
+func _update_face() -> void:
+	if _face_box == null:
+		_face_box = PanelContainer.new()
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0.96, 0.9, 0.78)
+		sb.border_color = Color(0.93, 0.72, 0.38)
+		sb.set_border_width_all(3)
+		sb.set_corner_radius_all(8)
+		for side in ["left", "right", "top", "bottom"]:
+			sb.set("content_margin_" + side, 2)
+		_face_box.add_theme_stylebox_override("panel", sb)
+		_face_box.mouse_filter = Control.MOUSE_FILTER_PASS
+		_face_box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		_face = TextureRect.new()
+		_face.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		_face.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		_face.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		_face.custom_minimum_size = Vector2(32, 48)
+		_face.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_face_box.add_child(_face)
+		title.add_sibling(_face_box)
+		title.get_parent().move_child(_face_box, title.get_index())
+	var tex: Texture2D = PixelArt.character("character/staff", staff.staff_name)
+	if tex == null:
+		_face_box.hide()
+		return
+	# First frame of a walk sheet (standing, facing down), the whole character.
+	var fw: float = PixelArt.FRAME_WIDTH if tex.resource_path.ends_with("_sheet.png") else tex.get_width()
+	var fh: float = tex.get_height() / 4.0 if tex.resource_path.ends_with("_sheet.png") else tex.get_height()
+	var at := AtlasTexture.new()
+	at.atlas = tex
+	at.region = Rect2(0, 0, fw, fh)
+	_face.texture = at
+	_face_box.tooltip_text = staff.staff_name
+	_face_box.show()
