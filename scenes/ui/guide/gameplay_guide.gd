@@ -66,6 +66,11 @@ func is_running() -> bool:
 	return _i >= 0
 
 
+## The step on screen right now ({} when the guide isn't running).
+func current_step() -> Dictionary:
+	return _steps[_i] if _i >= 0 and _i < _steps.size() else {}
+
+
 ## The coding quest the guide is on right now (-1 on tour steps).
 func current_quest_index() -> int:
 	if _i < 0 or _i >= _steps.size():
@@ -526,7 +531,7 @@ func steps_for(level: int) -> Array:
 	var qsteps: Array = []
 	for k in quests.size():
 		var q: Dictionary = quests[k]
-		qsteps.append({"quest_index": k, "example": q.example, "point": "editor",
+		qsteps.append({"quest_index": k, "example": q.example, "point": "editor", "customer": q.get("customer", ""),
 			"do": q.do.replace("{who}", who), "until": "miso:%d" % k,
 			"say": "[b]C Quest %d of %d: %s[/b]\n%s Write it in [b]main()[/b] and press [b]Run[/b]." % [k + 1, quests.size(), q.topic, q.say]})
 	var out: Array = []

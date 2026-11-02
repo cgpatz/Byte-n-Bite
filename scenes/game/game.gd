@@ -788,6 +788,20 @@ func spawn_customer(dish := "") -> Node:
 	return null
 
 
+## A quest that needs someone to serve (Chef Miso's "Cook and serve a dish")
+## lets exactly one patient customer in, ordering that dish.
+var _tut_customer_step := -1
+func _tutorial_customer() -> void:
+	var st: Dictionary = guide.current_step()
+	var dish := String(st.get("customer", ""))
+	if dish == "" or _tut_customer_step == guide._i:
+		return
+	var c := spawn_customer(dish)
+	if c:
+		c.patience = 1.0e9  # never leaves while the player is still learning
+		_tut_customer_step = guide._i
+
+
 ## Called by a customer once seated: they order something on the menu.
 func customer_seated(c: Node) -> void:
 	var dish: String = c.get_meta("wants", "")
@@ -909,6 +923,7 @@ func _process(delta: float) -> void:
 	# follow it don't hold them back); the first one comes soon after.
 	if guide and guide.is_touring():
 		_spawn_timer = maxf(_spawn_timer, 2.0)
+		_tutorial_customer()
 	elif customers_enabled:
 		_spawn_timer -= delta
 		if _spawn_timer <= 0.0:
