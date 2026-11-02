@@ -18,6 +18,10 @@ var code_window := Rect2()
 var windows := {}
 ## Goals & Challenges list on the HUD: open or closed.
 var goals_open := true
+## Camera zoom step in the restaurant: 0 = 4x (whole street), 1 = 5x (default), 2 = 6x (close).
+var zoom_step := 1
+## Quest card (top left) folded to one line.
+var quest_collapsed := false
 
 
 const MUSIC_PLAYER := preload("res://autoload/music_player.gd")
@@ -55,6 +59,8 @@ func load_settings() -> void:
 	code_window = cfg.get_value("editor", "code_window", code_window)
 	windows = cfg.get_value("editor", "windows", windows)
 	goals_open = cfg.get_value("editor", "goals_open", goals_open)
+	zoom_step = clampi(int(cfg.get_value("view", "zoom_step", zoom_step)), 0, 2)
+	quest_collapsed = bool(cfg.get_value("view", "quest_collapsed", quest_collapsed))
 	# Compact UI (v2): smaller code editor and windows. Old saved sizes and the
 	# old default code font size are reset once.
 	if not cfg.get_value("editor", "compact_ui", false):
@@ -75,6 +81,8 @@ func save_settings() -> void:
 	cfg.set_value("editor", "code_window", code_window)
 	cfg.set_value("editor", "windows", windows)
 	cfg.set_value("editor", "goals_open", goals_open)
+	cfg.set_value("view", "zoom_step", zoom_step)
+	cfg.set_value("view", "quest_collapsed", quest_collapsed)
 	cfg.set_value("editor", "compact_ui", true)
 	cfg.save(PATH)
 

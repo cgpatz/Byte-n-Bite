@@ -27,6 +27,7 @@ const LevelGoals := preload("res://systems/goals/level_goals.gd")
 const Kitchen := preload("res://systems/kitchen/kitchen_rules.gd")
 const Art := preload("res://scenes/ui/common/ui_art.gd")
 const Market := preload("res://systems/market/market_rules.gd")
+const Paper := preload("res://scenes/ui/common/paper.gd")
 ## Market button (M) and delivery timers (top right, under the window buttons).
 var _market_button: Button
 var _deliveries_box: VBoxContainer
@@ -45,6 +46,7 @@ func _ready() -> void:
 	_build_special()
 	_build_challenges()
 	_build_deliveries()
+	_build_zoom()
 	var hint := get_node_or_null("ControlsHint") as Label
 	if hint:
 		hint.hide()  # keys are shown in each button's tooltip and in the tutorial
@@ -803,8 +805,8 @@ func _build_order_board() -> void:
 	_board.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	var w := BOARD_COLS * TILE.x + (BOARD_COLS - 1) * 8 + 20 + 14
 	var h := BOARD_ROWS * TILE.y + (BOARD_ROWS - 1) * 8 + 60
-	_board.offset_left = -w - 24
-	_board.offset_right = -24
+	_board.offset_left = -w - 200
+	_board.offset_right = -200
 	_board.offset_top = -h - 24
 	_board.offset_bottom = -24
 	add_child(_board)
@@ -928,3 +930,42 @@ func _order_tile(o: Dictionary) -> Control:
 		v.add_child(q)
 		t.tooltip_text = "Order not taken yet: use take_order()"
 	return t
+
+
+# --- Zoom control (bottom right): - / + and the current zoom (4x / 5x / 6x) -----------
+
+var _zoom_box: PanelContainer
+var _zoom_label: Label
+const ZOOM_NAMES := ["4×", "5×", "6×"]
+
+
+func _build_zoom() -> void:
+	_zoom_box = PanelContainer.new()
+	_zoom_box.name = "ZoomControl"
+	_zoom_box.add_theme_stylebox_override("panel", Paper.panel(Vector4(18, 30, 18, 10)))
+	_zoom_box.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(_zoom_box)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 4)
+	_zoom_box.add_child(v)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	v.add_child(row)
+	for d in [-1, 1]:
+		var b := Paper.button("−" if d < 0 else "+", false, 26)
+		b.custom_minimum_size = Vector2(56, 52)
+		b.tooltip_text = "Zoom out (mouse wheel down)" if d < 0 else "Zoom in (mouse wheel up)"
+		b.pressed.connect(func():
+			if game and game.has_method("set_zoom_step"):
+				game.set_zoom_step(SettingsManager.zoom_step + d))
+		row.add_child(b)
+	_zoom_label = Paper.label("", 18, Paper.INK)
+	_zoom_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(_zoom_label)
+	on_zoom_changed(SettingsManager.zoom_step)
+	_zoom_box.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, 16)
+
+
+func on_zoom_changed(step: int) -> void:
+	if _zoom_label:
+		_zoom_label.text = ZOOM_NAMES[clampi(step, 0, 2)]

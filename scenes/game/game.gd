@@ -121,6 +121,7 @@ func _ready() -> void:
 	ticket_rail.visible = false  # orders now show on the HUD Order board
 	add_child(ticket_rail)
 	hud.game = self
+	zoom_changed.connect(hud.on_zoom_changed)
 	manager.focus_changed.connect(hud.show_prompt_for)
 	manager.interacted.connect(_on_manager_interacted)
 	for staff in staff_root.get_children():
@@ -863,7 +864,28 @@ func _clear_customers() -> void:
 # it stays centred on that axis instead.
 
 ## Camera zoom. 1.5 keeps pixel art crisp (16 px art × 4 × 1.5 = 6 px per art pixel).
-const FOLLOW_ZOOM := 1.5
+## Restaurant camera: 1 art pixel = 4 world units, so zoom 1.25 shows art at 5x.
+## Steps: 1.0 (4x, whole street), 1.25 (5x, default), 1.5 (6x, close).
+const FOLLOW_ZOOM := 1.25
+const ZOOM_STEPS := [1.0, 1.25, 1.5]
+signal zoom_changed(step: int)
+
+
+func view_zoom() -> float:
+	return ZOOM_STEPS[clampi(SettingsManager.zoom_step, 0, ZOOM_STEPS.size() - 1)]
+
+
+## Changes the zoom step (mouse wheel or the - / + buttons), saved in settings.
+func set_zoom_step(step: int) -> void:
+	step = clampi(step, 0, ZOOM_STEPS.size() - 1)
+	if step == SettingsManager.zoom_step and camera.zoom.x == view_zoom():
+		return
+	SettingsManager.zoom_step = step
+	SettingsManager.save_settings()
+	if not in_market:
+		var z: float = view_zoom()
+		create_tween().tween_property(camera, "zoom", Vector2(z, z), 0.2)
+	zoom_changed.emit(step)
 var _cam_outside := false
 ## How quickly the camera catches up with the manager (higher = snappier).
 const FOLLOW_SPEED := 6.0
@@ -883,7 +905,7 @@ func _setup_camera() -> void:
 			_cam_bounds = o
 			_cam_outside = true
 	_fence_room()
-	camera.zoom = Vector2(FOLLOW_ZOOM, FOLLOW_ZOOM)
+	camera.zoom = Vector2(view_zoom(), view_zoom())
 	if in_market and market:
 		_cam_bounds = market.bounds().grow_individual(0, 110, 0, 0)  # room under the HUD
 		var z := maxf(FOLLOW_ZOOM, get_viewport_rect().size.x / market.bounds().size.x)
@@ -1240,6 +1262,14 @@ func _any_panel_open() -> bool:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	# Mouse wheel over the restaurant (not over a window or the code editor):
+	# zoom step in / out.
+	if event is InputEventMouseButton and event.pressed and not event.ctrl_pressed \
+			and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN] \
+			and not in_market and get_viewport().gui_get_hovered_control() == null:
+		get_viewport().set_input_as_handled()
+		set_zoom_step(SettingsManager.zoom_step + (1 if event.button_index == MOUSE_BUTTON_WHEEL_UP else -1))
+		return
 	# Clicking the restaurant takes the keyboard back from a code editor.
 	if event is InputEventMouseButton and event.pressed:
 		get_viewport().gui_release_focus()
