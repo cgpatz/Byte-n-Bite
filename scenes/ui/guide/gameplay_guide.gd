@@ -331,10 +331,22 @@ func _world_rect(n: Node2D, off: Vector2) -> Rect2:
 	return Rect2(p - Vector2(30, 30), Vector2(60, 60))
 
 
-## The box sits bottom-centre, or bottom-left while the code editor is open.
+## The box sits at the lower centre (beside the code editor while it is open).
 func _place_box() -> void:
 	var vs := _root.get_viewport_rect().size
-	var x := 16.0  # docked bottom-left, clear of the entrance
+	# Lower centre of the screen; while the code editor is open, the centre of
+	# the free space beside it (so the box never covers the code).
+	var left := 0.0
+	var right := vs.x
+	var pp = game.programming_panel if game else null
+	if pp and pp.visible and pp.has_method("window_rect"):
+		var r: Rect2 = pp.window_rect()
+		if r.position.x - left >= vs.x - r.end.x:
+			right = r.position.x
+		else:
+			left = r.end.x
+	var w := _box.size.x if _box.size.x > 0.0 else BOX_W
+	var x := clampf((left + right - w) / 2.0, 16.0, maxf(16.0, vs.x - w - 16.0))
 	_box.position = _box.position.lerp(Vector2(x, vs.y - BOX_H - 16), 0.25)
 	_quest.position = Vector2(x + 130, vs.y - BOX_H - 16 - 62)
 
