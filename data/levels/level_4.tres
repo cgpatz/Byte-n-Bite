@@ -11,4 +11,4 @@ layout_scene = ExtResource("2_layout")
 c_focus = "Arrays"
 table_cap = 8
 max_chairs_per_table = 4
-upgrade_cost = 1600
+upgrade_cost = 2000

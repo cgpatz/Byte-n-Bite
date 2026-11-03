@@ -541,6 +541,8 @@ func _ql_item(title: String, task: String, reward: String, done: bool, how: Stri
 ## A goal row: title, n / total and a small progress bar.
 func _ql_goal(title: String, have: int, total: int, done: bool) -> Control:
 	var v := VBoxContainer.new()
+	if "profit" in title:
+		v.tooltip_text = "Profit = what customers pay minus what the ingredients cost at the Market."
 	v.add_theme_constant_override("separation", 2)
 	v.add_child(_ql_line("%s [color=%s]%s[/color]  [color=#6b5442]%d / %d[/color]" % [
 		"☑" if done else "☐", "#3f7a2e" if done else "#3a2a1e", title, have, total], 14))

@@ -15,8 +15,9 @@ const SALE_EXP_DIVISOR := 5
 ## EXP for finishing a quest, by difficulty.
 const QUEST_EXP := {"easy": 40, "normal": 80, "hard": 150}
 
-## Coins given when reaching each player level (placeholder amounts).
-const LEVEL_COINS := {2: 50, 3: 75, 4: 100, 5: 150, 6: 200, 7: 250, 8: 300, 9: 400, 10: 500}
+## Coins given when reaching each player level (kept small: selling dishes is
+## the main income; see the Economy notes in docs).
+const LEVEL_COINS := {2: 20, 3: 30, 4: 40, 5: 60, 6: 80, 7: 100, 8: 120, 9: 150, 10: 200}
 
 ## Staff members in join order. 6 characters in total: the manager (named by
 ## the player) + these 5 staff:

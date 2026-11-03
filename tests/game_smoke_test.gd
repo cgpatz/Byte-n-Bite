@@ -103,7 +103,8 @@ func _ready() -> void:
 	GameState.add_exp(100 + 160 + 240)  # Lv 1 -> 4
 	await get_tree().process_frame
 	_report(GameState.player_level == 4 and ups == [2, 3, 4], "500 EXP: Manager Lv 1 -> 4 (level-ups %s)" % [ups])
-	_report(GameState.money == coins + 50 + 75 + 100, "Level-up coins +225 (got +%d)" % (GameState.money - coins))
+	var want_up: int = Progression.LEVEL_COINS[2] + Progression.LEVEL_COINS[3] + Progression.LEVEL_COINS[4]
+	_report(GameState.money == coins + want_up, "Level-up coins +%d (got +%d)" % [want_up, GameState.money - coins])
 	_report(not "Lee" in _names(), "Manager Lv 4: no new staff yet: %s" % [_names()])
 	GameState.add_exp(340)
 	await get_tree().process_frame

@@ -65,7 +65,21 @@ const CUSTOMER_INTERVAL := [22.0, 26.0, 10.0, 9.0, 8.0]
 ## Beginners get more time.
 const CUSTOMER_PATIENCE := [150.0, 120.0, 90.0, 90.0, 90.0]
 ## Extra coins the first time each dish is ever served (rewards trying new dishes).
-const FIRST_DISH_BONUS := 50
+const FIRST_DISH_BONUS := 20
+## Tip when a customer's whole order of 2+ plates arrives: per extra plate.
+const TIP_PER_EXTRA_PLATE := 5
+## Extra patience (seconds) for waiting customers when an ingredient runs out.
+const OUT_OF_STOCK_GRACE := 30.0
+
+
+## What a dish's ingredients cost at the Market (for real profit).
+static func dish_cost(dish: String) -> int:
+	var n := 0
+	if Kitchen.DISHES.has(dish):
+		var rec: Dictionary = Kitchen.DISHES[dish].recipe
+		for ing in rec:
+			n += Market.price(ing) * int(rec[ing])
+	return n
 ## Dishes that can wait on the serving counter for a customer who orders them.
 const COUNTER_LIMIT := 6
 
@@ -640,10 +654,16 @@ func _deliver(order: Dictionary, by: String, mult := 1.0, set_price := -1.0, sta
 	var price: int = roundi(charge * mult)
 	var first := int(GameState.dishes_served.get(dish, 0)) == 0
 	GameState.money += price
-	GameState.record_sale(dish, price)
+	GameState.record_sale(dish, price, dish_cost(dish))
 	if first:
 		GameState.money += FIRST_DISH_BONUS
-	_shift_sale(dish, price + (FIRST_DISH_BONUS if first else 0))
+	# A whole order of 2+ plates: the customer leaves a small tip.
+	var tip := 0
+	var qn := int(order.get("qty", 1))
+	if final and qn >= 2:
+		tip = TIP_PER_EXTRA_PLATE * (qn - 1)
+		GameState.money += tip
+	_shift_sale(dish, price + tip + (FIRST_DISH_BONUS if first else 0))
 	var who := "a customer"
 	var c = order.customer
 	if c != null and is_instance_valid(c):
@@ -654,10 +674,11 @@ func _deliver(order: Dictionary, by: String, mult := 1.0, set_price := -1.0, sta
 			c.receive_plate()
 	var q := int(order.get("qty", 1))
 	var plate_no := "" if q <= 1 else " (plate %d of %d)" % [q if final else q - int(order.get("left", 1)), q]
+	var tip_txt := "  (+%d tip for the big order!)" % tip if tip > 0 else ""
 	if first:
-		hud.show_toast("First %s ever! %s served %s%s  +%d coins (+%d first-dish bonus)" % [Kitchen.title_of(dish), by, who, plate_no, price, FIRST_DISH_BONUS])
+		hud.show_toast("First %s ever! %s served %s%s  +%d coins (+%d first-dish bonus)%s" % [Kitchen.title_of(dish), by, who, plate_no, price, FIRST_DISH_BONUS, tip_txt])
 	else:
-		hud.show_toast("%s served %s%s to %s!  +%d coins" % [by, Kitchen.title_of(dish), plate_no, who, price])
+		hud.show_toast("%s served %s%s to %s!  +%d coins%s" % [by, Kitchen.title_of(dish), plate_no, who, price, tip_txt])
 	# Level 2 challenge "Bulk discount": a whole order of 2+ plates at a lower price.
 	if final and q >= 2 and staff != null and set_price > 0.0 and set_price < base:
 		staff.run_trace["bulk"] = true
@@ -1711,7 +1732,9 @@ func _spawn_crates() -> void:
 		var cr := STATION_SCENE.instantiate()
 		cr.set_script(CRATE_SCRIPT)
 		cr.setup(i, GameState.crates[i])
-		cr.position = r.position + Vector2((i % cols + 0.5) * step.x, (i / cols + 0.5) * step.y + 8)
+		# Each crate keeps its own spot (claiming one doesn't move the others).
+		var sl := int(GameState.crates[i].get("slot", i)) % maxi(1, cols * rows)
+		cr.position = r.position + Vector2((sl % cols + 0.5) * step.x, (sl / cols + 0.5) * step.y + 8)
 		crates_root.add_child(cr)
 		# Crates from a truck that is still driving in stay hidden until it unloads.
 		if _hide_crates_from >= 0 and i >= _hide_crates_from:
@@ -1895,7 +1918,14 @@ func note_out_of_stock(ing: String, who := "") -> void:
 		return
 	_out_of_stock_said[key] = now
 	var title := "%s is out of %s!" % [who, Market.title(ing)] if who != "" else "Out of %s!" % Market.title(ing)
-	hud.notify(title, "Buy more at the Market (back door or M), then claim the crates in the delivery area.",
+	# Fair to beginners: everyone waiting gets extra patience while you restock.
+	var waiting := 0
+	for c in customers_root.get_children():
+		if c.get("state") == 1:  # WAITING
+			c.patience += OUT_OF_STOCK_GRACE
+			waiting += 1
+	hud.notify(title, "Buy more at the Market (back door or M), then claim the crates in the delivery area.%s" % (
+		"\nYour %d waiting customer%s will wait %d s longer." % [waiting, "" if waiting == 1 else "s", int(OUT_OF_STOCK_GRACE)] if waiting > 0 else ""),
 		PixelArt.food_icon(ing, false, false), Color(0.85, 0.3, 0.2))
 
 

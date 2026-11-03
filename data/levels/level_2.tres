@@ -11,4 +11,4 @@ layout_scene = ExtResource("2_layout")
 c_focus = "Decisions: if / else and switch"
 table_cap = 4
 max_chairs_per_table = 2
-upgrade_cost = 600
+upgrade_cost = 900

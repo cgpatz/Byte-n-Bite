@@ -6,6 +6,8 @@ extends RefCounted
 ##
 ## Goal: {"id", "title", "dish" (count this dish) or "profit" (coins from
 ## sales), "n" (target), "coins", "exp"}
+## Profit = what customers paid minus what the dish's ingredients cost at the
+## Market (game.gd dish_cost), so buying cheaply and charging well both count.
 
 const GOALS := {
 	1: [
@@ -28,13 +30,13 @@ const GOALS := {
 		{"id": "cheeseburger", "title": "Make 8 Cheeseburgers", "dish": "CHEESEBURGER", "n": 8, "coins": 60, "exp": 80},
 		{"id": "pancit", "title": "Make 8 Pancit Canton", "dish": "PANCIT_CANTON", "n": 8, "coins": 60, "exp": 80},
 		{"id": "chicken_sandwich", "title": "Make 8 Chicken Sandwiches", "dish": "CHICKEN_SANDWICH", "n": 8, "coins": 60, "exp": 80},
-		{"id": "profit", "title": "Earn 1600 profit", "profit": true, "n": 1600, "coins": 150, "exp": 120},
+		{"id": "profit", "title": "Earn 1200 profit", "profit": true, "n": 1200, "coins": 150, "exp": 120},
 	],
 	5: [
 		{"id": "double_cheeseburger", "title": "Make 6 Double Cheeseburgers", "dish": "DOUBLE_CHEESEBURGER", "n": 6, "coins": 80, "exp": 100},
 		{"id": "silog_platter", "title": "Make 6 Silog Platters", "dish": "SILOG_PLATTER", "n": 6, "coins": 80, "exp": 100},
 		{"id": "signature_bowl", "title": "Make 6 Signature Bowls", "dish": "SIGNATURE_BOWL", "n": 6, "coins": 80, "exp": 100},
-		{"id": "profit", "title": "Earn 2500 profit", "profit": true, "n": 2500, "coins": 200, "exp": 150},
+		{"id": "profit", "title": "Earn 1800 profit", "profit": true, "n": 1800, "coins": 200, "exp": 150},
 	],
 }
 

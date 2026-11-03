@@ -11,4 +11,4 @@ layout_scene = ExtResource("2_layout")
 c_focus = "Syntax, variables and arithmetic"
 table_cap = 2
 max_chairs_per_table = 2
-upgrade_cost = 300
+upgrade_cost = 500

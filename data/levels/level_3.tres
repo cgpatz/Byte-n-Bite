@@ -11,4 +11,4 @@ layout_scene = ExtResource("2_layout")
 c_focus = "Loops"
 table_cap = 6
 max_chairs_per_table = 4
-upgrade_cost = 1000
+upgrade_cost = 1400

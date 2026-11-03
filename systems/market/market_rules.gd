@@ -42,7 +42,7 @@ const STAPLES := ["RICE", "EGG"]
 const CRATE_SIZE := 10
 ## Crates the delivery area holds, per restaurant level (also the most crates
 ## one order can bring).
-const CRATE_CAPACITY := [2, 4, 4, 9, 12]
+const CRATE_CAPACITY := [3, 4, 4, 9, 12]   # Level 1: 3, so one order covers Hotsilog
 
 ## Delivery time: BASE + PER_ITEM seconds per item, at most MAX.
 const DELIVERY_BASE := 15.0
@@ -75,13 +75,23 @@ static func batch_range(ing: String) -> Vector2i:
 
 
 ## New random amounts for every ingredient.
-static func roll_stock(rng: RandomNumberGenerator = null) -> Dictionary:
+## level > 0: ingredients of that level's menu are never sold out (a level's
+## goals need them), and come in at least a medium batch.
+static func roll_stock(rng: RandomNumberGenerator = null, level := 0) -> Dictionary:
 	if rng == null:
 		rng = RandomNumberGenerator.new()
 		rng.randomize()
+	var needed := {}
+	if level > 0:
+		for d in Kitchen.menu(level, 0):
+			for ing in Kitchen.DISHES[d].recipe:
+				needed[ing] = true
 	var out := {}
 	for ing in PRICES:
 		var r := batch_range(ing)
+		if needed.has(ing):
+			out[ing] = rng.randi_range(maxi(r.x, 8), maxi(r.y, 12))
+			continue
 		if not ing in STAPLES and rng.randf() < SOLD_OUT_CHANCE:
 			out[ing] = 0
 		else:

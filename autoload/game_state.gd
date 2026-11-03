@@ -142,12 +142,15 @@ var admin_mode := false
 ## Chairs at each bought table, in table-slot order. Size = tables owned.
 ## Seating starts at 1 table with 1 chair, and resets to that on every restaurant upgrade.
 const START_SEATING: Array[int] = [1]
-var table_chairs: Array[int] = START_SEATING.duplicate()
+## A new game's Tiny Stall opens with 2 small tables, so two customers can come
+## in at once (chairs are still there to buy).
+const NEW_GAME_SEATING: Array[int] = [1, 1]
+var table_chairs: Array[int] = NEW_GAME_SEATING.duplicate()
 
 
 func _ready() -> void:
 	if market_stock.is_empty():
-		market_stock = Market.roll_stock()
+		market_stock = Market.roll_stock(null, restaurant_level)
 		market_restock_left = Market.RESTOCK_SECONDS
 
 
@@ -172,12 +175,12 @@ func reset() -> void:
 	staff_levels = {}
 	staff_specs = {}
 	inventory = Market.START_INVENTORY.duplicate()
-	market_stock = Market.roll_stock()
+	market_stock = Market.roll_stock(null, restaurant_level)
 	market_restock_left = Market.RESTOCK_SECONDS
 	deliveries = []
 	crates = []
 	cafe_step = 0
-	table_chairs = START_SEATING.duplicate()
+	table_chairs = NEW_GAME_SEATING.duplicate()
 	money = START_MONEY
 	player_level = 1
 	player_exp = 0
@@ -299,10 +302,12 @@ static func new_library() -> Array:
 
 # --- Stats -------------------------------------------------------------------------
 
-func record_sale(dish: String, price: int) -> void:
+## cost = what the dish's ingredients cost at the Market, so the level's
+## "profit" goal counts real profit (price - ingredients).
+func record_sale(dish: String, price: int, cost := 0) -> void:
 	dishes_served[dish] = int(dishes_served.get(dish, 0)) + 1
 	coins_from_sales += price
-	_count_level_sale(dish, price)
+	_count_level_sale(dish, maxi(0, price - cost))
 	stats_changed.emit()
 
 
@@ -426,7 +431,18 @@ func _load_market(d: Dictionary) -> void:
 		deliveries.append({"cart": cart, "left": float(dv.get("left", 0)), "total": float(dv.get("total", 1)), "waiting": false})
 	crates = []
 	for c in d.get("crates", []):
-		crates.append({"ing": str(c.get("ing", "RICE")), "n": int(c.get("n", 1))})
+		crates.append({"ing": str(c.get("ing", "RICE")), "n": int(c.get("n", 1)), "slot": int(c.get("slot", crates.size()))})
+
+
+## The first crate spot nobody uses: crates stay where they were dropped.
+func _free_crate_slot() -> int:
+	var used := {}
+	for c in crates:
+		used[int(c.get("slot", -1))] = true
+	var i := 0
+	while used.has(i):
+		i += 1
+	return i
 
 
 ## How many of an ingredient the kitchen has (stock()).
@@ -507,7 +523,7 @@ func buy_from_market(cart: Dictionary, express := false) -> String:
 func tick_market(delta: float) -> void:
 	market_restock_left -= delta
 	if market_restock_left <= 0.0:
-		market_stock = Market.roll_stock()
+		market_stock = Market.roll_stock(null, restaurant_level)
 		market_restock_left = Market.RESTOCK_SECONDS
 		market_changed.emit()
 	var arrived: Array = []
@@ -522,7 +538,9 @@ func tick_market(delta: float) -> void:
 				deliveries_changed.emit()
 	for dv in arrived:
 		deliveries.erase(dv)
-		crates.append_array(Market.split_crates(dv.cart))
+		for nc in Market.split_crates(dv.cart):
+			nc["slot"] = _free_crate_slot()
+			crates.append(nc)
 		delivery_arrived.emit(dv.cart)
 	if not arrived.is_empty():
 		deliveries_changed.emit()
@@ -697,6 +715,10 @@ func upgrade_restaurant() -> bool:
 	# The new level's goals start from zero: profit and dish counts reset.
 	level_sales[str(restaurant_level + 1)] = {"dishes": {}, "profit": 0}
 	restaurant_level += 1
+	# The Market restocks for the new menu (its ingredients are never sold out).
+	market_stock = Market.roll_stock(null, restaurant_level)
+	market_restock_left = Market.RESTOCK_SECONDS
+	market_changed.emit()
 	seating_changed.emit()
 	return true
 
