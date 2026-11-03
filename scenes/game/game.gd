@@ -1003,14 +1003,56 @@ func _setup_camera() -> void:
 ## street. Invisible edges keep him on the picture: the fence and trees at the
 ## top, the road at the bottom, the locked patio, and the picture's sides.
 ## (Rects in art px of the 480 x 270 picture; 1 art px = 4 world units.)
-const OUTSIDE_SOLIDS := [
-	Rect2(-16, -16, 512, 70),    # fence + trees along the top
-	Rect2(166, 54, 148, 8),      # roof edge above the room
-	Rect2(-16, 206, 512, 80),    # the road (stay on the sidewalk)
-	Rect2(-16, 0, 16, 270),      # left edge
-	Rect2(480, 0, 16, 270),      # right edge
-]
-const PATIO_RECT := Rect2(12, 72, 142, 107)  # locked at Restaurant Lv 1
+## Each level with a street picture: its art, edges, start spot, delivery yard
+## and the truck's route. Everything in art px of that picture (x4 = world),
+## measured from the picture's top-left corner.
+const STREETS := {
+	1: {
+		"tex": "res://assets/design/l1_v2/outside/L1_outside_%s_480x270.png",
+		"solids": [
+			Rect2(-16, -16, 512, 70),    # fence + trees along the top
+			Rect2(166, 54, 148, 8),      # roof edge above the room
+			Rect2(-16, 206, 512, 80),    # the road (stay on the sidewalk)
+			Rect2(-16, 0, 16, 270),      # left edge
+			Rect2(480, 0, 16, 270),      # right edge
+		],
+		"patio": Rect2(12, 72, 142, 107), "patio_until": 1,   # locked at Restaurant Lv 1
+		"patio_sign": Rect2(37, 141, 94, 16),
+		"start": Vector2(150, 600),      # world: beside the entrance
+		"park": Vector2(368, 94),        # truck centre when parked
+		"crates": Rect2(336, 118, 70, 28),
+		"route": [Vector2(-40, 222), Vector2(447, 222), Vector2(447, 94)],
+		"exit": Vector2(520, 222),
+		"walk_y": 201.0, "lanes": [224.0, 254.0],
+	},
+	2: {
+		"tex": "res://assets/design/l2/outside/L2_outside_%s_576x324.png",
+		"solids": [
+			Rect2(-16, -16, 486, 34),    # back-alley brick wall
+			Rect2(136, 34, 208, 8),      # roof edge above the room
+			Rect2(-16, 221, 610, 120),   # the main road (stay on the sidewalk)
+			Rect2(-16, 0, 16, 340),      # left edge
+			Rect2(470, -16, 122, 237),   # cross street + corner shop
+			Rect2(349, 38, 101, 3),      # delivery bay: top edge
+			Rect2(349, 41, 3, 35),       # left edge above the STAFF door
+			Rect2(349, 100, 3, 28),      # left edge below it
+			Rect2(349, 125, 101, 4),     # bottom edge
+			Rect2(447, 41, 3, 11),       # right edge above the driveway
+			Rect2(447, 93, 3, 35),       # right edge below it
+		],
+		"start": Vector2(280, 708),
+		"park": Vector2(398, 74),
+		"crates": Rect2(354, 100, 56, 24),
+		"route": [Vector2(-40, 236), Vector2(493, 236), Vector2(493, 74)],
+		"exit": Vector2(620, 236),
+		"walk_y": 214.0, "lanes": [236.0, 256.0],
+	},
+}
+
+
+## This level's street settings ({} when it has none).
+func _street() -> Dictionary:
+	return STREETS.get(GameState.restaurant_level, {}) if _level_has_outside() else {}
 var _room_fence: StaticBody2D
 func _fence_room() -> void:
 	if _room_fence:
@@ -1022,9 +1064,10 @@ func _fence_room() -> void:
 	_room_fence = StaticBody2D.new()
 	_room_fence.name = "OutsideEdges"
 	_room_fence.collision_layer = 1
-	var rects: Array = OUTSIDE_SOLIDS.duplicate()
-	if GameState.restaurant_level <= 1:
-		rects.append(PATIO_RECT)
+	var st := _street()
+	var rects: Array = st.get("solids", []).duplicate()
+	if st.has("patio") and GameState.restaurant_level <= int(st.get("patio_until", 0)):
+		rects.append(st.patio)
 	for r: Rect2 in rects:
 		var cs := CollisionShape2D.new()
 		var rs := RectangleShape2D.new()
@@ -1041,12 +1084,11 @@ func _level_has_outside() -> bool:
 
 ## Where the Manager starts: outside, beside the entrance, on levels with a street.
 func _outside_start() -> Vector2:
-	return Vector2(150, 600)
+	return _street().get("start", restaurant.get_manager_spawn())
 
 
 ## Level 1 v2 street: the locked-patio sign text, people and cars, and the
 ## evening picture once the Level 1 challenge is done.
-const PATIO_SIGN := Rect2(37, 141, 94, 16)  # art px in the outside picture
 func _setup_street() -> void:
 	if not _cam_outside:
 		return
@@ -1058,7 +1100,17 @@ func _setup_street() -> void:
 	if recv:
 		recv.visible = false
 		recv.interactable = false
-	if not art.has_node("PatioSign"):
+	# The room picture paints its own walls (windows, posters): hide the plain
+	# wall placeholders on top of it (they still block, like real walls).
+	var room := Rect2(restaurant.global_position, Vector2(restaurant.grid_size * 64))
+	for w in restaurant.get_node("Walls").get_children():
+		if w is Station and w.station_id == "" and w.auto_art == null and w.art == null \
+				and room.encloses(Rect2(w.global_position - w.size / 2.0, w.size)):
+			w.draw_greybox = false
+			w.queue_redraw()
+	var st := _street()
+	if st.has("patio_sign") and not art.has_node("PatioSign"):
+		var PATIO_SIGN: Rect2 = st.patio_sign
 		var sign := VBoxContainer.new()
 		sign.name = "PatioSign"
 		sign.add_theme_constant_override("separation", -4)
@@ -1080,12 +1132,15 @@ func _setup_street() -> void:
 		u.add_theme_constant_override("outline_size", 0)
 		sign.add_child(u)
 		art.add_child(sign)
-	(art.get_node("PatioSign") as Control).visible = GameState.restaurant_level <= 1
+	if art.has_node("PatioSign"):
+		(art.get_node("PatioSign") as Control).visible = GameState.restaurant_level <= int(st.get("patio_until", 0))
 	if not restaurant.has_node("StreetLife"):
 		var life := Node2D.new()
 		life.name = "StreetLife"
 		life.set_script(preload("res://scenes/restaurant/street_life.gd"))
 		life.area = _cam_bounds
+		life.walk_y = float(st.get("walk_y", 201.0))
+		life.lanes = st.get("lanes", [224.0, 254.0])
 		restaurant.add_child(life)
 	_update_evening()
 	if not GameState.challenge_completed.is_connected(_on_street_challenge):
@@ -1096,13 +1151,18 @@ func _on_street_challenge(_lv: int, _id: String) -> void:
 	_update_evening()
 
 
-## After every Level 1 challenge is done, the street turns to evening.
+## After every Level Challenge of the level is done, the street turns to evening.
 func _update_evening() -> void:
 	if not _cam_outside or restaurant == null or not restaurant.has_node("Art/Outside"):
 		return
 	var o := restaurant.get_node("Art/Outside") as Sprite2D
-	var evening: bool = GameState.restaurant_level == 1 and GameState.challenges_left(1).is_empty()
-	var path := "res://assets/design/l1_v2/outside/L1_outside_%s_480x270.png" % ("evening" if evening else "day")
+	var st := _street()
+	if not st.has("tex"):
+		return
+	# Evening once this level's Level Challenge is done.
+	var lv: int = GameState.restaurant_level
+	var evening: bool = GameState.challenges_left(lv).is_empty()
+	var path: String = String(st.tex) % ("evening" if evening else "day")
 	if o.texture == null or o.texture.resource_path != path:
 		o.texture = load(path)
 	# The evening art is quite dark: lift it a little so the street stays readable.
@@ -1354,7 +1414,12 @@ func _on_goal_reached(level: int, id: String) -> void:
 func _all_done_text(lv: int) -> String:
 	if not GameState.goals_left(lv).is_empty() or not GameState.challenges_left(lv).is_empty():
 		return ""
-	return "  ·  Level %d complete%s" % [lv, ": upgrade at the chalkboard!" if lv < GameState.MAX_RESTAURANT_LEVEL else "!"]
+	return "  ·  Level %d complete%s" % [lv, ": upgrade at %s!" % upgrade_spot_name() if lv < GameState.MAX_RESTAURANT_LEVEL else "!"]
+
+
+## What the Upgrade Board looks like at this level (the Small Diner's is a jukebox).
+func upgrade_spot_name() -> String:
+	return "the jukebox" if GameState.restaurant_level == 2 else "the chalkboard"
 
 
 func _bought(ok: bool, message: String) -> void:
@@ -1718,20 +1783,13 @@ func _drive_truck() -> void:
 		_truck = null)
 
 
-## Level 1 v2 yard (art px of the street picture): where the truck parks and
-## where it leaves the crates, and the driveway from the road.
-const YARD_PARK := Vector2(368, 94)     # truck centre when parked
-const YARD_CRATES := Rect2(336, 118, 70, 28)
-const YARD_GATE_X := 447.0
-const ROAD_LANE_Y := 222.0
-
-
 func _art_to_world(p: Vector2) -> Vector2:
 	return _cam_bounds.position + p * 4.0
 
 
 func _yard_crate_rect() -> Rect2:
-	return Rect2(_art_to_world(YARD_CRATES.position), YARD_CRATES.size * 4.0)
+	var r: Rect2 = _street().get("crates", Rect2())
+	return Rect2(_art_to_world(r.position), r.size * 4.0)
 
 
 ## Street delivery: the truck drives along the road, turns up the driveway into
@@ -1742,27 +1800,34 @@ func _drive_truck_street() -> void:
 		if _truck == null:
 			_unload_crates()
 		return
-	var road_start := _art_to_world(Vector2(-40, ROAD_LANE_Y))
-	var gate_road := _art_to_world(Vector2(YARD_GATE_X, ROAD_LANE_Y))
-	var gate_in := _art_to_world(Vector2(YARD_GATE_X, YARD_PARK.y))
-	var park := _art_to_world(YARD_PARK)
+	# Drive the route (road -> driveway), turn, park; then back out the same way.
+	var st := _street()
+	var route: Array = st.get("route", [])
+	if route.is_empty():
+		_unload_crates()
+		return
+	var pts: Array = route.map(func(p): return _art_to_world(p))
+	var park := _art_to_world(st.park)
 	_truck = Sprite2D.new()
 	_truck.texture = sheet
 	_truck.hframes = 2
 	_truck.scale = Vector2(4, 4)
 	_truck.z_index = 4
 	_truck.flip_h = false
-	_truck.global_position = road_start
+	_truck.global_position = pts[0]
 	add_child(_truck)
-	var anim := create_tween().set_loops(60)
+	var anim := create_tween().set_loops(80)
 	anim.tween_callback(func():
 		if is_instance_valid(_truck) and _truck.hframes == 2:
 			_truck.frame = 1 - _truck.frame).set_delay(0.12)
 	var tw := create_tween()
-	tw.tween_property(_truck, "global_position", gate_road, 2.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	tw.tween_property(_truck, "global_position", gate_in, 1.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	tw.tween_callback(func(): _truck.flip_h = true)
-	tw.tween_property(_truck, "global_position", park, 0.9).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	var at: Vector2 = pts[0]
+	for i in range(1, pts.size()):
+		tw.tween_property(_truck, "global_position", pts[i], _leg_time(at, pts[i])).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		at = pts[i]
+	var to_left: bool = park.x < at.x
+	tw.tween_callback(func(): _truck.flip_h = to_left)
+	tw.tween_property(_truck, "global_position", park, _leg_time(at, park)).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	tw.tween_callback(func():
 		_truck.hframes = 1
 		_truck.frame = 0
@@ -1773,14 +1838,24 @@ func _drive_truck_street() -> void:
 	tw.tween_callback(func():
 		_truck.texture = sheet
 		_truck.hframes = 2
-		_truck.flip_h = false)
-	tw.tween_property(_truck, "global_position", gate_in, 0.9).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-	tw.tween_property(_truck, "global_position", gate_road, 1.0)
-	tw.tween_property(_truck, "global_position", _art_to_world(Vector2(520, ROAD_LANE_Y)), 1.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+		_truck.flip_h = not to_left)
+	var back: Array = pts.slice(1)
+	back.reverse()
+	at = park
+	for p in back:
+		tw.tween_property(_truck, "global_position", p, _leg_time(at, p)).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		at = p
+	var out := _art_to_world(st.exit)
+	tw.tween_callback(func(): _truck.flip_h = out.x < at.x)
+	tw.tween_property(_truck, "global_position", out, _leg_time(at, out)).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	tw.tween_callback(func():
 		anim.kill()
 		_truck.queue_free()
 		_truck = null)
+
+
+func _leg_time(a: Vector2, b: Vector2) -> float:
+	return clampf(a.distance_to(b) / 750.0, 0.6, 2.6)
 
 
 ## Shows the crates that were on the truck with a little drop-in bounce.

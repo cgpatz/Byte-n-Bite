@@ -5,11 +5,14 @@
 [ext_resource type="Script" path="res://scenes/restaurant/grid_overlay.gd" id="3_grid"]
 [ext_resource type="Script" path="res://scenes/restaurant/art_background.gd" id="90_artbg"]
 [ext_resource type="TileSet" path="res://assets/tiles/restaurant_tileset.tres" id="91_tiles"]
+[ext_resource type="Texture2D" path="res://assets/design/l2/outside/L2_outside_day_576x324.png" id="92_outside"]
+[ext_resource type="Texture2D" path="res://assets/design/l2/pie_case.png" id="93_pie"]
 
 [node name="L2_SmallDiner" type="Node2D"]
 script = ExtResource("1_layout")
 level_name = "Small Diner"
 grid_size = Vector2i(12, 10)
+outside_view = true
 
 [node name="Floor" type="Node2D" parent="."]
 
@@ -47,6 +50,14 @@ color = Color(0.5, 0.35, 0.24, 1)
 
 [node name="Art" type="Node2D" parent="."]
 
+[node name="Outside" type="Sprite2D" parent="Art"]
+z_index = -10
+texture_filter = 1
+position = Vector2(-576, -136)
+scale = Vector2(4, 4)
+texture = ExtResource("92_outside")
+centered = false
+
 [node name="Background" type="Sprite2D" parent="Art"]
 centered = false
 script = ExtResource("90_artbg")
@@ -79,10 +90,19 @@ show_label = false
 interactable = false
 
 [node name="WallRight" parent="Walls" instance=ExtResource("2_station")]
-position = Vector2(784, 336)
+position = Vector2(784, 68)
 station_id = ""
 display_name = ""
-size = Vector2(32, 672)
+size = Vector2(32, 136)
+color = Color(0.33, 0.23, 0.16, 1)
+show_label = false
+interactable = false
+
+[node name="WallRightLower" parent="Walls" instance=ExtResource("2_station")]
+position = Vector2(784, 461)
+station_id = ""
+display_name = ""
+size = Vector2(32, 422)
 color = Color(0.33, 0.23, 0.16, 1)
 show_label = false
 interactable = false
@@ -124,10 +144,10 @@ show_label = false
 interactable = false
 
 [node name="BackDoor" parent="Walls" instance=ExtResource("2_station")]
-position = Vector2(736, 160)
+position = Vector2(736, 152)
 station_id = "BACK_DOOR"
 display_name = "Back Door"
-size = Vector2(56, 56)
+size = Vector2(56, 40)
 color = Color(0.35, 0.55, 0.35, 1)
 info_text = "Back door: delivery drivers drop ingredients here."
 
@@ -188,6 +208,14 @@ display_name = "Serving Counter"
 size = Vector2(504, 56)
 color = Color(0.85, 0.62, 0.35, 1)
 info_text = "Serving Counter: finished dishes go here."
+
+[node name="PieCase" type="Sprite2D" parent="Stations/ServingCounter"]
+z_index = 1
+texture_filter = 1
+position = Vector2(88, -72)
+scale = Vector2(4, 4)
+texture = ExtResource("93_pie")
+centered = false
 
 [node name="DeliveryRoom" parent="Stations" instance=ExtResource("2_station")]
 position = Vector2(672, 224)

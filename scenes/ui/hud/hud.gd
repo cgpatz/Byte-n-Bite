@@ -353,7 +353,7 @@ func _refresh_challenges() -> void:
 				sec3.add_child(_ql_line("[color=#8a7a66]★ %s: unlocks with the Level Challenge.[/color]" % m.title, 13))
 		_ql_body.add_child(sec3.get_parent())
 	if lv < GameState.MAX_RESTAURANT_LEVEL and GameState.goals_left(lv).is_empty() and GameState.challenges_left(lv).is_empty() and unlocked:
-		_ql_body.add_child(_ql_line("[color=#3f7a2e][b]All done: upgrade the restaurant at the chalkboard![/b][/color]", 15))
+		_ql_body.add_child(_ql_line("[color=#3f7a2e][b]All done: upgrade the restaurant at %s![/b][/color]" % _upgrade_spot(), 15))
 	var open: bool = SettingsManager.goals_open
 	var left: int = GameState.goals_left(lv).size() + GameState.challenges_left(lv).size() + miso_left
 	_goals_tab.text = "%s Quests  ·  %d left" % ["◂" if open else "▸", left]
@@ -1165,7 +1165,7 @@ func _refresh_quest_card() -> void:
 		title = "All quests done! ✔"
 		var left: Array = GameState.challenges_left(lv)
 		if left.is_empty():
-			task = "Finish the goals, then upgrade at the chalkboard."
+			task = "Finish the goals, then upgrade at %s." % _upgrade_spot()
 		else:
 			var c0 = left[0]
 			var ct: String = String(c0.get("title", "")) if c0 is Dictionary else String(LevelChallenges.find(lv, String(c0)).get("title", ""))
@@ -1359,3 +1359,7 @@ func _center(t: String, w: int, fill := " ") -> String:
 
 func _cols(a: String, b: String, w: int) -> String:
 	return a + " ".repeat(maxi(1, w - a.length() - b.length())) + b
+
+
+func _upgrade_spot() -> String:
+	return game.upgrade_spot_name() if game and game.has_method("upgrade_spot_name") else "the chalkboard"
