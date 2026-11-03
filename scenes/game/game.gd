@@ -222,6 +222,7 @@ func _on_cafe_changed(step: int) -> void:
 func _on_level_changed(level: int) -> void:
 	var upgraded := level > _shown_level
 	_shown_level = level
+	_shift = {}   # a new restaurant starts a new shift receipt
 	_load_level()
 	hud.show_toast("Welcome to the %s!" % GameState.level_data().display_name)
 	# Every restaurant upgrade pops up that level's lesson (its key new C idea).
@@ -301,6 +302,11 @@ func _spawn_tables() -> void:
 
 
 func _place_characters() -> void:
+	# The last level's street edges must go first, or they push the Manager
+	# off this level's start spot (Level 1's road lies inside Level 2's room).
+	if _room_fence:
+		_room_fence.free()
+		_room_fence = null
 	manager.global_position = _outside_start() if _level_has_outside() else restaurant.get_manager_spawn()
 	var i := 0
 	for staff in _staff_list():
@@ -2025,7 +2031,8 @@ var _run_failed := {}   # staff name -> last Run ended with an error
 
 
 func _shift_new() -> void:
-	_shift = {"dishes": {}, "coins": 0, "runs": 0, "fixed": 0, "ideas": {}}
+	_shift = {"dishes": {}, "coins": 0, "runs": 0, "fixed": 0, "ideas": {},
+		"place": GameState.level_data().display_name}
 
 
 func _shift_sale(dish: String, coins: int) -> void:
@@ -2038,7 +2045,7 @@ func _shift_sale(dish: String, coins: int) -> void:
 		n += int(_shift.dishes[d])
 	if n >= SHIFT_DISHES and not (guide and guide.is_running()):
 		_shift_no += 1
-		hud.show_receipt(_shift_no, GameState.level_data().display_name, _shift)
+		hud.show_receipt(_shift_no, String(_shift.get("place", GameState.level_data().display_name)), _shift)
 		_shift_new()
 
 
