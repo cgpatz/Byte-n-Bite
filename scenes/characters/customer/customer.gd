@@ -34,6 +34,8 @@ var customer_name := "Guest"
 var state := State.WALK_IN
 var seat: Dictionary = {}          # {pos, facing ("down"/"left"/"right"/"up"), cafe, key}
 var dish := ""                     # what they ordered
+var qty := 1                       # plates ordered (Level 2+: 1-3)
+var plates_left := 1               # plates still to come
 var waited := 0.0
 var mood := Mood.HAPPY
 var reaction := -1                 # Mood shown after being served
@@ -168,8 +170,16 @@ func _give_up() -> void:
 	_leave()
 
 
-## The kitchen served this customer's dish.
+## One plate of a bigger order arrived: wait for the rest.
+func receive_plate() -> void:
+	plates_left = maxi(1, plates_left - 1)
+	food_coming = false
+	queue_redraw()
+
+
+## The kitchen served this customer's dish (the last plate).
 func receive_dish() -> void:
+	plates_left = 0
 	reaction = mood
 	state = State.EATING
 	_timer = EAT_TIME
@@ -221,13 +231,18 @@ func _draw_order_bubble(center: Vector2) -> void:
 	var icon := _dish_icon(dish)
 	var label := Kitchen.title_of(dish)
 	var w := 52.0 if icon else font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x + 18
+	var many := plates_left > 1
+	if many:
+		w += 30.0
 	var box := Rect2(center - Vector2(w / 2.0 + 14, 22), Vector2(w + 28, 44))
 	var edge: Color = [Color(0.35, 0.7, 0.3), Color(0.9, 0.7, 0.2), Color(0.85, 0.25, 0.2)][mood]
 	draw_rect(box, Color(1, 0.98, 0.92))
 	draw_rect(box, edge, false, 3.0)
 	draw_colored_polygon(PackedVector2Array([center + Vector2(-6, 22), center + Vector2(6, 22), center + Vector2(0, 30)]), edge)
 	if icon:
-		_draw_dish(center + Vector2(-8, 0), dish, 1.0)
+		_draw_dish(center + Vector2(-8 - (15 if many else 0), 0), dish, 1.0)
+		if many:
+			draw_string(font, Vector2(center.x + 4, center.y + 8), "×%d" % plates_left, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color(0.25, 0.15, 0.08))
 	else:
 		draw_string(font, Vector2(box.position.x + 9, center.y + 5), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.25, 0.15, 0.08))
 	_draw_face(Vector2(box.end.x - 12, box.position.y + 12), mood, 8.0)

@@ -20,7 +20,7 @@ const MisoQuests := preload("res://data/help/miso_quests.gd")
 const BOX_W := 770.0
 const Paper := preload("res://scenes/ui/common/paper.gd")
 ## Put in an empty editor for the "Press Run" quest (a program that surely runs).
-const STARTER := "// Chef Miso's first program for you\nvoid main() {\n    printf(\"Hi, I'm %s! Off to the fridge.\\n\");\n    go_to(FRIDGE);\n}\n"
+const STARTER := "// Chef Miso's first program for you\nint main() {\n    printf(\"Hi, I'm %s! Off to the fridge.\\n\");\n    go_to(FRIDGE);\n    return 0;\n}\n"
 const BOX_H := 196.0
 
 var game: Node
@@ -153,8 +153,11 @@ func _next_step() -> void:
 		if st.get("until") == "ran":
 			_ran = false
 			var ce: CodeEdit = game.programming_panel.code_edit
-			if ce.text.strip_edges() == "":
+			if ce.text.strip_edges() == "" or ce.text == game.programming_panel.MAIN_TEMPLATE:
 				ce.text = STARTER % _first_staff()
+		# "Fix the bug" quests: Chef Miso's broken program goes into the editor.
+		if String(st.get("broken", "")) != "":
+			_load_broken(String(st.broken))
 		_quest.show()
 		_quest_text.text = ("[b]C Quest:[/b] " if String(st.until).begins_with("miso:") else "[b]Quest:[/b] ") + st.do
 		_pop(_quest)
@@ -166,6 +169,18 @@ func _next_step() -> void:
 	if _next_btn:
 		_next_btn.visible = _waiting_click
 		_skip_btn.visible = _level == 1 or not st.has("quest_index")
+
+
+func _load_broken(code: String) -> void:
+	var pp = game.programming_panel
+	if pp.visible and pp.staff:
+		pp.code_edit.text = code
+		pp.staff.program_source = code
+		return
+	for s in game.staff_root.get_children():
+		if s is Staff:
+			s.program_source = code
+			return
 
 
 func _end() -> void:
@@ -260,6 +275,11 @@ func _target(id: String) -> Rect2:
 		"manager":
 			return _world_rect(game.manager, Vector2(0, -24))
 		"staff":
+			# Still outside? Point at the front entrance first, then at the staff.
+			if game.has_method("_level_has_outside") and game._level_has_outside() \
+					and not Rect2(0, 0, 512, 512).has_point(game.manager.global_position):
+				var ep: Vector2 = game.get_viewport().get_canvas_transform() * Vector2(256, 520)
+				return Rect2(ep - Vector2(30, 30), Vector2(60, 60))
 			for s in game.staff_root.get_children():
 				if s is Node2D and s.visible:
 					return _world_rect(s, Vector2(0, -60))
@@ -577,7 +597,7 @@ func steps_for(level: int) -> Array:
 	var qsteps: Array = []
 	for k in quests.size():
 		var q: Dictionary = quests[k]
-		qsteps.append({"quest_index": k, "example": q.example, "point": "editor", "customer": q.get("customer", ""),
+		qsteps.append({"quest_index": k, "example": q.example, "point": "editor", "customer": q.get("customer", ""), "broken": q.get("broken", ""),
 			"do": q.do.replace("{who}", who), "until": "miso:%d" % k,
 			"say": "[b]C Quest %d of %d: %s[/b]\n%s Write it in [b]main()[/b] and press [b]Run[/b]." % [k + 1, quests.size(), q.topic, q.say]})
 	var out: Array = []
@@ -602,7 +622,7 @@ func _short_tour(level: int) -> Array:
 	if level == 1:
 		return [
 			{"do": "Move with [b]WASD[/b] or the [b]arrow keys[/b].", "say": "Welcome, chef! I'm [b]Chef Miso[/b]. You're the cat in the apron: walk with [b]WASD[/b] or the [b]arrow keys[/b].", "until": "moved", "point": "manager"},
-			{"do": "Walk to %s and press [b]E[/b]." % who, "say": "Walk up to [b]%s[/b] and press [b]E[/b] to open the code editor." % who, "until": "panel_open", "point": "staff"},
+			{"do": "Walk to %s and press [b]E[/b]." % who, "say": "Go in through the [b]front door[/b] and walk up to [b]%s[/b] (you can talk across the counter), then press [b]E[/b] to open the code editor." % who, "until": "panel_open", "point": "staff"},
 			{"do": "Drag the editor's [b]title bar[/b] to move it.", "say": "Windows can go anywhere: hold the mouse on the editor's [b]title bar[/b] and drag it.", "until": "editor_moved", "point": "editor_title"},
 			{"do": "Drag the [b]corner grip[/b] (bottom right) to resize the editor.", "say": "Drag the [b]corner grip[/b] at the bottom right to make it bigger or smaller. Every window (Lessons, Recipe Book...) works the same way.", "until": "resized", "point": "grip"},
 			{"say": "Write C and press [b]Run[/b]; printf output shows in %s's thought bubble. Buy ingredients at the Night Market ([b]M[/b])." % who},
@@ -635,7 +655,7 @@ func _walkthrough_steps(level: int) -> Array:
 			return [
 				{"say": "Welcome to [b]Byte n' Bite[/b], chef! I'm [b]Chef Miso[/b]. Your staff cook whatever you [b]program[/b] them to do in C."},
 				{"do": "Move with [b]WASD[/b] or the [b]arrow keys[/b].", "say": "You're the cat in the apron, the [b]Manager[/b]. Take a little walk with [b]WASD[/b] or the [b]arrow keys[/b].", "until": "moved", "point": "manager"},
-				{"do": "Walk to %s and press [b]E[/b]." % who, "say": "Walk up to [b]%s[/b], your cook, and press [b]E[/b] to open the code editor. The bubble over your head shows what E will do." % who, "until": "panel_open", "point": "staff"},
+				{"do": "Walk to %s and press [b]E[/b]." % who, "say": "Go in through the [b]front door[/b] and walk up to [b]%s[/b], your cook (you can talk across the counter). Press [b]E[/b] to open the code editor; the bubble over your head shows what E will do." % who, "until": "panel_open", "point": "staff"},
 				{"do": "Drag the editor's [b]title bar[/b] to move it.", "say": "Windows can go anywhere: hold the mouse on the editor's [b]title bar[/b] and drag it.", "until": "editor_moved", "point": "editor_title"},
 				{"do": "Drag the [b]corner grip[/b] (bottom right) to resize the editor.", "say": "Drag the [b]corner grip[/b] at the bottom right to make it bigger or smaller. Every window (Lessons, Recipe Book...) works the same way.", "until": "resized", "point": "grip"},
 				{"say": "Write C here and press [b]Run[/b]. The [b]Output[/b] box shows messages and mistakes, and whatever [b]printf[/b] prints, %s says in a thought bubble." % who, "point": "code"},

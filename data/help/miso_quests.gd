@@ -24,7 +24,7 @@ const QUESTS := {
 			"example": "int eggs = 3;\nprintf(\"Eggs: %d\\n\", eggs);",
 			"do": "Make an [b]int[/b] variable and print it with [b]%d[/b]."},
 		{"topic": "float and %.2f", "check": "float",
-			"say": "[b]float[/b] holds decimals, like prices. [b]%.2f[/b] prints it with 2 decimals.",
+			"say": "[b]float[/b] holds decimals, like prices. [b]%.2f[/b] prints it with 2 decimals. Kitchen bonus: when a program serves food, a variable named [b]price[/b] is what the customer pays (up to 25% over the menu).",
 			"example": "float price = 30.50;\nprintf(\"Price: %.2f\\n\", price);",
 			"do": "Make a [b]float[/b] price and print it with [b]%.2f[/b]."},
 		{"topic": "char and %c", "check": "char",
@@ -36,9 +36,14 @@ const QUESTS := {
 			"example": "int total = 30 * 2 + 40;\nprintf(\"Total: %d\\n\", total);",
 			"do": "Use [b]+ - * /[/b] or [b]%[/b] to calculate something and print it."},
 		{"topic": "++ and +=", "check": "incdec",
-			"say": "Keep score with shortcuts: [b]served++;[/b] adds 1 and [b]coins += 30;[/b] adds 30.",
+			"say": "Keep score with shortcuts: [b]served++;[/b] adds 1 and [b]coins += 30;[/b] adds 30. Kitchen bonus: an int named [b]served[/b] is checked against the dishes your staff really served.",
 			"example": "int served = 0;\nserved++;\nprintf(\"Served: %d\\n\", served);",
 			"do": "Change a variable with [b]++[/b], [b]--[/b] or [b]+=[/b] and print it."},
+		{"topic": "Fix the bug!", "check": "fixbug",
+			"say": "Real coders spend lots of time fixing bugs. My helper wrote this receipt program, but it has [b]2 bugs[/b]. I put it in the editor: press [b]Run[/b], read the error in the Output, fix it, and run again.",
+			"broken": "// Chef Miso's helper wrote this. It has 2 bugs!\nint main() {\n    int eggs = 2\n    float price = 30.50;\n    printf(\"Eggs: %d  Price: %d\\n\", eggs, price);\n    return 0;\n}\n",
+			"example": "// Hints:\n// 1. Every statement ends with ;\n// 2. A float prints with %.2f, not %d",
+			"do": "Fix the 2 bugs in {who}'s program so it prints the eggs AND the price."},
 	],
 	2: [
 		{"topic": "Comparing values", "check": "compare",
@@ -53,6 +58,10 @@ const QUESTS := {
 			"say": "[b]else[/b] runs when the condition is false, so exactly one of the two blocks runs.",
 			"example": "if (holding() == NOTHING) {\n    printf(\"Free hands\\n\");\n} else {\n    printf(\"Busy\\n\");\n}",
 			"do": "Write an [b]if[/b] with an [b]else[/b] and run it."},
+		{"topic": "How many plates?", "check": "quantity",
+			"say": "Some customers order more than one plate! After [b]take_order()[/b], [b]order_quantity()[/b] tells you how many (1, 2 or 3). Store it, then let [b]if[/b] decide how many to cook.",
+			"example": "int order = take_order();\nint n = order_quantity();\nprintf(\"%d x %s\\n\", n, order);\nif (n >= 2) {\n    printf(\"Big order!\\n\");\n}",
+			"do": "Store [b]order_quantity()[/b] in a variable and use it in an [b]if[/b]."},
 		{"topic": "else if", "check": "elseif",
 			"say": "[b]else if[/b] checks another condition. The first true one wins.",
 			"example": "int order = take_order();\nif (order == EGGSILOG) {\n    printf(\"E\\n\");\n} else if (order == HOTSILOG) {\n    printf(\"H\\n\");\n} else {\n    printf(\"?\\n\");\n}",
@@ -113,19 +122,19 @@ const QUESTS := {
 	5: [
 		{"topic": "Your own function", "check": "func",
 			"say": "Write steps once in a [b]function[/b], then call it by name from main().",
-			"example": "void greet() {\n    printf(\"Welcome!\\n\");\n}\n\nvoid main() {\n    greet();\n}",
+			"example": "void greet() {\n    printf(\"Welcome!\\n\");\n}\n\nint main() {\n    greet();\n    return 0;\n}",
 			"do": "Write a function and call it from [b]main()[/b]."},
 		{"topic": "Parameters", "check": "params",
 			"say": "[b]Parameters[/b] let a function work on different values: [b]void cook_one(int item)[/b].",
-			"example": "void cook_one(int item) {\n    go_to(FRIDGE);\n    pick_up(item);\n}\n\nvoid main() {\n    cook_one(EGG);\n}",
+			"example": "void cook_one(int item) {\n    go_to(FRIDGE);\n    pick_up(item);\n}\n\nint main() {\n    cook_one(EGG);\n    return 0;\n}",
 			"do": "Call your own function with an [b]argument[/b]."},
 		{"topic": "Return values", "check": "return",
 			"say": "A function can [b]return[/b] a value back to whoever called it.",
-			"example": "int price_of(int dish) {\n    if (dish == EGGSILOG) {\n        return 30;\n    }\n    return 40;\n}\n\nvoid main() {\n    printf(\"%d\\n\", price_of(EGGSILOG));\n}",
+			"example": "int price_of(int dish) {\n    if (dish == EGGSILOG) {\n        return 30;\n    }\n    return 40;\n}\n\nint main() {\n    printf(\"%d\\n\", price_of(EGGSILOG));\n    return 0;\n}",
 			"do": "Call a function that uses [b]return[/b] to give back a value."},
 		{"topic": "Your Library", "check": "library",
 			"say": "Functions saved in your [b]Library (L)[/b] (with [b]Use[/b] ticked) can be called by every staff member.",
-			"example": "void main() {\n    fetch_and_cook(EGG);   // lives in a Library slot\n}",
+			"example": "int main() {\n    fetch_and_cook(EGG);   // lives in a Library slot\n    return 0;\n}",
 			"do": "Call a function from your [b]Library[/b] in a staff program."},
 	],
 }
@@ -169,6 +178,21 @@ static func met(check: String, trace: Dictionary) -> bool:
 			return _n(trace, "math") >= 1 and not printfs.is_empty()
 		"incdec":
 			return _n(trace, "incdec") + _n(trace, "compound") >= 1 and not printfs.is_empty()
+		"quantity":
+			return _n(trace, "fn:order_quantity") >= 1 and _n(trace, "if") >= 1
+		"fixbug":
+			# Fixed when ONE printf shows an int with %d and a float with %f.
+			for p in printfs:
+				var has_i := false
+				var has_f := false
+				for it in p.items:
+					if it.var and it.conv in ["d", "i"] and it.type == "int":
+						has_i = true
+					if it.var and it.conv == "f" and it.type in ["float", "double"]:
+						has_f = true
+				if has_i and has_f:
+					return true
+			return false
 		"compare":
 			return _n(trace, "compare") >= 1
 		"if":
@@ -263,6 +287,12 @@ static func why_not(check: String, trace: Dictionary) -> String:
 			return "Calculate with + - * / or %% (like 30 * 2), and printf the result."
 		"incdec":
 			return "Change a variable with ++, -- or += (like served++;), then printf it."
+		"quantity":
+			if _n(trace, "fn:order_quantity") == 0:
+				return "Call order_quantity() after take_order(), like int n = order_quantity();"
+			return "Now use it in an if, like if (n >= 2) { printf(\"Big order!\\n\"); }"
+		"fixbug":
+			return "Close! The line should print eggs with %d and price with %.2f, like printf(\"Eggs: %d  Price: %.2f\\n\", eggs, price);"
 		"compare":
 			return "Compare two values with == != < > <= or >= (like eggs > 2)."
 		"if":

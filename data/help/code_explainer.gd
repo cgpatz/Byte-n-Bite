@@ -91,6 +91,8 @@ static func explain(line: String, who := "The staff member") -> String:
 		return "Skips the rest of this round and starts the next round of the loop."
 	if t.begins_with("return"):
 		var v := t.substr(6).trim_suffix(";").strip_edges()
+		if v == "0":
+			return "Ends the function and gives back 0. At the end of main(), return 0; means \"the program finished OK\"."
 		return "Ends the function%s." % ("" if v == "" else " and gives back " + v)
 	if t.begins_with("printf"):
 		var q := RegEx.new()

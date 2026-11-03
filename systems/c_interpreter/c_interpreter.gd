@@ -120,7 +120,7 @@ func compile(source: String, library = "") -> bool:
 	_program.globals = lib.globals + _program.globals
 	_functions = _program.functions
 	if not _functions.has("main"):
-		_fail("Every program needs a main() function, like:  void main() { ... }", 1)
+		_fail("Every program needs a main() function, like:  int main() { ... return 0; }", 1)
 		return false
 	for fname in _functions:
 		if Builtins.FUNCS.has(fname) or fname in Builtins.C_FUNCS:
@@ -162,7 +162,12 @@ func _parse(source: String, line_offset: int) -> Dictionary:
 
 
 ## Runs main(). Await it. Returns true when the program finished without errors.
+## main()'s variables as they were when it finished (see _call_user).
+var final_variables: Array = []
+
+
 func run() -> bool:
+	final_variables = []
 	error = {}
 	stats.clear()
 	stopped = false
@@ -996,6 +1001,10 @@ func _call_user(name: String, args: Array, line: int):
 	_frames.append([scope])
 	_ret_value = 0
 	var flow: int = await _exec(fn.body)
+	if _frames.size() == 1:
+		# main() is ending: remember its variables' final values (the game
+		# checks some of them, e.g. served, after the Run).
+		final_variables = visible_variables()
 	_frames.pop_back()
 	if flow == Flow.ABORT:
 		return 0

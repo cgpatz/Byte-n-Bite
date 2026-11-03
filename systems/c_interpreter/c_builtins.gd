@@ -21,6 +21,7 @@ const FUNCS := {
 	"take_order": {"level": 2, "args": 0, "sig": "take_order()", "desc": "Walk to the customer who has waited longest, take their order and return the dish (NOTHING if nobody is waiting)."},
 	# Older name for take_order(); still works in saved programs, hidden from lists.
 	"next_order": {"level": 2, "args": 0, "sig": "next_order()", "desc": "Old name for take_order().", "hidden": true},
+	"order_quantity": {"level": 2, "args": 0, "sig": "order_quantity()", "desc": "How many plates the order you took last wants (1, 2 or 3). Use it with if to cook the right number."},
 	"is_burnt": {"level": 2, "args": 0, "sig": "is_burnt()", "desc": "Returns 1 if what you're holding is burnt."},
 	"trash": {"level": 2, "args": 0, "sig": "trash()", "desc": "At TRASH: throw away what you're holding."},
 	# Level 3 — Neighborhood Cafe: loops

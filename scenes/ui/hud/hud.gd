@@ -470,6 +470,12 @@ func _ql_miso_card(lv: int, quests: Array) -> Control:
 	return v.get_parent()
 
 
+## Run pressed: the example pop-up has done its job, put it away.
+func hide_examples() -> void:
+	if _ql_example and _ql_example.visible:
+		_ql_example.hide()
+
+
 func _ql_show_example(q: Dictionary, from: Control) -> void:
 	if _ql_example == null:
 		_ql_example = PopupPanel.new()
@@ -751,7 +757,8 @@ func notify(title: String, body: String, icon: Texture2D = null, accent := Color
 		if c.has_meta("key") and c.get_meta("key") == key and not c.is_queued_for_deletion():
 			return
 	Sfx.play("pop", -4.0)
-	while _notes.get_child_count() >= 3:
+	# One notice at a time: a new one replaces the old (no mixed messages).
+	while _notes.get_child_count() >= 1:
 		var old := _notes.get_child(0)
 		_notes.remove_child(old)
 		old.queue_free()
@@ -770,7 +777,7 @@ func notify(title: String, body: String, icon: Texture2D = null, accent := Color
 	st.shadow_color = Color(0, 0, 0, 0.35)
 	st.shadow_size = 6
 	card.add_theme_stylebox_override("panel", st)
-	card.custom_minimum_size = Vector2(600, 0)
+	card.custom_minimum_size = Vector2(_place_notes(), 0)
 	card.set_meta("key", key)
 	card.set_meta("title", title)
 	card.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -813,6 +820,25 @@ func notify(title: String, body: String, icon: Texture2D = null, accent := Color
 	tw.tween_interval(seconds)
 	tw.tween_property(card, "modulate:a", 0.0, 0.5)
 	tw.tween_callback(card.queue_free)
+
+
+## Notices sit near the top, in the free space between the quest card and the
+## code editor (never over the code). Returns the card width to use.
+func _place_notes() -> float:
+	var vs := get_viewport_rect().size
+	var left := 0.0
+	if _qcard and _qcard.visible:
+		left = _qcard.position.x + _qcard.size.x + 12.0
+	var right := vs.x
+	var pp = game.programming_panel if game else null
+	if pp and pp.visible and pp.has_method("window_rect"):
+		right = minf(right, (pp.window_rect() as Rect2).position.x - 12.0)
+	var w := clampf(right - left - 16.0, 380.0, 600.0)
+	var cx := (left + right) / 2.0 if right - left >= 396.0 else vs.x / 2.0
+	_notes.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_notes.position = Vector2(cx - w / 2.0, 112.0)
+	_notes.size = Vector2(w, 0)
+	return w
 
 
 ## Removes notices whose title starts with prefix (e.g. an old "not quite yet"
@@ -922,7 +948,7 @@ func refresh_orders() -> void:
 	var list: Array = game.orders.duplicate()
 	var sig := ""
 	for o in list:
-		sig += "%s%s%s%s%s;" % [o.dish, o.taken, o.posted, o.ticket, o.claimed_by != null or o.serving != null]
+		sig += "%s%s%s%s%s%d;" % [o.dish, o.taken, o.posted, o.ticket, o.claimed_by != null or o.serving != null, int(o.get("left", 1))]
 	if sig != _board_sig:
 		_board_sig = sig
 		for c in _board_row.get_children():
@@ -982,12 +1008,13 @@ func _order_tile(o: Dictionary) -> Control:
 		ic.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		v.add_child(ic)
-		var nm := Paper.label(Kitchen.title_of(o.dish), 14, Paper.INK, true)
+		var left_n := int(o.get("left", 1))
+		var nm := Paper.label(Kitchen.title_of(o.dish) + (" ×%d" % left_n if left_n > 1 else ""), 14, Paper.INK, true)
 		nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		nm.clip_text = true
 		nm.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		v.add_child(nm)
-		holder.tooltip_text = "%s%s%s" % [Kitchen.title_of(o.dish), "  (ticket #%d)" % o.ticket if o.posted else "", "  · being made" if busy else ""]
+		holder.tooltip_text = "%s%s%s%s" % [Kitchen.title_of(o.dish), "  ×%d plates left (of %d)" % [left_n, int(o.get("qty", 1))] if int(o.get("qty", 1)) > 1 else "", "  (ticket #%d)" % o.ticket if o.posted else "", "  · being made" if busy else ""]
 	else:
 		var q := Paper.label("?", 40, Paper.INK_SOFT, true)
 		q.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -1259,3 +1286,76 @@ func _plain(bb: String) -> String:
 	var r := RegEx.new()
 	r.compile("\\[/?[a-z_]+[^\\]]*\\]")
 	return r.sub(bb, "", true)
+
+
+
+# --- Shift receipt (game.gd sends one every few dishes) -------------------------
+
+var _receipt: PanelContainer
+
+
+func show_receipt(no: int, place: String, shift: Dictionary) -> void:
+	if is_instance_valid(_receipt):
+		_receipt.queue_free()
+	_receipt = PanelContainer.new()
+	_receipt.add_theme_stylebox_override("panel", Paper.receipt(18))
+	_receipt.mouse_filter = Control.MOUSE_FILTER_STOP
+	_receipt.tooltip_text = "Click to close"
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 2)
+	_receipt.add_child(v)
+	var w := 30
+	var lines: Array = []
+	lines.append(_center("BYTE N' BITE", w))
+	lines.append(_center(place.to_upper(), w))
+	lines.append(_center(" SHIFT RECEIPT #%d " % no, w, "-"))
+	var total := 0
+	for d in shift.dishes:
+		var n := int(shift.dishes[d])
+		total += n
+		lines.append(_cols("%s x%d" % [Kitchen.title_of(d), n], "", w))
+	lines.append("-".repeat(w))
+	lines.append(_cols("Dishes served", str(total), w))
+	lines.append(_cols("Coins earned", str(int(shift.coins)), w))
+	lines.append(_cols("Programs run", str(int(shift.runs)), w))
+	lines.append(_cols("Bugs fixed", str(int(shift.fixed)), w))
+	var ideas: Array = shift.ideas.keys()
+	lines.append("-".repeat(w))
+	lines.append("C you used:")
+	lines.append("  " + (", ".join(ideas) if not ideas.is_empty() else "kitchen commands"))
+	lines.append(_center(" Thank you, chef! ", w, "-"))
+	var l := Label.new()
+	l.text = "\n".join(lines)
+	l.add_theme_font_override("font", Art.mono())
+	l.add_theme_font_size_override("font_size", 17)
+	l.add_theme_color_override("font_color", Paper.INK)
+	l.add_theme_constant_override("outline_size", 0)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.custom_minimum_size = Vector2(340, 0)
+	v.add_child(l)
+	add_child(_receipt)
+	_receipt.reset_size()
+	var vs := get_viewport_rect().size
+	_receipt.position = Vector2((vs.x - _receipt.size.x) / 2.0, vs.y - _receipt.size.y - 40)
+	var r := _receipt
+	r.gui_input.connect(func(e: InputEvent):
+		if e is InputEventMouseButton and e.pressed and is_instance_valid(r):
+			r.queue_free())
+	Sfx.play("pop", -4.0)
+	# Prints out like a receipt, stays a while, then fades.
+	r.pivot_offset = Vector2(r.size.x / 2.0, r.size.y)
+	r.scale = Vector2(1, 0.05)
+	var tw := r.create_tween()
+	tw.tween_property(r, "scale", Vector2.ONE, 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_interval(12.0)
+	tw.tween_property(r, "modulate:a", 0.0, 0.6)
+	tw.tween_callback(r.queue_free)
+
+
+func _center(t: String, w: int, fill := " ") -> String:
+	var pad := maxi(0, w - t.length())
+	return fill.repeat(pad / 2) + t + fill.repeat(pad - pad / 2)
+
+
+func _cols(a: String, b: String, w: int) -> String:
+	return a + " ".repeat(maxi(1, w - a.length() - b.length())) + b

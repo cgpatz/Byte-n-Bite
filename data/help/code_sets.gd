@@ -33,7 +33,7 @@ static func all_sets() -> Array:
 		out.append({"group": "Café dishes" if d.has("cafe") else "Dishes",
 			"title": d.title, "level": d.level,
 			"note": "Makes and serves one %s. Needs Restaurant Level %d%s." % [d.title, d.level, (" and Café set %d" % d.cafe) if d.has("cafe") else ""],
-			"code": "void main() {\n%s}" % dish_steps(dish, "    ")})
+			"code": "int main() {\n%s\n    return 0;\n}" % dish_steps(dish, "    ")})
 	return out
 
 
@@ -84,26 +84,29 @@ static func level_set(lv: int) -> Dictionary:
 			note = "Level 1 (no decisions or loops yet): set Today's Special to Eggsilog, then press Run once per customer. Also completes all four Level 1 challenges."
 			code = level1_challenges("EGGSILOG")
 		2:
-			note = "Level 2 (if / switch): reads one order and makes it. Press Run once per customer."
-			code = "void main() {\n    int order = take_order();\n%s}" % _switch_over(menu, "    ")
+			note = "Level 2 (if / switch): reads one order and how many plates (order_quantity()), and makes them. Press Run once per customer."
+			var one := _switch_over(menu, "        ")
+			code = ("int main() {\n    int order = take_order();\n    int n = order_quantity();   // 1, 2 or 3 plates\n"
+				+ _switch_over(menu, "    ")
+				+ "    if (n >= 2) {\n" + one + "    }\n    if (n == 3) {\n" + one + "    }\n    return 0;\n}")
 		3:
 			note = "Level 3 (loops): serves every order all day with while (1) and switch."
-			code = "void main() {\n    while (1) {\n        if (has_order()) {\n            int order = take_order();\n%s        } else {\n            wait(1);\n        }\n    }\n}" % _switch_over(menu, "            ")
+			code = "int main() {\n    while (1) {\n        if (has_order()) {\n            int order = take_order();\n            int n = order_quantity();\n            for (int p = 0; p < n; p++) {   // one dish per plate\n%s            }\n        } else {\n            wait(1);\n        }\n    }\n    return 0;\n}" % _switch_over(menu, "                ")
 		4:
 			note = "Level 4 (arrays): one loop makes ANY dish with recipe() and cook_station(), including Café items."
 			code = generic_arrays()
 		5:
 			note = "Level 5 (functions): the array program as a reusable make_dish() function."
-			code = make_dish() + "\n\nvoid main() {\n    while (1) {\n        if (has_order()) {\n            make_dish(take_order());\n        } else {\n            wait(1);\n        }\n    }\n}"
+			code = make_dish() + _main_make_dish()
 	return {"group": "Best program per level", "title": "Level %d" % lv, "level": lv, "note": note, "code": code}
 
 
 ## A waiter and a cook working together through the ticket queue (Level 3+).
 static func team_sets() -> Array:
 	var menu: Array = Kitchen.menu(3, 0)
-	var waiter := "// Waiter: takes every order and posts a ticket on the counter.\nvoid main() {\n    while (1) {\n        if (has_order()) {\n            int order = take_order();\n            go_to(SERVING_COUNTER);\n            post_order(order);\n        } else {\n            wait(1);\n        }\n    }\n}"
-	var cook := "// Cook: makes the oldest ticket on the counter (first in, first out).\nvoid main() {\n    while (1) {\n        int order = check_counter();\n        if (order == NOTHING) {\n            wait(1);\n        } else {\n%s        }\n    }\n}" % _switch_over(menu, "            ")
-	var cook4 := "// Cook (arrays): makes ANY ticket with recipe() and cook_station().\nvoid main() {\n    int items[8];\n    while (1) {\n        int order = check_counter();\n        if (order == NOTHING) {\n            wait(1);\n        } else {\n%s        }\n    }\n}" % _array_steps("order", "            ")
+	var waiter := "// Waiter: takes every order and posts a ticket on the counter.\nint main() {\n    while (1) {\n        if (has_order()) {\n            int order = take_order();\n            go_to(SERVING_COUNTER);\n            post_order(order);\n        } else {\n            wait(1);\n        }\n    }\n    return 0;\n}"
+	var cook := "// Cook: makes the oldest ticket on the counter (first in, first out).\nint main() {\n    while (1) {\n        int order = check_counter();\n        if (order == NOTHING) {\n            wait(1);\n        } else {\n            int n = order_quantity();\n            for (int p = 0; p < n; p++) {\n%s            }\n        }\n    }\n    return 0;\n}" % _switch_over(menu, "                ")
+	var cook4 := "// Cook (arrays): makes ANY ticket with recipe() and cook_station().\nint main() {\n    int items[8];\n    while (1) {\n        int order = check_counter();\n        if (order == NOTHING) {\n            wait(1);\n        } else {\n            int n = order_quantity();\n            for (int p = 0; p < n; p++) {\n%s            }\n        }\n    }\n    return 0;\n}" % _array_steps("order", "                ")
 	return [
 		{"group": "Waiter + cook", "title": "Waiter (take + post orders)", "level": 3,
 			"note": "Give this to the waiter (e.g. John). Customers' orders become tickets on the SERVING_COUNTER.", "code": waiter},
@@ -119,7 +122,7 @@ static func team_sets() -> Array:
 static func level1_challenges(dish: String) -> String:
 	var title: String = Kitchen.DISHES[dish].title
 	var price: int = Kitchen.DISHES[dish].price
-	var head := "// Level 1 challenges: receipt, talk to the customer, two in a row\nvoid main() {\n    int served = 0;\n    float price = %d.00;\n    char size = 'L';\n    int dish = %s;\n\n" % [price, dish]
+	var head := "// Level 1 challenges: receipt, talk to the customer, two in a row\nint main() {\n    int served = 0;\n    float price = %d.00;\n    char size = 'L';\n    int dish = %s;\n\n" % [price, dish]
 	var out := head
 	for n in 2:
 		out += dish_steps(dish, "    ")
@@ -128,14 +131,14 @@ static func level1_challenges(dish: String) -> String:
 	out += "    // printf also makes the staff member talk (thought bubble)\n"
 	out += "    printf(\"Hi! Here's your %s, for a price of %.2f. Enjoy!\\n\", dish, price);\n"
 	out += "    float total = price * served;\n"
-	out += "    printf(\"Total: %.2f\\n\", total);\n}"
+	out += "    printf(\"Total: %.2f\\n\", total);\n    return 0;\n}"
 	return out
 
 
 static func challenges_note(lv: int) -> String:
 	match lv:
 		1: return "Finishes all three Level 1 challenges in one Run (needs 2 orders) (Today's Special: Eggsilog)."
-		2: return "Two customers: take_order(), if / else if / else with ||, and a switch with default (all three Level 2 challenges)."
+		2: return "Three customers (the third orders 2 plates): take_order(), if / else if / else with ||, a switch with default and a bulk discount (all four Level 2 challenges)."
 		3: return "Cook program: a for loop over 3 tickets (Busy shift, for loop, Waiter + cook). Give the Waiter program to another staff member."
 		4: return "Any dish with recipe() + sizeof. 'One loop, any dish' completes once two different dishes are served."
 		_: return "Put make_dish() in a Library slot first (Code Sets › Library). Uses your own functions, a return value and the Library."
@@ -149,17 +152,23 @@ static func challenges_program(lv: int) -> String:
 			var block := ("    order = take_order();\n    if (order == NOTHING) {\n        printf(\"Nobody is waiting\\n\");\n"
 				+ "    } else if (order == EGGSILOG || order == HOTSILOG) {\n" + _switch_over(Kitchen.menu(2, 0), "        ")
 				+ "    } else {\n" + _switch_over(Kitchen.menu(2, 0), "        ") + "    }\n")
-			return "// Level 2 challenges: if / else if / else, switch with default, && / ||, 2 customers\nvoid main() {\n    int order = NOTHING;\n" + block + block + "}"
+			# Bulk discount: an order of 2 plates at a lower price, then the total.
+			var bulk := ("    order = take_order();\n    int n = order_quantity();\n    float price = 30.00;\n"
+				+ "    if (n >= 2) {\n        price = 27.00;   // bulk discount\n    }\n"
+				+ _switch_over(Kitchen.menu(2, 0), "    ")
+				+ "    if (n >= 2) {\n" + _switch_over(Kitchen.menu(2, 0), "        ") + "    }\n"
+				+ "    printf(\"Total: %.2f\\n\", price * n);\n")
+			return "// Level 2 challenges: if / else if / else, switch with default, && / ||, 2 customers, bulk discount\nint main() {\n    int order = NOTHING;\n" + block + block + bulk + "    return 0;\n}"
 		3:
-			return ("// Level 3 challenges (cook): serve 3 tickets with a for loop\nvoid main() {\n    for (int i = 0; i < 3; i++) {\n"
+			return ("// Level 3 challenges (cook): serve 3 tickets with a for loop\nint main() {\n    for (int i = 0; i < 3; i++) {\n"
 				+ "        int order = check_counter();\n        while (order == NOTHING) {\n            wait(1);\n            order = check_counter();\n        }\n"
-				+ _switch_over(Kitchen.menu(3, 0), "        ") + "    }\n}")
+				+ _switch_over(Kitchen.menu(3, 0), "        ") + "    }\n    return 0;\n}")
 		4:
 			return generic_arrays().replace("    int items[8];\n", "    int items[8];\n    int room = sizeof(items) / sizeof(items[0]);\n    printf(\"Room for %d ingredients\\n\", room);\n")
 		_:
 			return ("// Level 5 challenges (needs make_dish() in a Library slot)\nint price_of(int dish) {\n    if (dish == EGGSILOG) {\n        return 30;\n    }\n    return 50;\n}\n\n"
-				+ "void main() {\n    while (1) {\n        if (has_order()) {\n            int order = take_order();\n            make_dish(order);\n"
-				+ "            printf(\"About %d coins\\n\", price_of(order));\n        } else {\n            wait(1);\n        }\n    }\n}")
+				+ "int main() {\n    while (1) {\n        if (has_order()) {\n            int order = take_order();\n            make_dish(order);\n"
+				+ "            printf(\"About %d coins\\n\", price_of(order));\n        } else {\n            wait(1);\n        }\n    }\n    return 0;\n}")
 
 
 ## Full solutions to the lesson practice tasks.
@@ -172,16 +181,16 @@ static func practice_set(lv: int) -> Dictionary:
 			code = level1_challenges("HOTSILOG")
 		2:
 			title = "Lesson 2: switch on take_order()"
-			code = "void main() {\n    int order = take_order();\n%s}" % _switch_over(["EGGSILOG", "HOTSILOG", "TOCILOG"], "    ")
+			code = "int main() {\n    int order = take_order();\n%s\n    return 0;\n}" % _switch_over(["EGGSILOG", "HOTSILOG", "TOCILOG"], "    ")
 		3:
 			title = "Lesson 3: serve all day"
-			code = "void main() {\n    while (1) {\n        if (has_order()) {\n            int order = take_order();\n%s        } else {\n            wait(1);\n        }\n    }\n}" % _switch_over(["EGGSILOG", "HAMBURGER"], "            ")
+			code = "int main() {\n    while (1) {\n        if (has_order()) {\n            int order = take_order();\n            int n = order_quantity();\n            for (int p = 0; p < n; p++) {\n%s            }\n        } else {\n            wait(1);\n        }\n    }\n    return 0;\n}" % _switch_over(["EGGSILOG", "HAMBURGER"], "                ")
 		4:
 			title = "Lesson 4: any dish with arrays"
 			code = generic_arrays()
 		5:
 			title = "Lesson 5: make_dish()"
-			code = make_dish() + "\n\nvoid main() {\n    while (1) {\n        if (has_order()) {\n            make_dish(take_order());\n        } else {\n            wait(1);\n        }\n    }\n}"
+			code = make_dish() + _main_make_dish()
 	return {"group": "Lesson practice solutions", "title": title, "level": lv,
 		"note": "Solution to the practice page of Lesson %d." % lv, "code": code}
 
@@ -231,10 +240,15 @@ static func _array_steps(dish_var: String, indent: String) -> String:
 
 
 static func generic_arrays() -> String:
-	return ("void main() {\n    int items[8];\n    while (1) {\n        if (has_order()) {\n"
-		+ "            int order = take_order();\n"
-		+ _array_steps("order", "            ")
-		+ "        } else {\n            wait(1);\n        }\n    }\n}")
+	return ("int main() {\n    int items[8];\n    while (1) {\n        if (has_order()) {\n"
+		+ "            int order = take_order();\n            int n = order_quantity();\n            for (int p = 0; p < n; p++) {   // one dish per plate\n"
+		+ _array_steps("order", "                ")
+		+ "            }\n        } else {\n            wait(1);\n        }\n    }\n    return 0;\n}")
+
+
+## main() for Level 5: every order, every plate, through make_dish().
+static func _main_make_dish() -> String:
+	return "\n\nint main() {\n    while (1) {\n        if (has_order()) {\n            int order = take_order();\n            int n = order_quantity();\n            for (int p = 0; p < n; p++) {\n                make_dish(order);\n            }\n        } else {\n            wait(1);\n        }\n    }\n    return 0;\n}"
 
 
 static func make_dish() -> String:

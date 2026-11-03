@@ -328,6 +328,7 @@ func run_program() -> void:
 	run_trace = {"served": 0, "printfs": [], "stats": interp.stats, "dishes": {}, "tickets": 0,
 		"challenges_before": GameState.challenges_done.size()}
 	run_count += 1
+	last_quantity = 1
 	last_variables = []
 	interp.line_changed.connect(func(l: int):
 		_current_line = l
@@ -341,6 +342,8 @@ func run_program() -> void:
 		_log("[color=#b9a58a]▶ %s reads the program...[/color]" % staff_name)
 		run_trace["error"] = true
 		_report_error(interp.error)
+		if world and world.has_method("on_run_finished"):
+			world.on_run_finished(self)
 		return
 	var back := _return_unused()
 	_log("[color=#b9a58a]▶ %s starts working (hands and plate cleared%s).[/color]" % [staff_name, back])
@@ -359,6 +362,10 @@ func run_program() -> void:
 	if world and world.has_method("reserve_special_order"):
 		world.reserve_special_order(self)
 	await interp.run()
+	if not _stop_requested and world and world.has_method("quantity_tip"):
+		var qt: String = world.quantity_tip(self)
+		if qt != "":
+			_log("[color=#e8c46a]%s[/color]" % qt)
 	if world and world.has_method("release_claims"):
 		world.release_claims(self)
 	_path.clear()
@@ -375,11 +382,32 @@ func run_program() -> void:
 		var tip: String = world.challenge_tip(self)
 		if tip != "":
 			_log("[color=#e8c46a]%s[/color]" % tip.replace("[", "[lb]"))
-	var fin: Array = interp.visible_variables()
+	var fin: Array = interp.final_variables if not interp.final_variables.is_empty() else interp.visible_variables()
 	if not fin.is_empty():
 		last_variables = fin
+	if not _stop_requested and interp.error.is_empty():
+		_check_served_count(interp.final_variables if not interp.final_variables.is_empty() else last_variables)
+	if not _stop_requested and world and world.has_method("on_run_finished"):
+		world.on_run_finished(self)
 	_interp = null
 	running_changed.emit(false)
+
+
+## Variables that mean something in the kitchen: an int named served (or
+## dishes) is checked against the dishes this Run really served, so counting
+## with ++ gets real feedback.
+func _check_served_count(vars: Array) -> void:
+	var n := int(run_trace.get("served", 0))
+	if n < 1:
+		return
+	for v in vars:
+		var nm := String(v.get("name", ""))
+		if nm in ["served", "dishes", "dishes_served", "count"] and String(v.get("type", "")) == "int":
+			if int(v.v) == n:
+				_log("[color=#9fd67a]✔ Your [b]%s[/b] variable says %d, and %s really served %d. It matches![/color]" % [nm, int(v.v), staff_name, n])
+			else:
+				_log("[color=#e8c46a]Your [b]%s[/b] variable says %d, but %s served %d dish%s. Tip: put %s++; right after each serve();[/color]" % [nm, int(v.v), staff_name, n, "" if n == 1 else "es", nm])
+			return
 
 
 func stop_program() -> void:
@@ -619,6 +647,11 @@ func counter_tickets() -> Array:
 
 ## take_order(): walk to the customer who has waited longest, hear the order and
 ## return the dish. Test orders without a customer are taken on the spot.
+## order_quantity(): plates wanted by the order taken last (take_order() or
+## check_counter()); 1 until an order is taken.
+var last_quantity := 1
+
+
 func _do_take_order() -> Dictionary:
 	if world == null or not world.has_method("reserve_order_to_take"):
 		var menu := Kitchen.menu(restaurant_level(), GameState.cafe_step)
@@ -644,7 +677,8 @@ func _do_take_order() -> Dictionary:
 			return {"value": Kitchen.NOTHING}
 		await _act("pick", PICK_TIME, "taking the order...", customer.global_position)
 	var id: int = world.finish_taking(order, self)
-	_log("[color=#b9a58a]Order: %s[/color]" % Kitchen.title_of(order.dish))
+	last_quantity = int(order.get("qty", 1))
+	_log("[color=#b9a58a]Order: %s%s[/color]" % [Kitchen.title_of(order.dish), " ×%d" % last_quantity if last_quantity > 1 else ""])
 	return {"value": id}
 
 
@@ -715,6 +749,8 @@ func run_builtin(fname: String, args: Array, _line: int) -> Dictionary:
 			return {"value": 0}
 		"take_order", "next_order":
 			return await _do_take_order()
+		"order_quantity":
+			return {"value": last_quantity}
 		"has_order":
 			if world and world.has_method("has_order"):
 				return {"value": 1 if world.has_order(self) else 0}
@@ -744,6 +780,8 @@ func run_builtin(fname: String, args: Array, _line: int) -> Dictionary:
 				if r.has("error") or _stop_requested:
 					return r if r.has("error") else {"value": Kitchen.NOTHING}
 			var got: int = world.check_counter(self)
+			if got != Kitchen.NOTHING and world.has_method("last_ticket_quantity"):
+				last_quantity = world.last_ticket_quantity()
 			if got != Kitchen.NOTHING:
 				run_trace.tickets += 1
 				await _act("pick", PICK_TIME, "reading the ticket")

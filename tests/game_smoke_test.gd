@@ -308,6 +308,9 @@ func _ready() -> void:
 	game.place_order(null, "EGGSILOG")
 	game.place_order(null, "EGGSILOG")
 	var coins_g := GameState.money
+	# One challenge per Run in the real game: switched off for this check (and
+	# checked on its own below).
+	game.one_challenge_per_run = false
 	jane.program_source = CodeSets.level1_challenges("EGGSILOG")
 	jane.clear_log()
 	Engine.time_scale = 8.0
@@ -317,6 +320,19 @@ func _ready() -> void:
 		"Level 1 challenges: receipt, talk to the customer, two in a row all done (%s, +%d coins)" % [GameState.challenges_done, GameState.money - coins_g])
 	if not GameState.challenges_left(1).is_empty():
 		print(jane.log_text)
+	# The real rule: a program that meets several challenges earns ONE per Run.
+	var saved_done: Array = GameState.challenges_done.duplicate()
+	GameState.challenges_done = []
+	game.one_challenge_per_run = true
+	game.place_order(null, "EGGSILOG")
+	game.place_order(null, "EGGSILOG")
+	Engine.time_scale = 8.0
+	await jane.run_program()
+	Engine.time_scale = 1.0
+	_report(GameState.challenges_done.size() == 1 and "press Run again" in jane.log_text,
+		"One challenge per Run (got %s) and the Output says to Run again" % [GameState.challenges_done])
+	GameState.challenges_done = saved_done
+	game.one_challenge_per_run = false
 	# Level 1 goals: 10 Hotsilog, 10 Eggsilog, 300 profit (counted from sales at this level).
 	GameState.goals_reached = []
 	GameState.level_sales = {}
@@ -372,6 +388,24 @@ func _ready() -> void:
 	Engine.time_scale = 1.0
 	_report(GameState.customers_lost == lost_b and is_instance_valid(patient) and patient.state == 2,
 		"Customer waits while their order is being made, then gets served")
+	# Level 2 order quantities: one serve() for an order of 2 leaves 1 plate to go.
+	GameState.restaurant_level = 2
+	await get_tree().process_frame
+	await get_tree().process_frame
+	jane = game.get_node("Characters/Staff/Jane")
+	for o in game.orders.duplicate():
+		game.orders.erase(o)
+	game.place_order(null, "EGGSILOG", 2)
+	Engine.time_scale = 8.0
+	jane.clear_log()
+	jane.program_source = "int main() {\n    int order = take_order();\n    int n = order_quantity();\n    printf(\"%d plates\\n\", n);\n" + CodeSets.dish_steps("EGGSILOG", "    ") + "    return 0;\n}"
+	await jane.run_program()
+	Engine.time_scale = 1.0
+	var big: Dictionary = game.orders[0] if not game.orders.is_empty() else {}
+	_report(not big.is_empty() and int(big.left) == 1 and "2 plates" in jane.log_text and "still waits for 1 more" in jane.log_text,
+		"Order ×2: order_quantity() = 2, one serve() leaves 1 plate to go, Output explains")
+	for o in game.orders.duplicate():
+		game.orders.erase(o)
 	# Level challenges 2-5, each finished by its Code Sets program.
 	GameState.challenges_done = []
 	Engine.time_scale = 8.0
@@ -380,9 +414,10 @@ func _ready() -> void:
 	await get_tree().process_frame
 	game.place_order(null, "TOCILOG")
 	game.place_order(null, "EGGSILOG")
+	game.place_order(null, "EGGSILOG", 2)
 	jane.program_source = CodeSets.challenges_program(2)
 	await jane.run_program()
-	_report(GameState.challenges_left(2).is_empty(), "Level 2 challenges (else if, switch+default, || with 2 customers) done: %s" % [GameState.challenges_done])
+	_report(GameState.challenges_left(2).is_empty(), "Level 2 challenges (else if, switch+default, || with 2 customers, bulk discount) done: %s" % [GameState.challenges_done])
 	GameState.restaurant_level = 3
 	await get_tree().process_frame
 	await get_tree().process_frame

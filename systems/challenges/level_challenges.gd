@@ -36,6 +36,9 @@ const GOALS := {
 		{"id": "combo", "title": "Smart combo", "coins": 100, "exp": 100,
 			"task": "Serve 2 customers in ONE Run, using && or || in a condition.",
 			"how": "if (order == EGGSILOG || order == HOTSILOG) { ...silog steps... }"},
+		{"id": "bulk", "title": "Bulk discount", "coins": 100, "exp": 100,
+			"task": "Serve a whole order of 2+ plates (order_quantity()) at a discount: if (n >= 2), set a lower price, then print the total with %.2f.",
+			"how": "int n = order_quantity();  float price = 30.00;  if (n >= 2) { price = 27.00; }  ...serve each plate...  printf(\"Total: %.2f\\n\", price * n);"},
 	],
 	3: [
 		{"id": "three", "title": "Busy shift", "coins": 80, "exp": 80,
@@ -127,6 +130,8 @@ static func met(level: int, trace: Dictionary) -> Array:
 				out.append("switch")
 			if served >= 2 and _n(trace, "logic") >= 1:
 				out.append("combo")
+			if trace.get("bulk", false) and _float_printf(trace):
+				out.append("bulk")
 		3:
 			if served >= 3:
 				out.append("three")
@@ -283,3 +288,12 @@ static func met_mastery(level: int, trace: Dictionary) -> Array:
 			if served >= 5 and _n(trace, "library_call") >= 3:
 				out.append("kitchen_team")
 	return out
+
+
+## A printf in this Run printed a float with %f (e.g. the order total).
+static func _float_printf(trace: Dictionary) -> bool:
+	for p in trace.get("printfs", []):
+		for it in p.get("items", []):
+			if it.get("conv", "") == "f":
+				return true
+	return false

@@ -12,6 +12,11 @@ signal upgrade_requested(staff_name: String)
 const Builtins := preload("res://systems/c_interpreter/c_builtins.gd")
 const Kitchen := preload("res://systems/kitchen/kitchen_rules.gd")
 const PixelArt := preload("res://scenes/art/pixel_art.gd")
+const Paper := preload("res://scenes/ui/common/paper.gd")
+## Code area: a warm dark "chalkboard" brown that matches the paper ink.
+const CODE_BG := Color("2a1f19")
+## A new (empty) program starts with real C's main(): the player types inside.
+const MAIN_TEMPLATE := "int main() {\n    \n    return 0;\n}\n"
 const ERROR_LINE_COLOR := Color(0.75, 0.2, 0.15, 0.45)
 const EXEC_LINE_COLOR := Color(1.0, 0.8, 0.3, 0.22)
 
@@ -76,7 +81,7 @@ func _ready() -> void:
 	_explain_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_explain_label.add_theme_font_size_override("normal_font_size", 14)
 	_explain_label.add_theme_font_size_override("bold_font_size", 14)
-	_explain_label.add_theme_color_override("default_color", Color(1, 0.9, 0.7))
+	_explain_label.add_theme_color_override("default_color", Paper.INK)
 	_explain_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	info_row.add_child(_explain_label)
 	var zoom_hint := Label.new()
@@ -84,7 +89,7 @@ func _ready() -> void:
 	zoom_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	zoom_hint.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	zoom_hint.add_theme_font_size_override("font_size", 12)
-	zoom_hint.add_theme_color_override("font_color", Color(0.7, 0.6, 0.48))
+	zoom_hint.add_theme_color_override("font_color", Paper.INK_SOFT)
 	zoom_hint.add_theme_constant_override("outline_size", 0)
 	zoom_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	info_row.add_child(zoom_hint)
@@ -96,6 +101,7 @@ func _ready() -> void:
 	_build_library_drawer()
 	_setup_floating()
 	_build_upgrade_button()
+	_paper_skin()
 	_apply_opacity()
 
 
@@ -148,7 +154,7 @@ func _setup_editor() -> void:
 	hl.add_color_region("\"", "\"", Color(0.95, 0.85, 0.5))
 	hl.add_color_region("'", "'", Color(0.95, 0.85, 0.5))
 	code_edit.syntax_highlighter = hl
-	code_edit.placeholder_text = "// Empty program. Write your C code here, for example:\n\nvoid main() {\n    go_to(FRIDGE);\n    pick_up(RICE);\n}\n\n// Stuck? Open Lessons (T): it has every Kitchen Function too."
+	code_edit.placeholder_text = "// Empty program. Write your C code here, for example:\n\nint main() {\n    go_to(FRIDGE);\n    pick_up(RICE);\n    return 0;\n}\n\n// Stuck? Open Lessons (T): it has every Kitchen Function too."
 	code_edit.indent_size = 4
 	code_edit.indent_use_spaces = true
 	code_edit.gutters_draw_executing_lines = true
@@ -170,7 +176,10 @@ func _apply_opacity() -> void:
 		_panel.self_modulate.a = o
 	if _lib_panel:
 		_lib_panel.self_modulate.a = o
-	for pair in [[code_edit, "normal"], [code_edit, "focus"], [console, "normal"]]:
+	var boxes := [[code_edit, "normal"], [code_edit, "focus"], [console, "normal"]]
+	if _vars_label and _vars_label.get_parent() is PanelContainer:
+		boxes.append([_vars_label.get_parent(), "panel"])
+	for pair in boxes:
 		var c: Control = pair[0]
 		var key: String = c.name + pair[1]
 		if not _code_styles.has(key):
@@ -181,7 +190,7 @@ func _apply_opacity() -> void:
 		var sb: StyleBoxFlat = _code_styles.get(key)
 		if sb:
 			sb.bg_color.a = o
-	code_edit.add_theme_color_override("background_color", Color(0.1, 0.08, 0.07, 0.0 if o < 1.0 else 1.0))
+	code_edit.add_theme_color_override("background_color", Color(CODE_BG, 0.0 if o < 1.0 else 1.0))
 
 
 ## Code text size: Ctrl + mouse wheel (or Ctrl + = / Ctrl + - , Ctrl + 0 resets).
@@ -214,14 +223,14 @@ func _explain_line(line: int) -> void:
 	if _explain_label == null:
 		return
 	if line < 0 or line >= code_edit.get_line_count():
-		_explain_label.text = "[color=#a8977c]Point at a line (or click in it) to read it in plain English.[/color]"
+		_explain_label.text = "[color=#6b5442]Point at a line (or click in it) to read it in plain English.[/color]"
 		return
 	var who: String = staff.staff_name if staff else "The staff member"
 	var e: String = Explainer.explain(code_edit.get_line(line), who)
 	if e == "":
-		_explain_label.text = "[color=#a8977c]Line %d: (empty or just a bracket)[/color]" % (line + 1)
+		_explain_label.text = "[color=#6b5442]Line %d: (empty or just a bracket)[/color]" % (line + 1)
 	else:
-		_explain_label.text = "[color=#c9b48f]Line %d:[/color] %s" % [line + 1, e.replace("[", "[lb]")]
+		_explain_label.text = "[color=#8a4b12]Line %d:[/color] %s" % [line + 1, e.replace("[", "[lb]")]
 
 
 func _on_code_zoom_input(e: InputEvent) -> void:
@@ -296,16 +305,22 @@ func open(for_staff: Staff) -> void:
 	staff.line_changed.connect(_on_line_changed)
 	staff.error_at.connect(_on_error_at)
 	_update_title()
-	code_edit.text = staff.program_source
+	if staff.program_source.strip_edges() == "":
+		code_edit.text = MAIN_TEMPLATE
+		code_edit.set_caret_line(1)
+		code_edit.set_caret_column(4)
+	else:
+		code_edit.text = staff.program_source
 	_clear_marks()
 	_update_hint()
 	console.clear()
 	if staff.log_text == "":
 		_log("[color=#b9a58a]Editing %s's program. Press Run to save and execute.[/color]" % staff.staff_name)
 	else:
-		console.append_text(staff.log_text)
+		_out(staff.log_text)
 	_on_running_changed(staff.is_running())
 	_fill_library()
+	Paper.paperize(_lib_panel)
 	_lib_toggle.button_pressed = false  # every time the editor opens, the Library starts closed
 	show()
 	_apply_rect(SettingsManager.code_window)
@@ -384,6 +399,9 @@ func _on_run_pressed() -> void:
 		return
 	staff.program_source = code_edit.text
 	_clear_marks()
+	var g := get_tree().get_first_node_in_group("game_root")
+	if g and g.get("hud") and g.hud.has_method("hide_examples"):
+		g.hud.hide_examples()
 	if staff.is_running():
 		staff.restart_program()
 	else:
@@ -466,12 +484,12 @@ func _process(delta: float) -> void:
 func _refresh_variables() -> void:
 	if _vars_label == null:
 		return
-	var t := "[color=#c9b48f][b]Variables[/b][/color]\n"
+	var t := "[color=#6b5442][b]Variables[/b][/color]\n"
 	var vars: Array = staff.variables() if staff else []
 	if vars.is_empty():
-		t += "[color=#8f8270]None yet. Try: int eggs = 3;[/color]"
+		t += "[color=#8a7a66]None yet. Try: int eggs = 3;[/color]"
 	for v in vars:
-		t += "[color=#7fb4e8]%s[/color] [b]%s[/b] = [color=#ffd98a]%s[/color]\n" % [v.type, v.name, _fmt_value(v.v, v.type)]
+		t += "[color=#2f6aa0]%s[/color] [b]%s[/b] = [color=#8a4b12]%s[/color]\n" % [v.type, v.name, _fmt_value(v.v, v.type)]
 	_vars_label.text = t.strip_edges()
 
 
@@ -496,7 +514,7 @@ func _fmt_value(v, type: String) -> String:
 
 
 func _on_log_added(text: String) -> void:
-	console.append_text(text)
+	_out(text)
 
 
 func _on_running_changed(running: bool) -> void:
@@ -592,7 +610,7 @@ func _build_snippet_bar() -> void:
 func _snippets() -> Array:
 	var lv: int = GameState.restaurant_level
 	var out: Array = [
-		["main", "void main() {\n    \n}\n", "The start of every program"],
+		["main", "int main() {\n    \n    return 0;\n}\n", "The start of every program"],
 		["printf", "printf(\"Hello!\\n\");", "Print a line (the staff member says it)"],
 		["variable", "int count = 0;", "Make a variable that stores a number"],
 		["cook steps", "go_to(FRIDGE);\npick_up(EGG);\ngo_to(GRILL);\ncook();\ngo_to(ASSEMBLY);\nplate();", "Fetch, cook and plate one ingredient"],
@@ -619,7 +637,8 @@ func _fill_snippet_bar() -> void:
 	var l := Label.new()
 	l.text = "Insert:"
 	l.add_theme_font_size_override("font_size", 13)
-	l.add_theme_color_override("font_color", Color(0.79, 0.7, 0.56))
+	l.add_theme_color_override("font_color", Paper.INK_SOFT)
+	l.add_theme_constant_override("outline_size", 0)
 	_snippet_bar.add_child(l)
 	for sn in _snippets():
 		var b := Button.new()
@@ -628,10 +647,11 @@ func _fill_snippet_bar() -> void:
 		b.focus_mode = Control.FOCUS_NONE
 		b.add_theme_font_size_override("font_size", 13)
 		b.add_theme_constant_override("outline_size", 0)
+		b.set_meta("paper_skip", true)
 		for st_name in ["normal", "hover", "pressed", "focus"]:
 			var sb := StyleBoxFlat.new()
-			sb.bg_color = Color(0.36, 0.22, 0.12) if st_name == "normal" else Color(0.5, 0.32, 0.17)
-			sb.border_color = Color(0.62, 0.42, 0.22)
+			sb.bg_color = Paper.FACE if st_name == "normal" else Paper.FACE_HOVER
+			sb.border_color = Paper.INK
 			sb.set_border_width_all(1)
 			sb.set_corner_radius_all(4)
 			sb.content_margin_left = 8
@@ -639,7 +659,8 @@ func _fill_snippet_bar() -> void:
 			sb.content_margin_top = 2
 			sb.content_margin_bottom = 2
 			b.add_theme_stylebox_override(st_name, sb)
-		b.add_theme_color_override("font_color", Color(1, 0.9, 0.7))
+		for fc in ["font_color", "font_hover_color", "font_pressed_color"]:
+			b.add_theme_color_override(fc, Paper.INK)
 		b.pressed.connect(_insert_snippet.bind(sn[1]))
 		_snippet_bar.add_child(b)
 
@@ -674,7 +695,45 @@ func _clear_marks() -> void:
 
 
 func _log(text: String) -> void:
-	console.append_text(text + "\n")
+	_out(text + "\n")
+
+
+## Output is a cream receipt slip, so light colours are darkened to ink.
+func _out(text: String) -> void:
+	console.append_text(Paper.ink_bb(text))
+
+
+## Paper Notebook look: paper window, paper buttons (Run is gold), ink text.
+## The code area stays dark (easier to read, like real editors); the Output
+## and Variables boxes are receipt slips.
+func _paper_skin() -> void:
+	run_button.set_meta("paper_gold", true)
+	var vars_box: Control = _vars_label.get_parent() if _vars_label else null
+	Paper.paperize(_panel, [code_edit, console, vars_box])
+	_panel.add_theme_stylebox_override("panel", Paper.panel(Vector4(26, 32, 26, 18)))
+	if _lib_panel:
+		Paper.paperize(_lib_panel)
+	var code_sb: StyleBoxFlat = code_edit.get_theme_stylebox("normal").duplicate()
+	code_sb.bg_color = CODE_BG
+	code_sb.border_color = Paper.INK
+	code_edit.add_theme_stylebox_override("normal", code_sb)
+	code_edit.add_theme_stylebox_override("focus", code_sb)
+	code_edit.add_theme_color_override("background_color", CODE_BG)
+	code_edit.add_theme_color_override("line_number_color", Color("8a7158"))
+	var rec := Paper.receipt(10)
+	console.add_theme_stylebox_override("normal", rec)
+	console.add_theme_color_override("default_color", Paper.INK)
+	console.add_theme_font_override("normal_font", preload("res://scenes/ui/common/ui_art.gd").mono())
+	console.add_theme_font_override("bold_font", preload("res://scenes/ui/common/ui_art.gd").mono())
+	var fs := console.get_theme_font_size("normal_font_size")
+	console.add_theme_font_size_override("bold_font_size", fs)
+	if vars_box:
+		vars_box.add_theme_stylebox_override("panel", Paper.receipt(10))
+		_vars_label.add_theme_color_override("default_color", Paper.INK)
+	# _apply_opacity() already ran once (from _setup_editor) and cached copies of
+	# the old dark boxes: forget them so the opacity setting reaches these.
+	_code_styles.clear()
+	_refresh_variables()
 
 
 func _input(event: InputEvent) -> void:
@@ -1051,6 +1110,7 @@ func _build_opacity_button(head: HBoxContainer) -> void:
 		_update_opacity_btn())
 	_opacity_pop.popup_hide.connect(SettingsManager.save_settings)
 	add_child(_opacity_pop)
+	Paper.paperize(_opacity_pop)
 	_opacity_btn.pressed.connect(func():
 		_opacity_slider.value = SettingsManager.code_opacity
 		var r := _opacity_btn.get_global_rect()
@@ -1208,8 +1268,8 @@ func _on_tab_error(_line: int, _msg: String) -> void:
 
 func _style_tab() -> void:
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.55, 0.12, 0.1, 0.95) if _tab_error else Color(0.2, 0.12, 0.08, 0.95)
-	sb.border_color = Color(1, 0.55, 0.45) if _tab_error else Color(0.93, 0.72, 0.38)
+	sb.bg_color = Color(0.55, 0.12, 0.1, 0.95) if _tab_error else Paper.FACE
+	sb.border_color = Color(1, 0.55, 0.45) if _tab_error else Paper.INK
 	sb.set_border_width_all(3)
 	sb.border_width_right = 0
 	sb.corner_radius_top_left = 10
@@ -1219,7 +1279,8 @@ func _style_tab() -> void:
 	sb.content_margin_top = 8
 	sb.content_margin_bottom = 8
 	_tab.add_theme_stylebox_override("panel", sb)
-	_tab_label.add_theme_color_override("font_color", Color(1, 0.92, 0.85) if _tab_error else Color(1, 0.88, 0.6))
+	_tab_label.add_theme_color_override("font_color", Color(1, 0.92, 0.85) if _tab_error else Paper.INK)
+	_tab_label.add_theme_constant_override("outline_size", 0)
 
 
 func _refresh_tab() -> void:
@@ -1261,16 +1322,17 @@ func _update_fn_bar() -> void:
 		_fn_bar.scroll_active = false
 		_fn_bar.add_theme_font_size_override("normal_font_size", 15)
 		_fn_bar.add_theme_font_size_override("bold_font_size", 15)
-		_fn_bar.add_theme_color_override("default_color", Color(0.9, 0.82, 0.66))
+		_fn_bar.add_theme_color_override("default_color", Paper.INK)
+		_fn_bar.add_theme_constant_override("outline_size", 0)
 		_fn_bar.meta_underlined = true
 		_fn_bar.meta_clicked.connect(func(m): _show_fn_card(String(m)))
 		hint.add_sibling(_fn_bar)
 		hint.hide()
 	var links: Array = []
 	for n in Builtins.unlocked(GameState.restaurant_level):
-		links.append("[url=%s][color=#ffd27a]%s()[/color][/url]" % [n, n])
-	links.append("[url=printf][color=#ffd27a]printf()[/color][/url]")
-	_fn_bar.text = "Functions [color=#a8957a](click one for help)[/color]: %s\nMenu: %s" % [", ".join(links), ", ".join(GameState.current_menu())]
+		links.append("[url=%s][color=#8a4b12][u]%s()[/u][/color][/url]" % [n, n])
+	links.append("[url=printf][color=#8a4b12][u]printf()[/u][/color][/url]")
+	_fn_bar.text = "Functions [color=#6b5442](click one for help)[/color]: %s\nMenu: %s" % [", ".join(links), ", ".join(GameState.current_menu())]
 
 
 func _show_fn_card(id: String) -> void:
@@ -1342,6 +1404,7 @@ func _show_fn_card(id: String) -> void:
 	close_b.pressed.connect(func(): _fn_card.queue_free())
 	row.add_child(close_b)
 	add_child(_fn_card)
+	Paper.paperize(_fn_card)
 	# Next to the editor, at the height of the function list.
 	await get_tree().process_frame
 	if not is_instance_valid(_fn_card):
@@ -1363,7 +1426,7 @@ func _update_face() -> void:
 		_face_box = PanelContainer.new()
 		var sb := StyleBoxFlat.new()
 		sb.bg_color = Color(0.96, 0.9, 0.78)
-		sb.border_color = Color(0.93, 0.72, 0.38)
+		sb.border_color = Paper.INK
 		sb.set_border_width_all(3)
 		sb.set_corner_radius_all(8)
 		for side in ["left", "right", "top", "bottom"]:

@@ -254,8 +254,13 @@ func _show_new_lesson(force := false) -> void:
 		return
 	while _modal_open():
 		await get_tree().create_timer(0.3).timeout
-	hud.show_prompt_for(null)
-	tutorial_window.open_lesson(lv)
+	# Don't pop the Lessons window over the restaurant (customers are arriving):
+	# a notice says the lesson is ready; T or the Lessons button opens it.
+	if not GameState.tutorials_seen.has(lv):
+		GameState.tutorials_seen.append(lv)
+	var l0: Dictionary = Lessons.for_level(lv)
+	hud.notify("New lesson ready: press T", "Lesson %d%s is in your Lessons window whenever you want it." % [lv, (": " + String(l0.get("title", ""))) if l0.has("title") else ""],
+			load("res://assets/ui/windows/tutorial/mentor.png"), Color(0.35, 0.55, 0.85), 8.0)
 
 
 ## Bought tables go into the layout's table slots, in order.
@@ -525,9 +530,50 @@ func unclaim_serving(order: Dictionary) -> void:
 
 ## Hands the dish over: the customer pays. Returns the coins earned.
 func deliver_order(order: Dictionary, staff: Staff) -> int:
+	# A bigger order: this plate is paid, the customer waits for the rest.
+	if int(order.get("left", 1)) > 1:
+		order.left -= 1
+		order.serving = null
+		# Free again: the next serve() of this dish (by anyone) brings the next
+		# plate, and the customer's patience runs until then.
+		order.claimed_by = null
+		order.last_server = staff
+		_refresh_tickets()
+		return _deliver(order, staff.staff_name, staff.profit_mult(), _price_variable(staff), staff, false)
 	orders.erase(order)
 	_refresh_tickets()
-	return _deliver(order, staff.staff_name, staff.profit_mult())
+	return _deliver(order, staff.staff_name, staff.profit_mult(), _price_variable(staff), staff)
+
+
+## Level 2+ order sizes: mostly 1, some 2, a few 3.
+func _roll_quantity() -> int:
+	var r := randf()
+	return 1 if r < 0.6 else (2 if r < 0.9 else 3)
+
+
+## The quantity of the ticket check_counter() just handed out.
+var _last_ticket_qty := 1
+func last_ticket_quantity() -> int:
+	return _last_ticket_qty
+
+
+## After a Run: a customer this staff member was serving still waits for plates.
+func quantity_tip(staff: Node) -> String:
+	for o in orders:
+		if o.get("last_server") == staff and int(o.get("qty", 1)) > 1 and int(o.left) < int(o.qty):
+			var who: String = o.customer.customer_name if o.customer != null and is_instance_valid(o.customer) else "The customer"
+			return "%s ordered %s ×%d and still waits for %d more. Use int n = order_quantity(); and if (n >= 2) { ... } to cook every plate." % [who, Kitchen.title_of(o.dish), int(o.qty), int(o.left)]
+	return ""
+
+
+## Variables that mean something in the kitchen: a float/int named price in
+## the running program sets what the customer pays (-1 = none, use the menu).
+func _price_variable(staff: Staff) -> float:
+	for v in staff.variables():
+		if String(v.get("name", "")) == "price" and String(v.get("type", "")) in ["float", "double", "int"]:
+			var p := float(v.v)
+			return p if p > 0.0 else -1.0
+	return -1.0
 
 
 func counter_full() -> bool:
@@ -566,24 +612,49 @@ func _find_order(dish: String, staff: Staff) -> Dictionary:
 ## Pays for a delivered order and lets the customer eat. Returns the price.
 ## mult = the serving staff member's upgrade bonus (1.0 = none); the extra
 ## coins count as profit too.
-func _deliver(order: Dictionary, by: String, mult := 1.0) -> int:
+## set_price: the program's price variable (-1 = menu price). Up to 25% over
+## the menu is fine; more than that and the customer pays the menu price.
+const PRICE_LIMIT := 1.25
+
+
+func _deliver(order: Dictionary, by: String, mult := 1.0, set_price := -1.0, staff: Staff = null, final := true) -> int:
 	var dish: String = order.dish
 	var base: int = Kitchen.DISHES[dish].price if Kitchen.DISHES.has(dish) else 10
-	var price: int = roundi(base * mult)
+	var charge := float(base)
+	if set_price > 0.0:
+		var who_c: String = order.customer.customer_name if order.customer != null and is_instance_valid(order.customer) else "The customer"
+		if set_price > base * PRICE_LIMIT:
+			if staff:
+				staff._log("[color=#e8c46a]%s: \"%.2f for %s? Too expensive!\" They paid the menu price, %d. (Up to %d is OK.)[/color]" % [who_c, set_price, Kitchen.title_of(dish), base, floori(base * PRICE_LIMIT)])
+		else:
+			charge = set_price
+			if staff:
+				var mood := "a bargain!" if set_price < base else ("a bit pricey, but okay." if set_price > base else "fair price.")
+				staff._log("[color=#9fd67a]%s paid %.2f (your [b]price[/b] variable): %s[/color]" % [who_c, set_price, mood])
+	var price: int = roundi(charge * mult)
 	var first := int(GameState.dishes_served.get(dish, 0)) == 0
 	GameState.money += price
 	GameState.record_sale(dish, price)
 	if first:
 		GameState.money += FIRST_DISH_BONUS
+	_shift_sale(dish, price + (FIRST_DISH_BONUS if first else 0))
 	var who := "a customer"
 	var c = order.customer
 	if c != null and is_instance_valid(c):
 		who = c.customer_name
-		c.receive_dish()
+		if final:
+			c.receive_dish()
+		else:
+			c.receive_plate()
+	var q := int(order.get("qty", 1))
+	var plate_no := "" if q <= 1 else " (plate %d of %d)" % [q if final else q - int(order.get("left", 1)), q]
 	if first:
-		hud.show_toast("First %s ever! %s served %s  +%d coins (+%d first-dish bonus)" % [Kitchen.title_of(dish), by, who, price, FIRST_DISH_BONUS])
+		hud.show_toast("First %s ever! %s served %s%s  +%d coins (+%d first-dish bonus)" % [Kitchen.title_of(dish), by, who, plate_no, price, FIRST_DISH_BONUS])
 	else:
-		hud.show_toast("%s served %s to %s!  +%d coins" % [by, Kitchen.title_of(dish), who, price])
+		hud.show_toast("%s served %s%s to %s!  +%d coins" % [by, Kitchen.title_of(dish), plate_no, who, price])
+	# Level 2 challenge "Bulk discount": a whole order of 2+ plates at a lower price.
+	if final and q >= 2 and staff != null and set_price > 0.0 and set_price < base:
+		staff.run_trace["bulk"] = true
 	GameState.add_sale_exp(base)  # a level-up toast may replace the sale toast
 	return price
 
@@ -591,9 +662,9 @@ func _deliver(order: Dictionary, by: String, mult := 1.0) -> int:
 ## Adds an order (customer may be null, e.g. in tests). At Restaurant Level 1
 ## (Today's Special) everyone knows the order, so it counts as taken right away;
 ## otherwise a staff member has to take it with take_order().
-func place_order(customer: Node, dish: String) -> void:
+func place_order(customer: Node, dish: String, qty := 1) -> void:
 	var order := {"customer": customer, "dish": dish, "claimed_by": null, "serving": null,
-		"taken": GameState.special_active(), "posted": false, "ticket": 0}
+		"taken": GameState.special_active(), "posted": false, "ticket": 0, "qty": qty, "left": qty}
 	orders.append(order)
 	if order.taken:
 		_mark_taken(order)
@@ -609,15 +680,21 @@ func _mark_taken(order: Dictionary) -> void:
 		c.queue_redraw()
 
 
-## A matching dish already waiting on the counter is handed over right away.
+## A matching dish already waiting on the counter is handed over right away
+## (one plate at a time for bigger orders).
 func _hand_over_from_counter(order: Dictionary) -> bool:
-	if not order.dish in counter_dishes:
-		return false
-	counter_dishes.erase(order.dish)
-	orders.erase(order)
-	_deliver(order, "The counter")
+	while order.dish in counter_dishes:
+		counter_dishes.erase(order.dish)
+		if int(order.get("left", 1)) > 1:
+			order.left -= 1
+			_deliver(order, "The counter", 1.0, -1.0, null, false)
+			continue
+		orders.erase(order)
+		_deliver(order, "The counter")
+		_refresh_tickets()
+		return true
 	_refresh_tickets()
-	return true
+	return false
 
 
 ## take_order(), step 1: reserves the customer who has waited longest and whose
@@ -694,6 +771,7 @@ func check_counter(staff: Node) -> int:
 		return Kitchen.NOTHING
 	best.posted = false
 	best.claimed_by = staff
+	_last_ticket_qty = int(best.get("left", 1))
 	_refresh_tickets()
 	return Kitchen.id_of(best.dish)
 
@@ -821,8 +899,13 @@ func customer_seated(c: Node) -> void:
 		else:
 			dish = menu.pick_random()
 	c.dish = dish
+	# Level 2+: some customers want more than one plate (order_quantity()).
+	var q := 1 if GameState.special_active() or c.has_meta("wants") else _roll_quantity()
+	c.qty = q
+	c.plates_left = q
+	c.patience *= 1.0 + 0.45 * (q - 1)   # a bigger order is worth waiting for
 	c.queue_redraw()
-	place_order(c, dish)
+	place_order(c, dish, q)
 
 
 ## A customer waited too long: their order is cancelled and they walk out.
@@ -969,6 +1052,12 @@ func _setup_street() -> void:
 		return
 	var o := restaurant.get_node("Art/Outside") as Sprite2D
 	var art := restaurant.get_node("Art")
+	# Deliveries land in the yard now: hide the old in-kitchen delivery zone so
+	# there is only one place to pick up crates.
+	var recv := get_station("RECEIVING")
+	if recv:
+		recv.visible = false
+		recv.interactable = false
 	if not art.has_node("PatioSign"):
 		var sign := VBoxContainer.new()
 		sign.name = "PatioSign"
@@ -1016,6 +1105,8 @@ func _update_evening() -> void:
 	var path := "res://assets/design/l1_v2/outside/L1_outside_%s_480x270.png" % ("evening" if evening else "day")
 	if o.texture == null or o.texture.resource_path != path:
 		o.texture = load(path)
+	# The evening art is quite dark: lift it a little so the street stays readable.
+	o.self_modulate = Color(1.22, 1.18, 1.12) if evening else Color.WHITE
 
 
 ## Where the camera should be: on the manager, kept inside the restaurant.
@@ -1203,20 +1294,41 @@ func _staff_upgraded(ok: bool, staff_name: String) -> void:
 	hud.show_toast("%s is now Lv %d%s!" % [staff_name, lv, (" " + spec) if spec != "" else ""])
 
 
+## Off in Admin Run and in the automated tests (they finish a level in one Run).
+var one_challenge_per_run := true
+
+
 ## Level challenges: called by a staff member after each printf and serve().
 func check_challenges(staff: Node) -> void:
 	var lv: int = GameState.restaurant_level
 	# The Level Challenge (and Mastery) unlock after Chef Miso's quests.
 	if not GameState.miso_done(lv):
 		return
-	for id in LevelChallenges.met_mastery(lv, staff.run_trace):
-		if GameState.complete_mastery(lv, id):
-			var m: Dictionary = LevelChallenges.find_mastery(lv, id)
-			hud.show_toast("★ Mastery: %s!  +%d coins  +%d EXP" % [m.title, m.coins, m.exp])
+	# One challenge per Run, so each one is its own small win (and one big
+	# program can't clear the whole level at once). Level Challenges first.
+	var before := int(staff.run_trace.get("challenges_before", GameState.challenges_done.size()))
+	var met: Array = []
 	for id in LevelChallenges.met(lv, staff.run_trace):
-		if GameState.complete_challenge(lv, id):
-			var g: Dictionary = LevelChallenges.find(lv, id)
-			hud.show_toast("Challenge done: %s!  +%d coins  +%d EXP%s" % [g.title, g.coins, g.exp, _all_done_text(lv)])
+		if not GameState.challenge_done(lv, id):
+			met.append(["c", id])
+	for id in LevelChallenges.met_mastery(lv, staff.run_trace):
+		if not GameState.mastery_done(lv, id):
+			met.append(["m", id])
+	for pair in met:
+		if one_challenge_per_run and not GameState.admin_mode and GameState.challenges_done.size() > before:
+			# Already earned one this Run: say what else this program met.
+			if not staff.run_trace.get("told_one_per_run", false):
+				staff.run_trace["told_one_per_run"] = true
+				var other: Dictionary = LevelChallenges.find(lv, pair[1]) if pair[0] == "c" else LevelChallenges.find_mastery(lv, pair[1])
+				staff._log("[color=#e8c46a]This program also does \"%s\": one challenge per Run, so press Run again to earn it.[/color]" % other.get("title", pair[1]))
+			return
+		if pair[0] == "c":
+			if GameState.complete_challenge(lv, pair[1]):
+				var g: Dictionary = LevelChallenges.find(lv, pair[1])
+				hud.show_toast("Challenge done: %s!  +%d coins  +%d EXP%s" % [g.title, g.coins, g.exp, _all_done_text(lv)])
+		elif GameState.complete_mastery(lv, pair[1]):
+			var m: Dictionary = LevelChallenges.find_mastery(lv, pair[1])
+			hud.show_toast("★ Mastery: %s!  +%d coins  +%d EXP" % [m.title, m.coins, m.exp])
 
 
 ## After a Run that served food but finished no new challenge: what's still
@@ -1821,3 +1933,53 @@ func replay_tutorial() -> void:
 	if guide == null or guide.is_running():
 		return
 	guide.run(GameState.restaurant_level, true)
+
+
+
+# --- Shift receipt: every few dishes, a little receipt sums up the shift -------
+
+const SHIFT_DISHES := 5
+const SHIFT_IDEAS := [["fn:printf", "printf"], ["decl:int", "int"], ["decl:float", "float"],
+	["decl:char", "char"], ["math", "math"], ["incdec", "++"], ["compound", "+="],
+	["compare", "compare"], ["if", "if"], ["if_else", "else"], ["else_if", "else if"],
+	["logic", "&& ||"], ["switch", "switch"], ["while", "while"], ["do_while", "do/while"],
+	["for", "for"], ["array", "arrays"], ["user_call", "functions"]]
+var _shift := {}
+var _shift_no := 0
+var _run_failed := {}   # staff name -> last Run ended with an error
+
+
+func _shift_new() -> void:
+	_shift = {"dishes": {}, "coins": 0, "runs": 0, "fixed": 0, "ideas": {}}
+
+
+func _shift_sale(dish: String, coins: int) -> void:
+	if _shift.is_empty():
+		_shift_new()
+	_shift.dishes[dish] = int(_shift.dishes.get(dish, 0)) + 1
+	_shift.coins += coins
+	var n := 0
+	for d in _shift.dishes:
+		n += int(_shift.dishes[d])
+	if n >= SHIFT_DISHES and not (guide and guide.is_running()):
+		_shift_no += 1
+		hud.show_receipt(_shift_no, GameState.level_data().display_name, _shift)
+		_shift_new()
+
+
+## Called by a staff member when a Run ends: counts programs, bugs fixed (an
+## error, then a clean Run) and which C ideas were used.
+func on_run_finished(staff: Node) -> void:
+	if _shift.is_empty():
+		_shift_new()
+	_shift.runs += 1
+	var failed: bool = staff.run_trace.get("error", false)
+	if not failed and _run_failed.get(staff.staff_name, false):
+		_shift.fixed += 1
+	_run_failed[staff.staff_name] = failed
+	if failed:
+		return
+	var st: Dictionary = staff.run_trace.get("stats", {})
+	for pair in SHIFT_IDEAS:
+		if int(st.get(pair[0], 0)) > 0:
+			_shift.ideas[pair[1]] = true
