@@ -215,6 +215,8 @@ func _run_all() -> void:
 	bad = []
 	var sets: Array = preload("res://data/help/code_sets.gd").all_sets()
 	for cs in sets:
+		if cs.get("broken", false) or String(cs.title).contains("(broken version)"):
+			continue   # Chef Miso's "Fix the bug!" program has bugs on purpose
 		var host := FakeHost.new()
 		host.tree = get_tree()
 		host.level = cs.level

@@ -23,6 +23,9 @@ var _give: Button
 var _lib: Button
 ## Who "Give to" loads the program into: all staff, or one by name.
 var _who: OptionButton
+var _run: Button
+var _search: LineEdit
+var _group_labels: Array = []   # [Label, group name]
 
 
 func _build() -> void:
@@ -34,9 +37,17 @@ func _build() -> void:
 
 	# Left: grouped list.
 	Art.panel(frame, "stats/profile_card.png", Rect2(184, 184, 470, 832), [2, 2, 4, 4])
+	_search = LineEdit.new()
+	_search.placeholder_text = "Search: quest, challenge, Hotsilog, L2..."
+	_search.position = Vector2(200, 200)
+	_search.size = Vector2(440, 52)
+	_search.add_theme_font_size_override("font_size", 20)
+	_search.clear_button_enabled = true
+	_search.text_changed.connect(_filter)
+	frame.add_child(_search)
 	var scroll := ScrollContainer.new()
-	scroll.position = Vector2(200, 204)
-	scroll.size = Vector2(440, 796)
+	scroll.position = Vector2(200, 262)
+	scroll.size = Vector2(440, 738)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	frame.add_child(scroll)
 	_list = VBoxContainer.new()
@@ -55,6 +66,7 @@ func _build() -> void:
 			g.add_theme_font_size_override("font_size", 24)
 			g.add_theme_color_override("font_color", Art.INK)
 			_list.add_child(g)
+			_group_labels.append([g, group])
 		var b := Button.new()
 		b.text = "  %s   (Lv %d)" % [s.title, s.level]
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -96,19 +108,23 @@ func _build() -> void:
 	_code.syntax_highlighter = Art.c_highlighter(PANEL_SCRIPT.C_KEYWORDS, PANEL_SCRIPT.C_UNSUPPORTED)
 	card.add_child(_code)
 
-	_copy = Art.button(frame, "Copy", Rect2(724, 916, 200, 68), true, 26)
+	_copy = Art.button(frame, "Copy", Rect2(724, 916, 170, 68), true, 26)
 	_copy.pressed.connect(_on_copy)
-	_give = Art.button(frame, "Give to", Rect2(940, 916, 260, 68), false, 24)
+	_give = Art.button(frame, "Give", Rect2(904, 916, 150, 68), false, 24)
+	_give.tooltip_text = "Load it into the chosen staff member's editor (they keep it)."
 	_give.pressed.connect(_on_give)
-	_lib = Art.button(frame, "Put in Library", Rect2(1216, 916, 260, 68), false, 24)
+	_run = Art.button(frame, "Give & Run", Rect2(1064, 916, 210, 68), false, 24)
+	_run.tooltip_text = "Load it and press Run for them right away."
+	_run.pressed.connect(_on_give.bind(true))
+	_lib = Art.button(frame, "Put in Library", Rect2(904, 916, 260, 68), false, 24)
 	_lib.pressed.connect(_on_library)
 	_who = OptionButton.new()
-	_who.position = Vector2(1216, 922)
-	_who.size = Vector2(250, 56)
+	_who.position = Vector2(1284, 922)
+	_who.size = Vector2(200, 56)
 	_who.add_theme_font_size_override("font_size", 22)
 	_who.focus_mode = Control.FOCUS_NONE
 	frame.add_child(_who)
-	_status = Art.label(frame, "", Vector2(1490, 922), 18, Art.INK_SOFT, false, 230)
+	_status = Art.label(frame, "", Vector2(1494, 916), 17, Art.INK_SOFT, false, 236)
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 
@@ -134,6 +150,7 @@ func _select(i: int) -> void:
 	_status.text = ""
 	_lib.visible = s.group == "Library"
 	_give.visible = s.group != "Library"
+	_run.visible = _give.visible
 	_who.visible = _give.visible
 
 
@@ -148,7 +165,7 @@ func _on_copy() -> void:
 
 ## Loads the program into the chosen staff member, or everyone (they keep it
 ## until changed). Waiter + cook sets go to different staff.
-func _on_give() -> void:
+func _on_give(and_run := false) -> void:
 	var n := 0
 	var only := "" if _who.selected <= 0 else _who.get_item_text(_who.selected)
 	if game:
@@ -157,8 +174,17 @@ func _on_give() -> void:
 				continue
 			staff.program_source = current_code()
 			GameState.staff_programs[staff.staff_name] = staff.program_source
+			if and_run:
+				if staff.is_running():
+					staff.restart_program()
+				else:
+					staff.run_program()
 			n += 1
-	_status.text = "Given to %d staff. Press Run on each." % n if n > 0 else "No staff found."
+	if game and game.programming_panel and game.programming_panel.visible and game.programming_panel.staff:
+		game.programming_panel.code_edit.text = game.programming_panel.staff.program_source
+	_status.text = ("Running on %d staff." if and_run else "Given to %d staff. Press Run.") % n if n > 0 else "No staff found."
+	if and_run and n > 0:
+		close()   # watch them work
 
 
 ## Stores the function in the last Library slot.
@@ -169,3 +195,29 @@ func _on_library() -> void:
 	s.code = current_code()
 	s.enabled = true
 	_status.text = "Saved in Library slot %d." % slots.size()
+
+
+
+## Search: shows only the sets whose title, group or note contain every word.
+func _filter(text: String) -> void:
+	var words := text.to_lower().split(" ", false)
+	var shown_groups := {}
+	for j in _buttons.size():
+		var st: Dictionary = _sets[j]
+		var hay := ("%s %s %s L%d" % [st.title, st.group, st.note, st.level]).to_lower()
+		var ok := true
+		for w in words:
+			if not w in hay:
+				ok = false
+				break
+		_buttons[j].visible = ok
+		if ok:
+			shown_groups[st.group] = true
+	for gl in _group_labels:
+		gl[0].visible = shown_groups.has(gl[1])
+	# Show the first match right away.
+	if not _buttons[_index].visible:
+		for j in _buttons.size():
+			if _buttons[j].visible:
+				_select(j)
+				break

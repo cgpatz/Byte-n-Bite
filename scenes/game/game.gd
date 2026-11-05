@@ -928,6 +928,8 @@ func customer_seated(c: Node) -> void:
 	c.dish = dish
 	# Level 2+: some customers want more than one plate (order_quantity()).
 	var q := 1 if GameState.special_active() or c.has_meta("wants") else _roll_quantity()
+	if c.has_meta("qty"):   # Admin: a customer with a chosen order size
+		q = int(c.get_meta("qty"))
 	c.qty = q
 	c.plates_left = q
 	c.patience *= 1.0 + 0.45 * (q - 1)   # a bigger order is worth waiting for
@@ -1178,6 +1180,10 @@ func _on_street_challenge(_lv: int, _id: String) -> void:
 	_update_evening()
 
 
+## Admin: -1 = automatic, 0 = always day, 1 = always evening.
+var evening_override := -1
+
+
 ## After every Level Challenge of the level is done, the street turns to evening.
 func _update_evening() -> void:
 	if not _cam_outside or restaurant == null or not restaurant.has_node("Art/Outside"):
@@ -1189,6 +1195,8 @@ func _update_evening() -> void:
 	# Evening once this level's Level Challenge is done.
 	var lv: int = GameState.restaurant_level
 	var evening: bool = GameState.challenges_left(lv).is_empty()
+	if evening_override >= 0:   # Admin: force day (0) or evening (1)
+		evening = evening_override == 1
 	var path: String = String(st.tex) % ("evening" if evening else "day")
 	if o.texture == null or o.texture.resource_path != path:
 		o.texture = load(path)
@@ -1383,6 +1391,8 @@ func _staff_upgraded(ok: bool, staff_name: String) -> void:
 
 ## Off in Admin Run and in the automated tests (they finish a level in one Run).
 var one_challenge_per_run := true
+## Admin panel: test the one-per-Run rule in an Admin Run too.
+var admin_one_per_run := false
 
 
 ## Level challenges: called by a staff member after each printf and serve().
@@ -1402,7 +1412,7 @@ func check_challenges(staff: Node) -> void:
 		if not GameState.mastery_done(lv, id):
 			met.append(["m", id])
 	for pair in met:
-		if one_challenge_per_run and not GameState.admin_mode and GameState.challenges_done.size() > before:
+		if one_challenge_per_run and (not GameState.admin_mode or admin_one_per_run) and GameState.challenges_done.size() > before:
 			# Already earned one this Run: say what else this program met.
 			if not staff.run_trace.get("told_one_per_run", false):
 				staff.run_trace["told_one_per_run"] = true

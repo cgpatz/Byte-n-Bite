@@ -623,6 +623,37 @@ func _count_level_sale(dish: String, price: int) -> void:
 			goal_reached.emit(restaurant_level, g.id)
 
 
+## Admin: marks a goal reached and pays it (like reaching it by selling).
+func complete_goal(level: int, id: String) -> bool:
+	var key := "%d:%s" % [level, id]
+	if key in goals_reached:
+		return false
+	var g: Dictionary = LevelGoals.find(level, id)
+	if g.is_empty():
+		return false
+	goals_reached.append(key)
+	money += int(g.coins)
+	add_exp(int(g.exp), "goal")
+	goal_reached.emit(level, id)
+	stats_changed.emit()
+	return true
+
+
+## Admin: forget a level's progress of one kind ("quests", "challenges", "goals").
+func reset_level_progress(level: int, what: String) -> void:
+	var pre := "%d:" % level
+	match what:
+		"quests":
+			quest_progress[str(level)] = 0
+		"challenges":
+			challenges_done = challenges_done.filter(func(k): return not String(k).begins_with(pre))
+		"goals":
+			goals_reached = goals_reached.filter(func(k): return not String(k).begins_with(pre))
+			level_sales[str(level)] = {"dishes": {}, "profit": 0}
+	quests_changed.emit()
+	stats_changed.emit()
+
+
 # --- Quest Log: Chef Miso quests (step by step) -> Level Challenge -> Mastery ------
 
 const MisoQuests := preload("res://data/help/miso_quests.gd")

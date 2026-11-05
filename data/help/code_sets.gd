@@ -13,6 +13,8 @@ const Kitchen := preload("res://systems/kitchen/kitchen_rules.gd")
 
 static func all_sets() -> Array:
 	var out: Array = []
+	out.append_array(quest_sets())
+	out.append_array(single_challenge_sets())
 	for lv in range(1, 6):
 		out.append(level_set(lv))
 	for lv in range(1, 6):
@@ -136,6 +138,10 @@ static func level1_challenges(dish: String) -> String:
 
 
 static func challenges_note(lv: int) -> String:
+	return _challenges_note(lv) + " Outside Admin Runs each Run earns ONE challenge: press Run again for the next."
+
+
+static func _challenges_note(lv: int) -> String:
 	match lv:
 		1: return "Finishes all three Level 1 challenges in one Run (needs 2 orders) (Today's Special: Eggsilog)."
 		2: return "Three customers (the third orders 2 plates): take_order(), if / else if / else with ||, a switch with default and a bulk discount (all four Level 2 challenges)."
@@ -267,3 +273,73 @@ void fetch_cook_plate(int item, int station) {
     go_to(ASSEMBLY);
     plate();
 }"""
+
+
+
+const MisoQuests := preload("res://data/help/miso_quests.gd")
+
+
+static func _main(body: String) -> String:
+	return "int main() {\n" + body + "    return 0;\n}"
+
+
+static func _indent(code: String, pad := "    ") -> String:
+	var out := ""
+	for line in code.split("\n"):
+		out += (pad + line if line.strip_edges() != "" else "") + "\n"
+	return out
+
+
+static func _plain(bb: String) -> String:
+	var r := RegEx.create_from_string("\\[/?[a-z]+[^\\]]*\\]")
+	return r.sub(bb, "", true)
+
+
+## Chef Miso's quests, one ready answer each (the "Fix the bug!" quest also
+## has its broken program, to load it again).
+static func quest_sets() -> Array:
+	var out: Array = []
+	for lv in range(1, 6):
+		var qs: Array = MisoQuests.for_level(lv)
+		for k in qs.size():
+			var q: Dictionary = qs[k]
+			var code := ""
+			if q.check == "fixbug":
+				code = _main("    int eggs = 2;\n    float price = 30.50;\n    printf(\"Eggs: %d  Price: %.2f\\n\", eggs, price);\n")
+				out.append({"group": "Chef Miso quests", "title": "L%d Q%d: Fix the bug (broken version)" % [lv, k + 1], "level": lv,
+					"note": "The program Chef Miso loads for this quest, with its 2 bugs.", "code": q.broken})
+			elif q.check == "serve":
+				code = _main(_indent(q.example))
+			elif String(q.example).contains(" main()"):
+				code = q.example
+			else:
+				code = _main(_indent(q.example))
+			out.append({"group": "Chef Miso quests", "title": "L%d Q%d: %s" % [lv, k + 1, q.topic], "level": lv,
+				"note": "Quest: " + _plain(String(q.do)).replace("{who}", "your staff"), "code": code})
+	return out
+
+
+## One program per Level Challenge (Levels 1-2), for testing them one by one.
+static func single_challenge_sets() -> Array:
+	var e := dish_steps("EGGSILOG", "    ")
+	var menu2: Array = Kitchen.menu(2, 0)
+	var sets := [
+		[1, "Print a receipt", "Serve, then ONE printf with an int (%d), a float (%.2f) and a char (%c).",
+			_main("    int served = 0;\n    float price = 30.00;\n    char size = 'L';\n" + e + "    served++;\n    printf(\"Order #%d  Eggsilog x1  %.2f  size %c\\n\", served, price, size);\n")],
+		[1, "Talk to the customer", "Serve, then printf the dish (%s) and its price (%.2f).",
+			_main("    int dish = EGGSILOG;\n    float price = 30.00;\n" + e + "    printf(\"Here's your %s, for %.2f. Enjoy!\\n\", dish, price);\n")],
+		[1, "Two in a row", "Two dishes in one Run (needs 2 Eggsilog orders), then the total.",
+			_main("    int price = 30;\n" + e + e + "    int total = price * 2;\n    printf(\"Total: %d\\n\", total);\n")],
+		[2, "Decide the order", "take_order(), then if / else if / else, and serve.",
+			_main("    int order = take_order();\n    if (order == EGGSILOG) {\n" + dish_steps("EGGSILOG", "        ") + "    } else if (order == HOTSILOG) {\n" + dish_steps("HOTSILOG", "        ") + "    } else {\n" + _switch_over(menu2, "        ") + "    }\n")],
+		[2, "Switch on the order", "A switch with case labels and a default, and serve.",
+			_main("    int order = take_order();\n" + _switch_over(menu2, "    "))],
+		[2, "Smart combo", "Two customers in one Run, using || in a condition.",
+			_main("    int order = NOTHING;\n" + ("    order = take_order();\n    if (order == EGGSILOG || order == HOTSILOG) {\n" + _switch_over(menu2, "        ") + "    } else {\n" + _switch_over(menu2, "        ") + "    }\n").repeat(2))],
+		[2, "Bulk discount", "An order of 2+ plates (use Admin › World › Customer ×2) at a lower price, then the total with %.2f.",
+			_main("    int order = take_order();\n    int n = order_quantity();\n    float price = 30.00;\n    if (n >= 2) {\n        price = 27.00;   // bulk discount\n    }\n" + _switch_over(menu2, "    ") + "    if (n >= 2) {\n" + _switch_over(menu2, "        ") + "    }\n    if (n == 3) {\n" + _switch_over(menu2, "        ") + "    }\n    printf(\"Total: %.2f\\n\", price * n);\n")],
+	]
+	var out: Array = []
+	for st in sets:
+		out.append({"group": "One challenge at a time", "title": "L%d: %s" % [st[0], st[1]], "level": st[0], "note": st[2], "code": st[3]})
+	return out
