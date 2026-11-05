@@ -297,7 +297,9 @@ func _spawn_tables() -> void:
 		t.display_name = ("Family Table %d" if family else "Table %d") % (i + 1)
 		t.chairs = GameState.table_chairs[i]
 		t.draw_greybox = restaurant.show_greybox and not _placeholders_forced_off
-		t.auto_art = PixelArt.for_level("decor", "family_table" if family else "table", restaurant.level_key())
+		# A slot can name its own picture (metadata/art), e.g. the umbrella tables on Level 3's deck.
+		var art_key: String = slots[i].art if slots[i].art != "" else ("family_table" if family else "table")
+		t.auto_art = PixelArt.for_level("decor", art_key, restaurant.level_key())
 		t.chair_auto_art = PixelArt.for_level("decor", "chair", restaurant.level_key())
 		t.position = slots[i].pos
 		t.table_index = i
@@ -843,7 +845,9 @@ func _build_seats() -> void:
 	if stools:
 		for st in stools.get_children():
 			if st is Node2D:
-				_add_seat("s_" + st.name, st.global_position, "up", cafe_rect.has_point(st.global_position), taken)
+				# Stools face the counter: up by default, or metadata/facing (Level 3's side counter).
+				var facing := String(st.get_meta("facing", "up"))
+				_add_seat("s_" + st.name, st.global_position, facing, cafe_rect.has_point(st.global_position), taken)
 
 
 func _add_seat(key: String, pos: Vector2, facing: String, cafe: bool, taken: Dictionary) -> void:
@@ -1076,6 +1080,28 @@ const STREETS := {
 		"exit": Vector2(620, 236),
 		"walk_y": 214.0, "lanes": [236.0, 256.0],
 	},
+	# Level 3: Sunny Bay beach shack. The room sits at art (352, 88), 16x16 tiles.
+	3: {
+		"tex": "res://assets/design/l3/outside/L3_outside_%s_960x540.png",
+		"solids": [
+			Rect2(-16, -16, 992, 46),     # coastal road (stay on the sand)
+			Rect2(-16, 424, 992, 132),    # the sea
+			Rect2(-16, 0, 16, 540),       # left edge
+			Rect2(960, 0, 16, 540),       # right edge
+			Rect2(8, 44, 194, 64),        # parking lot
+			Rect2(10, 122, 204, 36),      # beach huts
+			Rect2(758, 48, 76, 56),       # surf rental hut
+			Rect2(838, 66, 50, 50),       # surfboards
+			Rect2(684, 198, 42, 46),      # beach showers
+			Rect2(862, 230, 40, 56),      # lifeguard tower
+			Rect2(262, 190, 32, 42),      # ice-cream cart
+		],
+		"start": Vector2(420, 1068),     # world: on the boardwalk below the deck steps
+		"park": Vector2(636, 128),       # on the service path beside the back door
+		"route": [Vector2(-40, 24), Vector2(636, 24), Vector2(636, 70)],
+		"exit": Vector2(1000, 24),
+		"walk_y": 46.0, "lanes": [11.0, 25.0],
+	},
 }
 
 
@@ -1123,10 +1149,10 @@ func _setup_street() -> void:
 		return
 	var o := restaurant.get_node("Art/Outside") as Sprite2D
 	var art := restaurant.get_node("Art")
-	# Deliveries land in the yard now: hide the old in-kitchen delivery zone so
-	# there is only one place to pick up crates.
+	# Levels 1-2: deliveries land in the yard, so hide the old in-kitchen delivery
+	# zone (one place to pick up crates). Levels 3-5 keep their indoor delivery room.
 	var recv := get_station("RECEIVING")
-	if recv:
+	if recv and _street().has("crates"):
 		recv.visible = false
 		recv.interactable = false
 	# The room picture paints its own walls (windows, posters): hide the plain
@@ -1456,7 +1482,10 @@ func _all_done_text(lv: int) -> String:
 
 ## What the Upgrade Board looks like at this level (the Small Diner's is a jukebox).
 func upgrade_spot_name() -> String:
-	return "the jukebox" if GameState.restaurant_level == 2 else "the chalkboard"
+	match GameState.restaurant_level:
+		2: return "the jukebox"
+		3: return "the menu board"
+	return "the chalkboard"
 
 
 func _bought(ok: bool, message: String) -> void:
@@ -1732,8 +1761,8 @@ func _spawn_crates() -> void:
 		return
 	var cap := maxi(GameState.crate_capacity(), GameState.crates.size())
 	var r := Rect2(area.global_position - area.size / 2.0, area.size)
-	# Level 1 v2: crates are dropped in the parking yard outside the STAFF door.
-	if _level_has_outside():
+	# Levels 1-2: crates are dropped in the yard outside the STAFF door.
+	if _level_has_outside() and _street().has("crates"):
 		r = _yard_crate_rect()
 	var cols := clampi(ceili(sqrt(cap * r.size.x / maxf(r.size.y, 1.0))), 1, cap)
 	var rows := ceili(cap / float(cols))

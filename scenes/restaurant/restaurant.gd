@@ -282,6 +282,7 @@ func get_table_slot_info() -> Array[Dictionary]:
 				"pos": m.global_position,
 				"family": bool(m.get_meta("family", false)),
 				"ends_first": bool(m.get_meta("ends_first", false)),
+				"art": String(m.get_meta("art", "")),
 			})
 	return out
 

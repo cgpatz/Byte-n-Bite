@@ -1,74 +1,80 @@
-[gd_scene format=3 uid="uid://byvb31dfh3enx"]
+[gd_scene format=3]
 
-[ext_resource type="Script" uid="uid://dap3vol4wt1wf" path="res://scenes/restaurant/restaurant.gd" id="1_layout"]
-[ext_resource type="Script" uid="uid://bfg1jx4mcl8og" path="res://scenes/restaurant/art_background.gd" id="2_q8ykm"]
+[ext_resource type="Script" path="res://scenes/restaurant/restaurant.gd" id="1_layout"]
 [ext_resource type="PackedScene" path="res://scenes/stations/Station.tscn" id="2_station"]
-[ext_resource type="TileSet" path="res://assets/tiles/restaurant_tileset.tres" id="3_1j8ya"]
-[ext_resource type="Script" uid="uid://bfo7ekkr1k6lp" path="res://scenes/restaurant/grid_overlay.gd" id="3_grid"]
+[ext_resource type="Script" path="res://scenes/restaurant/grid_overlay.gd" id="3_grid"]
+[ext_resource type="Script" path="res://scenes/restaurant/art_background.gd" id="90_artbg"]
+[ext_resource type="TileSet" path="res://assets/tiles/restaurant_tileset.tres" id="91_tiles"]
+[ext_resource type="Texture2D" path="res://assets/design/l3/outside/L3_outside_day_960x540.png" id="92_outside"]
 
-[node name="L3_NeighborhoodCafe" type="Node2D" unique_id=877823523]
+
+[node name="L3_NeighborhoodCafe" type="Node2D"]
 script = ExtResource("1_layout")
 level_name = "Neighborhood Cafe"
-grid_size = Vector2i(16, 14)
+grid_size = Vector2i(16, 16)
+show_greybox = false
+outside_view = true
 
-[node name="Floor" type="Node2D" parent="." unique_id=1988819052]
+[node name="Floor" type="Node2D" parent="."]
 
-[node name="DiningFloor" type="ColorRect" parent="Floor" unique_id=1071458578]
-offset_left = 64.0
-offset_top = 64.0
-offset_right = 960.0
-offset_bottom = 832.0
+[node name="DiningFloor" type="ColorRect" parent="Floor"]
+offset_left = 64
+offset_top = 64
+offset_right = 384
+offset_bottom = 704
 mouse_filter = 2
 color = Color(0.5, 0.35, 0.24, 1)
 
-[node name="KitchenFloor" type="ColorRect" parent="Floor" unique_id=1158523692]
-offset_left = 64.0
-offset_top = 64.0
-offset_right = 768.0
-offset_bottom = 320.0
-mouse_filter = 2
-color = Color(0.72, 0.72, 0.74, 1)
-
-[node name="DeliveryFloor" type="ColorRect" parent="Floor" unique_id=1263631817]
-offset_left = 832.0
-offset_top = 64.0
-offset_right = 960.0
-offset_bottom = 192.0
-mouse_filter = 2
-color = Color(0.5, 0.5, 0.52, 1)
-
-[node name="DeliveryDoorFloor" type="ColorRect" parent="Floor" unique_id=2107877011]
-offset_left = 768.0
-offset_top = 128.0
-offset_right = 832.0
-offset_bottom = 192.0
-mouse_filter = 2
-color = Color(0.5, 0.5, 0.52, 1)
-
-[node name="EntranceFloor" type="ColorRect" parent="Floor" unique_id=1746743039]
-offset_left = 448.0
-offset_top = 832.0
-offset_right = 576.0
-offset_bottom = 896.0
+[node name="KitchenFloor" type="ColorRect" parent="Floor"]
+offset_left = 384
+offset_top = 64
+offset_right = 960
+offset_bottom = 448
 mouse_filter = 2
 color = Color(0.5, 0.35, 0.24, 1)
 
-[node name="Art" type="Node2D" parent="." unique_id=614160737]
+[node name="DeckFloor" type="ColorRect" parent="Floor"]
+offset_left = 64
+offset_top = 768
+offset_right = 960
+offset_bottom = 936
+mouse_filter = 2
+color = Color(0.5, 0.35, 0.24, 1)
 
-[node name="Background" type="Sprite2D" parent="Art" unique_id=1179445230]
-script = ExtResource("2_q8ykm")
-fit_size = Vector2(1024, 896)
+[node name="EntranceFloor" type="ColorRect" parent="Floor"]
+offset_left = 328
+offset_top = 1024
+offset_right = 632
+offset_bottom = 1056
+mouse_filter = 2
+color = Color(0.5, 0.35, 0.24, 1)
 
-[node name="Tiles" type="TileMapLayer" parent="Art" unique_id=2009801848]
-tile_set = ExtResource("3_1j8ya")
+[node name="Art" type="Node2D" parent="."]
 
-[node name="Props" type="Node2D" parent="Art" unique_id=1599046705]
+[node name="Outside" type="Sprite2D" parent="Art"]
+z_index = -10
+texture_filter = 1
+position = Vector2(-1408, -352)
+scale = Vector2(4, 4)
+texture = ExtResource("92_outside")
+centered = false
+
+[node name="Background" type="Sprite2D" parent="Art"]
+texture_filter = 1
+centered = false
+script = ExtResource("90_artbg")
+fit_size = Vector2(1024, 1024)
+
+[node name="Tiles" type="TileMapLayer" parent="Art"]
+tile_set = ExtResource("91_tiles")
+
+[node name="Props" type="Node2D" parent="Art"]
 y_sort_enabled = true
 
-[node name="Walls" type="Node2D" parent="." unique_id=1836200763]
+[node name="Walls" type="Node2D" parent="."]
 
-[node name="WallTop" parent="Walls" unique_id=1029886031 instance=ExtResource("2_station")]
-position = Vector2(512, 32)
+[node name="WallTop" parent="Walls" instance=ExtResource("2_station")]
+position = Vector2(512.0, 32.0)
 collision_mask = 0
 station_id = ""
 display_name = ""
@@ -77,68 +83,67 @@ color = Color(0.33, 0.23, 0.16, 1)
 show_label = false
 interactable = false
 
-[node name="WallBottomLeft" parent="Walls" unique_id=672161154 instance=ExtResource("2_station")]
-position = Vector2(224, 864)
+[node name="WallLeft" parent="Walls" instance=ExtResource("2_station")]
+position = Vector2(32.0, 544.0)
 collision_mask = 0
 station_id = ""
 display_name = ""
-size = Vector2(448, 64)
+size = Vector2(64, 960)
 color = Color(0.33, 0.23, 0.16, 1)
 show_label = false
 interactable = false
 
-[node name="WallBottomRight" parent="Walls" unique_id=1345115644 instance=ExtResource("2_station")]
-position = Vector2(800, 864)
+[node name="WallRightUpper" parent="Walls" instance=ExtResource("2_station")]
+position = Vector2(992.0, 64.0)
 collision_mask = 0
 station_id = ""
 display_name = ""
-size = Vector2(448, 64)
+size = Vector2(64, 128)
 color = Color(0.33, 0.23, 0.16, 1)
 show_label = false
 interactable = false
 
-[node name="WallLeft" parent="Walls" unique_id=1131381193 instance=ExtResource("2_station")]
-position = Vector2(32, 448)
+[node name="BackDoor" parent="Walls" instance=ExtResource("2_station")]
+position = Vector2(992.0, 160.0)
 collision_mask = 0
-station_id = ""
-display_name = ""
-size = Vector2(64, 768)
-color = Color(0.33, 0.23, 0.16, 1)
-show_label = false
-interactable = false
-
-[node name="WallRightUpper" parent="Walls" unique_id=1515050997 instance=ExtResource("2_station")]
-position = Vector2(992, 96)
-collision_mask = 0
-station_id = ""
-display_name = ""
+station_id = "BACK_DOOR"
+display_name = "Back Door"
 size = Vector2(64, 64)
-color = Color(0.33, 0.23, 0.16, 1)
-show_label = false
-interactable = false
+color = Color(0.35, 0.55, 0.35, 1)
+info_text = "Back door: the delivery truck parks outside on the service path."
 
-[node name="WallRightLower" parent="Walls" unique_id=163312714 instance=ExtResource("2_station")]
-position = Vector2(992, 512)
+[node name="WallRightLower" parent="Walls" instance=ExtResource("2_station")]
+position = Vector2(992.0, 608.0)
 collision_mask = 0
 station_id = ""
 display_name = ""
-size = Vector2(64, 640)
+size = Vector2(64, 832)
 color = Color(0.33, 0.23, 0.16, 1)
 show_label = false
 interactable = false
 
-[node name="DeliveryWallLeft" parent="Walls" unique_id=1394006885 instance=ExtResource("2_station")]
-position = Vector2(800, 96)
+[node name="DeliveryWallLeft" parent="Walls" instance=ExtResource("2_station")]
+position = Vector2(736.0, 128.0)
 collision_mask = 0
 station_id = ""
 display_name = ""
-size = Vector2(64, 64)
+size = Vector2(64, 128)
 color = Color(0.33, 0.23, 0.16, 1)
 show_label = false
 interactable = false
 
-[node name="DeliveryWallBottom" parent="Walls" unique_id=1506230186 instance=ExtResource("2_station")]
-position = Vector2(864, 224)
+[node name="HouseWallRight" parent="Walls" instance=ExtResource("2_station")]
+position = Vector2(736.0, 576.0)
+collision_mask = 0
+station_id = ""
+display_name = ""
+size = Vector2(64, 256)
+color = Color(0.33, 0.23, 0.16, 1)
+show_label = false
+interactable = false
+
+[node name="HouseWallDeckTop" parent="Walls" instance=ExtResource("2_station")]
+position = Vector2(864.0, 480.0)
 collision_mask = 0
 station_id = ""
 display_name = ""
@@ -147,35 +152,97 @@ color = Color(0.33, 0.23, 0.16, 1)
 show_label = false
 interactable = false
 
-[node name="BackDoor" parent="Walls" unique_id=1600254972 instance=ExtResource("2_station")]
-position = Vector2(992, 160)
+[node name="HouseWallBottomLeft" parent="Walls" instance=ExtResource("2_station")]
+position = Vector2(160.0, 736.0)
 collision_mask = 0
-station_id = "BACK_DOOR"
-display_name = "Back Door"
-size = Vector2(64, 64)
-color = Color(0.35, 0.55, 0.35, 1)
-info_text = "Back door: delivery drivers drop ingredients here."
+station_id = ""
+display_name = ""
+size = Vector2(192, 64)
+color = Color(0.33, 0.23, 0.16, 1)
+show_label = false
+interactable = false
 
-[node name="Stations" type="Node2D" parent="." unique_id=682297391]
-
-[node name="Grill" parent="Stations" unique_id=672432108 instance=ExtResource("2_station")]
-position = Vector2(256, 96)
+[node name="HouseWallBottomRight" parent="Walls" instance=ExtResource("2_station")]
+position = Vector2(576.0, 736.0)
 collision_mask = 0
-size = Vector2(120, 56)
-color = Color(0.35, 0.35, 0.38, 1)
-info_text = "Grill: cooks patties and meat."
+station_id = ""
+display_name = ""
+size = Vector2(384, 64)
+color = Color(0.33, 0.23, 0.16, 1)
+show_label = false
+interactable = false
 
-[node name="Fryer" parent="Stations" unique_id=1194496042 instance=ExtResource("2_station")]
-position = Vector2(384, 96)
+[node name="DeckRailBottomLeft" parent="Walls" instance=ExtResource("2_station")]
+position = Vector2(196.0, 980.0)
+collision_mask = 0
+station_id = ""
+display_name = ""
+size = Vector2(264, 88)
+color = Color(0.33, 0.23, 0.16, 1)
+show_label = false
+interactable = false
+
+[node name="DeckRailBottomRight" parent="Walls" instance=ExtResource("2_station")]
+position = Vector2(796.0, 980.0)
+collision_mask = 0
+station_id = ""
+display_name = ""
+size = Vector2(328, 88)
+color = Color(0.33, 0.23, 0.16, 1)
+show_label = false
+interactable = false
+
+[node name="Stations" type="Node2D" parent="."]
+
+[node name="Fryer" parent="Stations" instance=ExtResource("2_station")]
+position = Vector2(544, 96)
 collision_mask = 0
 station_id = "FRYER"
 display_name = "Fryer"
-size = Vector2(120, 56)
+size = Vector2(56, 56)
 color = Color(0.75, 0.6, 0.25, 1)
 info_text = "Fryer: makes fries."
 
-[node name="PrepBoard" parent="Stations" unique_id=758521107 instance=ExtResource("2_station")]
-position = Vector2(512, 96)
+[node name="Grill" parent="Stations" instance=ExtResource("2_station")]
+position = Vector2(608, 128)
+collision_mask = 0
+station_id = "GRILL"
+display_name = "Grill"
+size = Vector2(56, 120)
+color = Color(0.35, 0.35, 0.38, 1)
+info_text = "Grill: cooks patties and meat."
+
+[node name="RiceCooker" parent="Stations" instance=ExtResource("2_station")]
+position = Vector2(672, 96)
+collision_mask = 0
+station_id = "RICE_COOKER"
+display_name = "Rice"
+size = Vector2(56, 56)
+color = Color(0.92, 0.92, 0.85, 1)
+info_text = "Rice Cooker: the only place to cook rice."
+
+[node name="DeliveryRoom" parent="Stations" instance=ExtResource("2_station")]
+position = Vector2(864, 128)
+collision_layer = 2
+collision_mask = 0
+station_id = "RECEIVING"
+display_name = "Deliveries"
+size = Vector2(184, 120)
+color = Color(0.95, 0.8, 0.3, 1)
+solid = false
+info_text = "Delivery room: the truck drops the crates here. Buy ingredients from the store first."
+
+[node name="Fridge" parent="Stations" instance=ExtResource("2_station")]
+position = Vector2(928, 288)
+collision_mask = 0
+station_id = "FRIDGE"
+display_name = "Fridge"
+size = Vector2(56, 56)
+color = Color(0.75, 0.82, 0.88, 1)
+info_text = "Fridge: staff take ingredients from here."
+
+[node name="PrepBoard" parent="Stations" instance=ExtResource("2_station")]
+position = Vector2(832, 416)
 collision_mask = 0
 station_id = "PREP_BOARD"
 display_name = "Prep"
@@ -183,25 +250,8 @@ size = Vector2(120, 56)
 color = Color(0.72, 0.55, 0.35, 1)
 info_text = "Prep Board: chop and prepare ingredients."
 
-[node name="Fridge" parent="Stations" unique_id=1898562065 instance=ExtResource("2_station")]
-position = Vector2(660, 96)
-collision_mask = 0
-station_id = "FRIDGE"
-display_name = "Fridge"
-size = Vector2(88, 56)
-color = Color(0.75, 0.82, 0.88, 1)
-info_text = "Fridge: staff take ingredients from here."
-
-[node name="RiceCooker" parent="Stations" instance=ExtResource("2_station")]
-position = Vector2(160, 96)
-station_id = "RICE_COOKER"
-display_name = "Rice"
-size = Vector2(56, 56)
-color = Color(0.92, 0.92, 0.85, 1)
-info_text = "Rice Cooker: the only place to cook rice."
-
-[node name="Trash" parent="Stations" unique_id=994528057 instance=ExtResource("2_station")]
-position = Vector2(736, 96)
+[node name="Trash" parent="Stations" instance=ExtResource("2_station")]
+position = Vector2(672, 544)
 collision_mask = 0
 station_id = "TRASH"
 display_name = "Trash"
@@ -209,39 +259,28 @@ size = Vector2(56, 56)
 color = Color(0.3, 0.4, 0.3, 1)
 info_text = "Trash: throw away burnt food."
 
-[node name="Assembly" parent="Stations" unique_id=1596532173 instance=ExtResource("2_station")]
-position = Vector2(416, 224)
+[node name="Assembly" parent="Stations" instance=ExtResource("2_station")]
+position = Vector2(576, 640)
 collision_mask = 0
 station_id = "ASSEMBLY"
 display_name = "Assembly"
-size = Vector2(312, 56)
+size = Vector2(248, 120)
 color = Color(0.8, 0.7, 0.5, 1)
 info_text = "Assembly: combine components into a dish."
 
-[node name="ServingCounter" parent="Stations" unique_id=302885893 instance=ExtResource("2_station")]
-position = Vector2(448, 352)
+[node name="ServingCounter" parent="Stations" instance=ExtResource("2_station")]
+position = Vector2(416, 448)
 collision_mask = 0
 station_id = "SERVING_COUNTER"
 display_name = "Serving Counter"
-size = Vector2(504, 56)
+size = Vector2(56, 376)
 color = Color(0.85, 0.62, 0.35, 1)
 info_text = "Serving Counter: finished dishes go here."
 
-[node name="DeliveryRoom" parent="Stations" unique_id=333645428 instance=ExtResource("2_station")]
-position = Vector2(896, 128)
-collision_layer = 2
-collision_mask = 0
-station_id = "RECEIVING"
-display_name = "Deliveries"
-size = Vector2(118, 118)
-color = Color(0.95, 0.8, 0.3, 1)
-solid = false
-info_text = "Delivery room: no deliveries yet. Buy ingredients from the store first."
+[node name="CounterStools" type="Node2D" parent="Stations"]
 
-[node name="CounterStools" type="Node2D" parent="Stations" unique_id=1876058593]
-
-[node name="Stool1" parent="Stations/CounterStools" unique_id=957173580 instance=ExtResource("2_station")]
-position = Vector2(256, 403.2)
+[node name="Stool1" parent="Stations/CounterStools" instance=ExtResource("2_station")]
+position = Vector2(352, 352)
 collision_layer = 2
 collision_mask = 0
 station_id = ""
@@ -251,9 +290,10 @@ color = Color(0.75, 0.2, 0.18, 1)
 show_label = false
 solid = false
 interactable = false
+metadata/facing = "right"
 
-[node name="Stool2" parent="Stations/CounterStools" unique_id=761615355 instance=ExtResource("2_station")]
-position = Vector2(384, 403.2)
+[node name="Stool2" parent="Stations/CounterStools" instance=ExtResource("2_station")]
+position = Vector2(352, 416)
 collision_layer = 2
 collision_mask = 0
 station_id = ""
@@ -263,9 +303,10 @@ color = Color(0.75, 0.2, 0.18, 1)
 show_label = false
 solid = false
 interactable = false
+metadata/facing = "right"
 
-[node name="Stool3" parent="Stations/CounterStools" unique_id=1737262441 instance=ExtResource("2_station")]
-position = Vector2(512, 403.2)
+[node name="Stool3" parent="Stations/CounterStools" instance=ExtResource("2_station")]
+position = Vector2(352, 480)
 collision_layer = 2
 collision_mask = 0
 station_id = ""
@@ -275,9 +316,10 @@ color = Color(0.75, 0.2, 0.18, 1)
 show_label = false
 solid = false
 interactable = false
+metadata/facing = "right"
 
-[node name="Stool4" parent="Stations/CounterStools" unique_id=1475160949 instance=ExtResource("2_station")]
-position = Vector2(640, 403.2)
+[node name="Stool4" parent="Stations/CounterStools" instance=ExtResource("2_station")]
+position = Vector2(352, 544)
 collision_layer = 2
 collision_mask = 0
 station_id = ""
@@ -287,96 +329,103 @@ color = Color(0.75, 0.2, 0.18, 1)
 show_label = false
 solid = false
 interactable = false
+metadata/facing = "right"
 
-[node name="Decor" type="Node2D" parent="Stations" unique_id=944322436]
+[node name="Decor" type="Node2D" parent="Stations"]
 
-[node name="Chalkboard" parent="Stations/Decor" instance=ExtResource("2_station")]
-position = Vector2(928, 352)
-station_id = ""
-display_name = "Upgrade Board"
-size = Vector2(48, 40)
-color = Color(0.2, 0.25, 0.22, 1)
-opens = "upgrades"
-
-[node name="Shelves" parent="Stations/Decor" unique_id=441653382 instance=ExtResource("2_station")]
-position = Vector2(96, 160)
-collision_mask = 0
-station_id = ""
-display_name = ""
-size = Vector2(56, 184)
-color = Color(0.45, 0.3, 0.2, 1)
-show_label = false
-interactable = false
-
-[node name="PlantBottomLeft" parent="Stations/Decor" unique_id=938369839 instance=ExtResource("2_station")]
-position = Vector2(96, 800)
-collision_mask = 0
-station_id = ""
-display_name = ""
-size = Vector2(56, 56)
-color = Color(0.3, 0.5, 0.25, 1)
-show_label = false
-interactable = false
-
-[node name="PlantsBottomRight" parent="Stations/Decor" unique_id=229540478 instance=ExtResource("2_station")]
-position = Vector2(896, 800)
-collision_mask = 0
-station_id = ""
-display_name = ""
-size = Vector2(120, 56)
-color = Color(0.3, 0.5, 0.25, 1)
-show_label = false
-interactable = false
-
-[node name="Booth" parent="Stations/Decor" unique_id=1907715827 instance=ExtResource("2_station")]
-position = Vector2(928, 576)
+[node name="Shelves" parent="Stations/Decor" instance=ExtResource("2_station")]
+position = Vector2(928, 384)
 collision_mask = 0
 station_id = ""
 display_name = ""
 size = Vector2(56, 120)
-color = Color(0.7, 0.25, 0.2, 1)
+color = Color(0.45, 0.3, 0.2, 1)
 show_label = false
 interactable = false
 
-[node name="TableSlots" type="Node2D" parent="." unique_id=920929227]
+[node name="PlantKitchen" parent="Stations/Decor" instance=ExtResource("2_station")]
+position = Vector2(480, 96)
+collision_mask = 0
+station_id = ""
+display_name = ""
+size = Vector2(48, 48)
+color = Color(0.3, 0.5, 0.25, 1)
+show_label = false
+interactable = false
 
-[node name="TableSlot1" type="Marker2D" parent="TableSlots" unique_id=1627422983]
+[node name="PlantDining" parent="Stations/Decor" instance=ExtResource("2_station")]
+position = Vector2(96, 96)
+collision_mask = 0
+station_id = ""
+display_name = ""
+size = Vector2(48, 48)
+color = Color(0.3, 0.5, 0.25, 1)
+show_label = false
+interactable = false
+
+[node name="PlantDeck" parent="Stations/Decor" instance=ExtResource("2_station")]
+position = Vector2(928, 912)
+collision_mask = 0
+station_id = ""
+display_name = ""
+size = Vector2(48, 48)
+color = Color(0.3, 0.5, 0.25, 1)
+show_label = false
+interactable = false
+
+[node name="Chalkboard" parent="Stations/Decor" instance=ExtResource("2_station")]
+position = Vector2(352, 76)
+collision_layer = 2
+collision_mask = 0
+station_id = ""
+display_name = "Menu Board"
+size = Vector2(160, 24)
+color = Color(0.2, 0.25, 0.22, 1)
+solid = false
+opens = "upgrades"
+
+[node name="TableSlots" type="Node2D" parent="."]
+
+[node name="TableSlot1" type="Marker2D" parent="TableSlots"]
+position = Vector2(160, 224)
+
+[node name="TableSlot2" type="Marker2D" parent="TableSlots"]
 position = Vector2(160, 544)
 
-[node name="TableSlot2" type="Marker2D" parent="TableSlots" unique_id=773750677]
-position = Vector2(352, 544)
-
-[node name="TableSlot3" type="Marker2D" parent="TableSlots" unique_id=953310269]
-position = Vector2(704, 544)
+[node name="TableSlot3" type="Marker2D" parent="TableSlots"]
+position = Vector2(192, 864)
 metadata/family = true
 
-[node name="TableSlot4" type="Marker2D" parent="TableSlots" unique_id=1298973280]
-position = Vector2(160, 736)
-
-[node name="TableSlot5" type="Marker2D" parent="TableSlots" unique_id=1264755195]
-position = Vector2(352, 736)
-
-[node name="TableSlot6" type="Marker2D" parent="TableSlots" unique_id=994481565]
-position = Vector2(704, 736)
+[node name="TableSlot4" type="Marker2D" parent="TableSlots"]
+position = Vector2(544, 864)
 metadata/family = true
+metadata/art = "family_table_teal"
 
-[node name="Spawns" type="Node2D" parent="." unique_id=631528355]
+[node name="TableSlot5" type="Marker2D" parent="TableSlots"]
+position = Vector2(864, 608)
+metadata/art = "umbrella_table"
 
-[node name="ManagerSpawn" type="Marker2D" parent="Spawns" unique_id=1708645620]
-position = Vector2(512, 736)
+[node name="TableSlot6" type="Marker2D" parent="TableSlots"]
+position = Vector2(864, 864)
+metadata/art = "umbrella_table_teal"
 
-[node name="StaffSpawn1" type="Marker2D" parent="Spawns" unique_id=1206765839]
-position = Vector2(224, 160)
+[node name="Spawns" type="Node2D" parent="."]
 
-[node name="StaffSpawn2" type="Marker2D" parent="Spawns" unique_id=735847581]
-position = Vector2(608, 160)
+[node name="ManagerSpawn" type="Marker2D" parent="Spawns"]
+position = Vector2(480, 1000)
 
-[node name="StaffSpawn3" type="Marker2D" parent="Spawns" unique_id=1496088832]
-position = Vector2(160, 288)
+[node name="StaffSpawn1" type="Marker2D" parent="Spawns"]
+position = Vector2(544, 288)
 
-[node name="GridOverlay" type="Node2D" parent="." unique_id=980820275]
+[node name="StaffSpawn2" type="Marker2D" parent="Spawns"]
+position = Vector2(672, 352)
+
+[node name="StaffSpawn3" type="Marker2D" parent="Spawns"]
+position = Vector2(800, 288)
+
+[node name="GridOverlay" type="Node2D" parent="."]
 script = ExtResource("3_grid")
-grid_size = Vector2i(16, 14)
+grid_size = Vector2i(16, 16)
 
-[node name="Foreground" type="Node2D" parent="." unique_id=682284117]
+[node name="Foreground" type="Node2D" parent="."]
 z_index = 10
