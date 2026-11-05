@@ -212,11 +212,14 @@ func _load_level() -> void:
 
 ## The Grand Restaurant's Café door stays shut until the Café is bought.
 func _apply_cafe_lock() -> void:
-	var door := restaurant.get_node_or_null("Walls/CafeDoor")
-	if door and GameState.cafe_step >= 1:
-		door.get_parent().remove_child(door)
-		door.queue_free()
-		manager.clear_interactions()
+	if GameState.cafe_step < 1:
+		return
+	# Every Café door opens (Level 5 has one from the salle and one from the patio).
+	for door in restaurant.get_node("Walls").get_children():
+		if door is Station and door.station_id == "CAFE_DOOR":
+			door.get_parent().remove_child(door)
+			door.queue_free()
+			manager.clear_interactions()
 
 
 func _on_cafe_changed(step: int) -> void:
@@ -300,7 +303,7 @@ func _spawn_tables() -> void:
 		# A slot can name its own picture (metadata/art), e.g. the umbrella tables on Level 3's deck.
 		var art_key: String = slots[i].art if slots[i].art != "" else ("family_table" if family else "table")
 		t.auto_art = PixelArt.for_level("decor", art_key, restaurant.level_key())
-		t.chair_auto_art = PixelArt.for_level("decor", "chair", restaurant.level_key())
+		t.chair_auto_art = PixelArt.for_level("decor", slots[i].chair if slots[i].chair != "" else "chair", restaurant.level_key())
 		t.position = slots[i].pos
 		t.table_index = i
 		tables_root.add_child(t)
@@ -1102,6 +1105,43 @@ const STREETS := {
 		"exit": Vector2(1000, 24),
 		"walk_y": 46.0, "lanes": [11.0, 25.0],
 	},
+	# Level 4: courtyard izakaya on Downtown Avenue. Room at art (200, 44), 22x18 tiles.
+	4: {
+		"tex": "res://assets/design/l4/outside/L4_outside_%s_768x432.png",
+		"solids": [
+			Rect2(-16, -16, 800, 54),     # buildings along the top
+			Rect2(-16, 350, 800, 100),    # the avenue (stay on the sidewalk)
+			Rect2(-16, 0, 16, 432),       # left edge
+			Rect2(768, 0, 16, 432),       # right edge
+			Rect2(24, 78, 34, 30), Rect2(112, 78, 36, 30),     # food carts
+			Rect2(24, 178, 34, 32), Rect2(112, 178, 36, 32),
+			Rect2(20, 298, 134, 28),      # menu billboard
+			Rect2(698, 138, 64, 26),      # bins on the loading dock
+		],
+		"start": Vector2(640, 1190),     # world: on the sidewalk below the courtyard gate
+		"park": Vector2(610, 80),        # loading dock beside the back door
+		"route": [Vector2(-40, 364), Vector2(680, 364), Vector2(680, 80)],
+		"exit": Vector2(820, 364),
+		"walk_y": 346.0, "lanes": [364.0, 403.0],
+	},
+	# Level 5: harbour bistro on Pier 5. Room at art (144, 64), 49x14 tiles.
+	5: {
+		"tex": "res://assets/design/l5/outside/L5_outside_%s_1104x432.png",
+		"solids": [
+			Rect2(-16, -16, 1136, 62),    # the harbour (sea, mooring posts)
+			Rect2(-16, 304, 1136, 140),   # the road (stay on the sidewalk)
+			Rect2(-16, 0, 16, 432),       # left edge
+			Rect2(1070, 40, 50, 264),     # water beside the pier end
+			Rect2(0, 64, 8, 224), Rect2(136, 64, 8, 176),  # delivery yard walls
+			Rect2(942, 106, 66, 48),      # fish market stall
+			Rect2(1030, 44, 38, 62),      # lighthouse
+		],
+		"start": Vector2(1600, 930),     # world: on the sidewalk below the salle door
+		"park": Vector2(70, 226),        # delivery yard beside the STAFF door
+		"route": [Vector2(-40, 323), Vector2(40, 323), Vector2(40, 226)],
+		"exit": Vector2(1180, 323),
+		"walk_y": 300.0, "lanes": [323.0, 343.0],
+	},
 }
 
 
@@ -1485,6 +1525,7 @@ func upgrade_spot_name() -> String:
 	match GameState.restaurant_level:
 		2: return "the jukebox"
 		3: return "the menu board"
+		4: return "the stone lantern"
 	return "the chalkboard"
 
 

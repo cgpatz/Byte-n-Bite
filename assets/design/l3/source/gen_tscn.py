@@ -60,9 +60,7 @@ def write(path, root, level_name, grid, outside, outside_pos, floors, walls, sta
             '[node name="Outside" type="Sprite2D" parent="Art"]', "z_index = -10", "texture_filter = 1",
             f"position = Vector2({outside_pos[0]}, {outside_pos[1]})", "scale = Vector2(4, 4)",
             'texture = ExtResource("92_outside")', "centered = false", '']
-    if rooms:
-        pass
-    else:
+    if True:
         out += ['[node name="Background" type="Sprite2D" parent="Art"]', "texture_filter = 1", "centered = false",
                 'script = ExtResource("90_artbg")', f"fit_size = Vector2({grid[0] * 64}, {grid[1] * 64})", '']
     out += ['[node name="Tiles" type="TileMapLayer" parent="Art"]', 'tile_set = ExtResource("91_tiles")', '',
@@ -91,7 +89,7 @@ def write(path, root, level_name, grid, outside, outside_pos, floors, walls, sta
         for n, r in rooms:
             x0, y0, x1, y1 = r
             out.append(f'[node name="{n}" type="ReferenceRect" parent="Rooms"]\noffset_left = {x0}\noffset_top = {y0}\n'
-                       f'offset_right = {x1}\noffset_bottom = {y1}\nmouse_filter = 2\neditor_only = true\n')
+                       f'offset_right = {x1}\noffset_bottom = {y1}\nmouse_filter = 2\nborder_color = Color(0.3, 0.8, 1, 1)\nborder_width = 4.0\n')
     out += ['[node name="GridOverlay" type="Node2D" parent="."]', 'script = ExtResource("3_grid")',
             f"grid_size = Vector2i({grid[0]}, {grid[1]})", '',
             '[node name="Foreground" type="Node2D" parent="."]', "z_index = 10", '']

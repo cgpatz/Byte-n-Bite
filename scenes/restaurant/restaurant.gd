@@ -56,7 +56,8 @@ func _ensure_art_layers() -> void:
 	if art.get_index() > 1:
 		move_child(art, 1)  # right after Floor, under walls and stations
 	var rooms := get_rooms()
-	if rooms.is_empty():
+	# One picture for the whole layout (Level 5's L-shape too) wins over per-room pictures.
+	if rooms.is_empty() or art.has_node("Background"):
 		var bg := _ensure(art, "Background", Sprite2D) as Sprite2D
 		if bg.get_script() == null:
 			bg.set_script(BACKGROUND_SCRIPT)
@@ -283,6 +284,7 @@ func get_table_slot_info() -> Array[Dictionary]:
 				"family": bool(m.get_meta("family", false)),
 				"ends_first": bool(m.get_meta("ends_first", false)),
 				"art": String(m.get_meta("art", "")),
+				"chair": String(m.get_meta("chair", "")),
 			})
 	return out
 
