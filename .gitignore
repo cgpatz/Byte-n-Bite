@@ -12,5 +12,5 @@
 Thumbs.db
 desktop.ini
 
-# Web export output (built by GitHub Actions)
+# Local export output (CI builds its own)
 /build/

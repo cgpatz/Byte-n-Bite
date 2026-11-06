@@ -1,0 +1,75 @@
+# Byte n' Bite — TESTER web build.
+# Builds the "Web Tester" export of the main game repo (cgpatz/Byte-n-Bite) and
+# publishes it here on GitHub Pages: https://cgpatz.github.io/Byte-n-Bite-Test/
+# The tester build shows "Admin Run" on the main menu (admin panel: F10 or click
+# the ADMIN RUN tag in game). The normal site, cgpatz.github.io/Byte-n-Bite/, is unchanged.
+#
+# Runs: by hand (Actions > Tester build > Run workflow), every day at 18:00 PH time,
+# and right after each push to the main repo if that repo has TESTER_DISPATCH_TOKEN set.
+# If the main repo is PRIVATE, add a secret MAIN_REPO_TOKEN here (a fine-grained token
+# with read access to cgpatz/Byte-n-Bite contents).
+name: Tester build (GitHub Pages)
+
+on:
+  workflow_dispatch:
+  repository_dispatch:
+    types: [main-updated]
+  schedule:
+    - cron: "0 10 * * *"   # 18:00 Philippine time
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: 4.7.2
+  GAME_REPO: cgpatz/Byte-n-Bite
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the game (main repo)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.GAME_REPO }}
+          ref: main
+          token: ${{ secrets.MAIN_REPO_TOKEN || github.token }}
+
+      - name: Download Godot and the web export templates
+        run: |
+          base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
+          curl -sSL -o godot.zip "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q godot.zip && mv Godot_v${GODOT_VERSION}-stable_linux.x86_64 godot && chmod +x godot
+          curl -sSL -o templates.tpz "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          dest="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+          mkdir -p "$dest"
+          unzip -q -j templates.tpz "templates/web_*" "templates/version.txt" -d "$dest"
+          rm templates.tpz godot.zip
+
+      - name: Import assets and export the tester build
+        run: |
+          ./godot --headless --import || true
+          mkdir -p build/tester
+          ./godot --headless --export-release "Web Tester" build/tester/index.html
+          touch build/tester/.nojekyll
+          ls -la build/tester
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/tester
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

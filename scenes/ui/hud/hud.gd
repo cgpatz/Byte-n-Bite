@@ -607,6 +607,19 @@ func set_admin_badge(on: bool) -> void:
 	var badge := get_node_or_null("AdminBadge") as Label
 	if badge:
 		badge.visible = on
+		# Clickable too: some browsers keep F10 for themselves (tester web build).
+		if on and not badge.gui_input.is_connected(_on_admin_badge_input):
+			badge.mouse_filter = Control.MOUSE_FILTER_STOP
+			badge.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+			badge.tooltip_text = "Open the admin panel (F10)"
+			badge.gui_input.connect(_on_admin_badge_input)
+
+
+func _on_admin_badge_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		var g := get_tree().get_first_node_in_group("game_root")
+		if g and g.has_method("_open_admin_panel"):
+			g._open_admin_panel()
 
 
 # --- Market and deliveries -----------------------------------------------------------

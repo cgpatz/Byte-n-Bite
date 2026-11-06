@@ -58,3 +58,18 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  # Rebuild the tester site (cgpatz/Byte-n-Bite-Test) too. Needs a repo secret
+  # TESTER_DISPATCH_TOKEN: a fine-grained token with "Contents: read and write" on
+  # Byte-n-Bite-Test. Without the secret this job just skips.
+  notify-tester:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ask the tester repo to rebuild
+        env:
+          TOKEN: ${{ secrets.TESTER_DISPATCH_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then echo "No TESTER_DISPATCH_TOKEN secret: skipping."; exit 0; fi
+          curl -sS -X POST -H "Authorization: Bearer $TOKEN" -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/cgpatz/Byte-n-Bite-Test/dispatches \
+            -d '{"event_type":"main-updated"}'

@@ -46,8 +46,11 @@ func _ready() -> void:
 	exit_button.pressed.connect(_on_exit_pressed)
 	exit_button.visible = not OS.has_feature("web")  # a browser tab is closed by the player
 
-	# Admin Run only exists when playing from the Godot editor (debug builds).
-	admin_run_button.visible = OS.is_debug_build()
+	# Admin Run exists when playing from the Godot editor (debug builds) and in
+	# the tester web build (export preset "Web Tester", feature tag "tester").
+	admin_run_button.visible = OS.is_debug_build() or OS.has_feature("tester")
+	if OS.has_feature("tester"):
+		admin_run_button.tooltip_text = "Tester run: no save, admin panel with F10 or by clicking the ADMIN RUN tag."
 	admin_run_button.pressed.connect(_on_admin_run_pressed)
 
 	for button: Button in [start_button, new_game_button, load_game_button, settings_button, exit_button]:
