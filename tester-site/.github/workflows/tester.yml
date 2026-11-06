@@ -1,6 +1,6 @@
 # Byte n' Bite — TESTER web build.
 # Builds the "Web Tester" export of the main game repo (cgpatz/Byte-n-Bite) and
-# publishes it here on GitHub Pages: https://cgpatz.github.io/Byte-n-Bite-Test/
+# publishes it here on GitHub Pages: https://cgpatz.github.io/Byte-n-Bite-Tester/
 # The tester build shows "Admin Run" on the main menu (admin panel: F10 or click
 # the ADMIN RUN tag in game). The normal site, cgpatz.github.io/Byte-n-Bite/, is unchanged.
 #

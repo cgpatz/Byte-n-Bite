@@ -1,6 +1,6 @@
 # Byte n' Bite — Tester build
 
-Play: **https://cgpatz.github.io/Byte-n-Bite-Test/** (Chrome or Edge on a computer)
+Play: **https://cgpatz.github.io/Byte-n-Bite-Tester/** (Chrome or Edge on a computer)
 
 This is the testing version of Byte n' Bite. It is the same game as the normal
 web version, plus **Admin Run** on the main menu:
