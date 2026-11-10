@@ -263,6 +263,11 @@ func _build_challenges() -> void:
 	_chal_label.add_theme_constant_override("outline_size", 0)
 	_chal_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	head.add_child(_chal_label)
+	var hide_b := Paper.button("Hide ✕", false, 17)
+	hide_b.custom_minimum_size = Vector2(104, 40)
+	hide_b.tooltip_text = "Hide the Quest Log (G)"
+	hide_b.pressed.connect(toggle_goals)
+	head.add_child(hide_b)
 	_ql_scroll = ScrollContainer.new()
 	_ql_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_ql_scroll.custom_minimum_size = Vector2(QL_W, 0)
@@ -1202,9 +1207,9 @@ func _refresh_quest_card() -> void:
 		l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		l.clip_text = true
 		row.add_child(l)
-		var open_b := Paper.button("▸", false, 18)
+		var open_b := Paper.button("Show ▾", true, 17)
 		open_b.tooltip_text = "Show the quest card"
-		open_b.custom_minimum_size = Vector2(52, 44)
+		open_b.custom_minimum_size = Vector2(104, 44)
 		open_b.pressed.connect(_toggle_quest_card)
 		row.add_child(open_b)
 	else:
@@ -1225,9 +1230,9 @@ func _refresh_quest_card() -> void:
 		var sp := Control.new()
 		sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		head.add_child(sp)
-		var fold := Paper.button("▾", false, 18)
+		var fold := Paper.button("Hide ▴", false, 17)
 		fold.tooltip_text = "Fold the quest card to one line"
-		fold.custom_minimum_size = Vector2(52, 44)
+		fold.custom_minimum_size = Vector2(104, 44)
 		fold.pressed.connect(_toggle_quest_card)
 		head.add_child(fold)
 		var row2 := HBoxContainer.new()
@@ -1270,7 +1275,7 @@ func _refresh_quest_card() -> void:
 			ex.custom_minimum_size.y = 52
 			ex.pressed.connect(_ql_show_example.bind(quests[k], ex))
 			btns.add_child(ex)
-		var all := Paper.button("All quests %s" % ("◂" if SettingsManager.goals_open else "▸"), false, 18)
+		var all := Paper.button("Hide Quest Log ▴" if SettingsManager.goals_open else "Quest Log ▾", SettingsManager.goals_open, 18)
 		all.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		all.custom_minimum_size.y = 52
 		all.tooltip_text = "Quest Log: Level Challenge, goals and Mastery quests (G)"

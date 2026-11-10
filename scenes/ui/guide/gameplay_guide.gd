@@ -22,6 +22,8 @@ const Paper := preload("res://scenes/ui/common/paper.gd")
 ## Put in an empty editor for the "Press Run" quest (a program that surely runs).
 const STARTER := "// Chef Miso's first program for you\nint main() {\n    printf(\"Hi, I'm %s! Off to the fridge.\\n\");\n    go_to(FRIDGE);\n    return 0;\n}\n"
 const BOX_H := 196.0
+## Tallest the box grows for long lines; past this the text scrolls.
+const BOX_MAX_H := 420.0
 
 var game: Node
 var _steps: Array = []
@@ -347,8 +349,25 @@ func _place_box() -> void:
 			left = r.end.x
 	var w := _box.size.x if _box.size.x > 0.0 else BOX_W
 	var x := clampf((left + right - w) / 2.0, 16.0, maxf(16.0, vs.x - w - 16.0))
-	_box.position = _box.position.lerp(Vector2(x, vs.y - BOX_H - 16), 0.25)
-	_quest.position = Vector2(x + 130, vs.y - BOX_H - 16 - 62)
+	var h := _box_height(vs)
+	_box.position = _box.position.lerp(Vector2(x, vs.y - h - 16), 0.25)
+	_quest.position = Vector2(x + 130, vs.y - h - 16 - 62)
+
+
+## Taller box for long lines (up to 45% of the screen); beyond that the text scrolls.
+func _box_height(vs: Vector2) -> float:
+	var room := _text.size.y
+	var need := float(_text.get_content_height())
+	var target := BOX_H
+	if room > 0.0 and need > room:
+		target = _box.size.y + (need - room)
+	elif room > 0.0 and _box.size.y > BOX_H:
+		target = maxf(BOX_H, _box.size.y - (room - need))
+	target = clampf(target, BOX_H, maxf(BOX_H, minf(BOX_MAX_H, vs.y * 0.45)))
+	if absf(target - _box.custom_minimum_size.y) > 1.0:
+		_box.custom_minimum_size.y = target
+		_box.size.y = target
+	return _box.size.y
 
 
 # --- Input ---------------------------------------------------------------------------
@@ -450,9 +469,12 @@ func _build_box() -> void:
 	_text = RichTextLabel.new()
 	_text.bbcode_enabled = true
 	_text.fit_content = false
-	_text.scroll_active = false
+	# Long lines: the box grows (up to BOX_MAX_H), then the text scrolls with the
+	# mouse wheel or by dragging the scroll bar (works in the web build too).
+	_text.scroll_active = true
+	_text.scroll_following = true
 	_text.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_text.mouse_filter = Control.MOUSE_FILTER_PASS
 	_text.add_theme_font_size_override("normal_font_size", 21)
 	_text.add_theme_font_size_override("bold_font_size", 21)
 	_text.add_theme_color_override("default_color", Paper.INK)
