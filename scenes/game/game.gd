@@ -157,6 +157,7 @@ func _ready() -> void:
 	GameState.restaurant_level_changed.connect(_on_level_changed)
 	GameState.seating_changed.connect(_spawn_tables)
 	GameState.cafe_changed.connect(_on_cafe_changed)
+	GameState.plates_changed.connect(_refresh_plate_badges)
 	GameState.goal_reached.connect(_on_goal_reached)
 	GameState.staff_roster_changed.connect(_on_roster_changed)
 	GameState.player_leveled_up.connect(_on_player_leveled_up)
@@ -208,6 +209,28 @@ func _load_level() -> void:
 	_setup_camera()
 	_spawn_crates()
 	_decorate_back_door()
+	_refresh_plate_badges()
+
+
+## Level 5 dishwashing: "Clean 8" on the DISH_RACK, "Dirty 3" on the SINK.
+var _plate_hint_shown := false
+
+
+func _refresh_plate_badges() -> void:
+	if restaurant == null:
+		return
+	var on: bool = GameState.plates_on()
+	var rack: Station = restaurant.get_station("DISH_RACK")
+	var sink: Station = restaurant.get_station("SINK")
+	if rack:
+		rack.set_badge("Clean plates: %d" % GameState.clean_plates if on else "", GameState.clean_plates == 0)
+	if sink:
+		sink.set_badge("Dirty: %d" % GameState.dirty_plates if on else "", GameState.dirty_plates >= 6)
+	if on and GameState.clean_plates == 0 and not _plate_hint_shown and hud:
+		_plate_hint_shown = true
+		hud.notify("Out of clean plates!", "Wash dirty plates at the SINK:  go_to(SINK); wash();  (Lessons > Kitchen Functions)")
+	elif GameState.clean_plates > 0:
+		_plate_hint_shown = false
 
 
 ## The Grand Restaurant's Café door stays shut until the Café is bought.
@@ -1303,6 +1326,52 @@ func _camera_target() -> Vector2:
 	return out
 
 
+## Station code names (FRIDGE, GRILL...) float over the kitchen while the
+## code editor is open.
+var _tags_on := false
+var _tags_room: Node
+
+
+func _update_station_tags() -> void:
+	var want: bool = programming_panel.visible
+	if want == _tags_on and _tags_room == restaurant:
+		return
+	_tags_on = want
+	_tags_room = restaurant
+	var st_root := restaurant.get_node_or_null("Stations")
+	if st_root:
+		_tag_stations(st_root, want)
+		if want:
+			_spread_tags.call_deferred(st_root)
+
+
+## Neighbouring tags (RICE_COOKER next to FRIDGE) mustn't overlap: drop the
+## later one just below the earlier.
+func _spread_tags(st_root: Node) -> void:
+	var tags: Array = []
+	var stack: Array = [st_root]
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		for c in n.get_children():
+			stack.append(c)
+			if c is Station and c._code_tag and c._code_tag.visible:
+				tags.append(c._code_tag)
+	tags.sort_custom(func(a, b): return a.global_position.x < b.global_position.x)
+	for i in tags.size():
+		for j in i:
+			var ra := Rect2(tags[j].global_position, tags[j].size).grow(2.0)
+			var rb := Rect2(tags[i].global_position, tags[i].size)
+			if ra.intersects(rb):
+				tags[i].position.y += ra.end.y - rb.position.y  # down onto the station, stays on screen
+
+
+func _tag_stations(node: Node, on: bool) -> void:
+	for c in node.get_children():
+		if c is Station and c.station_id in Kitchen.STATIONS and c.visible:
+			c.show_code_tag(on)
+		_tag_stations(c, on)
+
+
 func _process(delta: float) -> void:
 	if restaurant == null:
 		return
@@ -1311,6 +1380,10 @@ func _process(delta: float) -> void:
 	GameState.tick_market(delta)
 	_check_teleport_pad()
 	_check_miso_quest(delta)
+	_update_station_tags()
+	# No staff upgrades mid-tutorial (the button returns after it).
+	if programming_panel._upgrade:
+		programming_panel._upgrade.visible = not (guide and guide.is_touring())
 	# No customers walk in while Chef Miso's tour is on (the coding quests that
 	# follow it don't hold them back); the first one comes soon after.
 	if guide and guide.is_touring():
@@ -2104,7 +2177,7 @@ func _check_miso_quest(delta: float) -> void:
 			if GameState.complete_miso_quest(lv, k):
 				hud.clear_notices("Chef Miso: not quite yet")
 				var left: int = MisoQuests.for_level(lv).size() - (k + 1)
-				hud.notify("Chef Miso Quest done!", "%s  ✔%s" % [q.topic, ("   Next quest is in your Quest Log." if left > 0 else "   Level Challenge unlocked!")],
+				hud.notify("Chef Miso Quest done!", "%s  ✔%s" % [q.topic, (("   Chef Miso has your next task." if guide and guide.is_touring() else "   Next quest is in your Quest Log.") if left > 0 else "   Level Challenge unlocked!")],
 					load("res://assets/ui/windows/tutorial/mentor.png"), Color(0.95, 0.7, 0.25), 5.0)
 			return
 		# A new Run finished without the quest's C idea: say what's missing

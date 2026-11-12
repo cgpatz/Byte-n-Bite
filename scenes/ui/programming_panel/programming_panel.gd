@@ -399,6 +399,9 @@ func _on_run_pressed() -> void:
 		return
 	staff.program_source = code_edit.text
 	_clear_marks()
+	# Each Run starts with a clean Output, so what's there is THIS run's result.
+	staff.clear_log()
+	console.clear()
 	var g := get_tree().get_first_node_in_group("game_root")
 	if g and g.get("hud") and g.hud.has_method("hide_examples"):
 		g.hud.hide_examples()
@@ -487,7 +490,7 @@ func _refresh_variables() -> void:
 	var t := "[color=#6b5442][b]Variables[/b][/color]\n"
 	var vars: Array = staff.variables() if staff else []
 	if vars.is_empty():
-		t += "[color=#8a7a66]None yet. Try: int eggs = 3;[/color]"
+		t += "[color=#5e4f3f]None yet.[/color]"
 	for v in vars:
 		t += "[color=#2f6aa0]%s[/color] [b]%s[/b] = [color=#8a4b12]%s[/color]\n" % [v.type, v.name, _fmt_value(v.v, v.type)]
 	_vars_label.text = t.strip_edges()
@@ -623,7 +626,7 @@ func _snippets() -> Array:
 		out.append(["while", "while (has_order()) {\n    \n}", "Repeat while a condition is true"])
 		out.append(["for", "for (int i = 0; i < 3; i++) {\n    \n}", "Repeat a set number of times"])
 	if lv >= 4:
-		out.append(["array", "int items[8];\nint n = recipe(order, items);", "Many values in one variable"])
+		out.append(["array", "int items[]   = {RICE, EGG};\nint cookers[] = {RICE_COOKER, GRILL};\nfor (int i = 0; i < 2; i++) {\n    go_to(FRIDGE);\n    pick_up(items[i]);\n    go_to(cookers[i]);\n    cook();\n    go_to(ASSEMBLY);\n    plate();\n}", "A recipe as two lists + one loop"])
 	if lv >= 5:
 		out.append(["function", "void fetch(int item) {\n    go_to(FRIDGE);\n    pick_up(item);\n}\n", "Write steps once, use them many times"])
 	return out

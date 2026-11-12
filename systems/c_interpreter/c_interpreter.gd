@@ -126,7 +126,76 @@ func compile(source: String, library = "") -> bool:
 		if Builtins.FUNCS.has(fname) or fname in Builtins.C_FUNCS:
 			_fail("%s() is already a kitchen function. Pick another name." % fname, _functions[fname].line)
 			return false
+	_find_early_features()
 	return true
+
+
+# --- Early C features: a friendly note, never an error ------------------------------
+
+## C ideas taught on a later restaurant level. Kitchen functions stay locked until
+## their level, but plain C always works: using it early just earns a note in the
+## Output (see notes), so players who already know some C aren't held back.
+const FEATURE_LEVEL := {
+	"if": [2, "if / else"], "ternary": [2, "the ? : choice"], "switch": [2, "switch"],
+	"while": [3, "while loops"], "do": [3, "do / while loops"], "for": [3, "for loops"],
+	"break": [3, "break"], "continue": [3, "continue"],
+	"array": [4, "arrays"], "index": [4, "arrays"], "sizeof": [4, "sizeof"],
+	"function": [5, "your own functions"],
+}
+
+## Friendly notes from compile(): one per C idea used before its level, e.g.
+## "Line 4: for loops are taught at Level 3 (Neighborhood Cafe). It still works!"
+var notes: Array = []
+
+
+func _find_early_features() -> void:
+	notes = []
+	var lv := _level()
+	var found := {}  # topic -> first line
+	for fname in _functions:
+		if _library_names.has(fname):
+			continue  # the Library is a Level 5 tool; its code is the player's choice
+		var fn: Dictionary = _functions[fname]
+		if fname != "main":
+			_note_feature(found, "function", int(fn.get("line", 0)), lv)
+		_scan_features(fn, found, lv)
+	var lines: Array = found.keys()
+	lines.sort_custom(func(a, b): return found[a].line < found[b].line)
+	for topic in lines:
+		var info: Array = FEATURE_LEVEL[found[topic].key]
+		notes.append("Line %d: %s %s taught at Level %d (%s). It still works, nice!" % [
+			found[topic].line, topic.substr(0, 1).to_upper() + topic.substr(1),
+			"is" if topic in ["switch", "break", "continue", "sizeof", "if / else", "the ? : choice"] else "are",
+			info[0], Builtins.level_name(info[0])])
+
+
+func _note_feature(found: Dictionary, key: String, line: int, lv: int) -> void:
+	var info: Array = FEATURE_LEVEL[key]
+	if int(info[0]) <= lv or found.has(info[1]):
+		return
+	found[info[1]] = {"key": key, "line": line}
+
+
+func _scan_features(node, found: Dictionary, lv: int) -> void:
+	if node is Array:
+		for x in node:
+			_scan_features(x, found, lv)
+		return
+	if not node is Dictionary:
+		return
+	var k := String(node.get("k", ""))
+	if FEATURE_LEVEL.has(k):
+		_note_feature(found, k, int(node.get("line", 0)), lv)
+	elif k == "incdec_index" or k == "assign_index":
+		_note_feature(found, "index", int(node.get("line", 0)), lv)
+	elif k == "decl":
+		for v in node.get("vars", []):
+			if v is Dictionary and not (v.get("dims", []) as Array).is_empty():
+				_note_feature(found, "array", int(node.get("line", 0)), lv)
+	for key in node:
+		var v = node[key]
+		if v is Dictionary or v is Array:
+			_scan_features(v, found, lv)
 
 
 ## Checks Library code on its own (for the Library screen). Returns {} or {"line", "msg"}.

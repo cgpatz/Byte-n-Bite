@@ -166,6 +166,19 @@ func _run_all() -> void:
 	_report_bool(EX.explain("int eggs = 3;").contains("whole-number variable named eggs"), "explain: int variable")
 	_report_bool(EX.explain("for (int i = 0; i < 3; i++) {").contains("keeps going while i is less than 3"), "explain: for loop")
 	# Quest Log: Chef Miso printf quest needs the player's name; Mastery checks.
+	# Early C features: a note, never an error.
+	var ni := CInterpreter.new()
+	var nh := FakeHost.new()
+	nh.tree = get_tree()
+	nh.level = 1
+	ni.host = nh
+	var nsrc := "int twice(int x) {\n    return x * 2;\n}\nint main() {\n    int a[2] = {1, 2};\n    for (int i = 0; i < 2; i++) {\n        if (a[i] > 1) {\n            printf(\"%d\\n\", twice(a[i]));\n        }\n    }\n    return 0;\n}\n"
+	_report_bool(ni.compile(nsrc) and ni.notes.size() == 4 and String(ni.notes[0]).begins_with("Line 1: Your own functions are taught at Level 5"), "early C features at Level 1: 4 friendly notes, still compiles (%s)" % [ni.notes])
+	nh.level = 5
+	_report_bool(ni.compile(nsrc) and ni.notes.is_empty(), "no early-feature notes at Level 5")
+	nh.level = 3
+	ni.compile(nsrc)
+	_report_bool(ni.notes.size() == 2, "Level 3: notes only for arrays and functions (%s)" % [ni.notes])
 	var MQ = preload("res://data/help/miso_quests.gd")
 	GameState.manager_name = "Chris"
 	_report_bool(not MQ.met("printf", {"printfs": [{"items": [], "text": "Hello!\n"}]}), "miso: printf without your name isn't done yet")

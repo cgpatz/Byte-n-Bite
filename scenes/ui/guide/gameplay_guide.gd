@@ -157,20 +157,57 @@ func _next_step() -> void:
 			var ce: CodeEdit = game.programming_panel.code_edit
 			if ce.text.strip_edges() == "" or ce.text == game.programming_panel.MAIN_TEMPLATE:
 				ce.text = STARTER % _first_staff()
-		# "Fix the bug" quests: Chef Miso's broken program goes into the editor.
+		# "Fix the bug" quests: Chef Miso's broken program goes into the editor;
+		# split-up quests start from a half-written program ("starter").
 		if String(st.get("broken", "")) != "":
 			_load_broken(String(st.broken))
-		_quest.show()
-		_quest_text.text = ("[b]C Quest:[/b] " if String(st.until).begins_with("miso:") else "[b]Quest:[/b] ") + st.do
-		_pop(_quest)
-	else:
-		_quest.hide()
-	_show_example(st.get("example", ""))
-	_type(st.get("say", st.get("do", "")))
-	_more.text = "Space = next" if _waiting_click else "Do the quest to continue"
+		elif String(st.get("starter", "")) != "":
+			_load_broken(String(st.starter))
+	# One task, one place: the task is the last line of Chef Miso's box (the
+	# old yellow quest banner, the HUD quest card and the Quest Log stay out of
+	# the way until the tutorial's coding part is over).
+	_quest.hide()
+	_set_hud_tour(_i <= _last_quest_step())
+	_show_example("")
+	_ex_code = String(st.get("example", ""))
+	var text: String = st.get("say", st.get("do", ""))
+	if st.has("quest_index"):
+		var task := String(st.do)
+		if not task.contains("Run"):
+			task += " Then press [b]Run[/b]."
+		text += "\n[color=#a8432f][b]▶ Your task:[/b][/color] " + task
+	_type(text)
+	_more.text = "Space = next" if _waiting_click else "Do the task to continue"
 	if _next_btn:
 		_next_btn.visible = _waiting_click
 		_skip_btn.visible = _level == 1 or not st.has("quest_index")
+	if _ex_btn:
+		_ex_btn.visible = _ex_code != ""
+		_ex_btn.text = "Show example"
+
+
+## Index of the last coding-quest step (-1 if none).
+func _last_quest_step() -> int:
+	var last := -1
+	for k in _steps.size():
+		if _steps[k].has("quest_index"):
+			last = k
+	return last
+
+
+func _set_hud_tour(on: bool) -> void:
+	if game and game.get("hud") and game.hud.has_method("set_tour_mode"):
+		game.hud.set_tour_mode(on)
+
+
+var _ex_code := ""
+var _ex_btn: Button
+
+
+func _toggle_example() -> void:
+	var showing := _example_card != null and _example_card.visible
+	_show_example("" if showing else _ex_code)
+	_ex_btn.text = "Show example" if showing else "Hide example"
 
 
 func _load_broken(code: String) -> void:
@@ -187,6 +224,7 @@ func _load_broken(code: String) -> void:
 
 func _end() -> void:
 	_show_example("")
+	_set_hud_tour(false)
 	if not GameState.guides_done.has(_level):
 		GameState.guides_done.append(_level)
 	_i = -1
@@ -303,12 +341,46 @@ func _target(id: String) -> Rect2:
 		"editor_title":
 			var tl: Control = game.programming_panel.title
 			return tl.get_global_rect() if tl and tl.is_visible_in_tree() else Rect2()
+		"code_body":
+			# The line to write on: the first empty line inside main() (or
+			# after a "// ..." hint), not the whole editor.
+			var cb: CodeEdit = game.programming_panel.code_edit
+			if cb == null or not cb.is_visible_in_tree():
+				return Rect2()
+			# Starters mark the spot with an indented empty line ("    ");
+			# plain empty lines just separate parts.
+			var ln := -1
+			var first_blank := -1
+			var in_main := false
+			for k in cb.get_line_count():
+				var raw := cb.get_line(k)
+				var t := raw.strip_edges()
+				if t.begins_with("int main") or t.begins_with("void main"):
+					in_main = true
+				elif in_main and t == "":
+					if first_blank < 0:
+						first_blank = k
+					if raw != "":
+						ln = k
+						break
+			if ln < 0:
+				ln = first_blank
+			if ln < 0:
+				return cb.get_global_rect()
+			var r: Rect2i = cb.get_rect_at_line_column(ln, 0)
+			if r.position.x < 0:
+				return cb.get_global_rect()
+			var lh := float(cb.get_line_height())
+			return Rect2(cb.get_global_rect().position + Vector2(r.position) + Vector2(40, 0), Vector2(160, lh))
 		"code":
 			var ce: Control = game.programming_panel.code_edit
 			return ce.get_global_rect() if ce and ce.is_visible_in_tree() else Rect2()
 		"run":
 			var rb: Control = game.programming_panel.run_button
 			return rb.get_global_rect() if rb.is_visible_in_tree() else Rect2()
+		"sink":
+			var sk = game.restaurant.get_station("SINK") if game.restaurant else null
+			return _world_rect(sk, Vector2(0, -40)) if sk else Rect2()
 		"board":
 			var bd: Control = hud._board
 			return bd.get_global_rect() if bd and bd.is_visible_in_tree() else Rect2()
@@ -483,10 +555,16 @@ func _build_box() -> void:
 	var foot := HBoxContainer.new()
 	foot.add_theme_constant_override("separation", 10)
 	v.add_child(foot)
-	_more = Paper.label("", 15, Paper.INK_SOFT)
+	_more = Paper.label("", 16, Paper.INK_SOFT)
 	_more.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_more.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	foot.add_child(_more)
+	_ex_btn = Paper.button("Show example", false, 17)
+	_ex_btn.custom_minimum_size = Vector2(150, 46)
+	_ex_btn.tooltip_text = "Peek at an example of this C idea"
+	_ex_btn.pressed.connect(_toggle_example)
+	_ex_btn.hide()
+	foot.add_child(_ex_btn)
 	_skip_btn = Paper.button("Skip tour", false, 17)
 	_skip_btn.custom_minimum_size = Vector2(130, 46)
 	_skip_btn.tooltip_text = "Skip the tour (Chef Miso's C quests stay in your Quest Log)"
@@ -565,6 +643,9 @@ func _draw_arrow() -> void:
 	ring.border_color = Color(1, 0.85, 0.3, 0.55 + 0.4 * pulse)
 	ring.set_border_width_all(5)
 	ring.set_corner_radius_all(16)
+	if _point == "code_body":
+		_arrow.draw_style_box(ring, r.grow(2.0 + pulse * 2.0))
+		return  # an arrow would cover the code above; the glowing ring is enough
 	_arrow.draw_style_box(ring, r.grow(8.0 + pulse * 5.0))
 	var bob := sin(_time * 6.0) * 10.0
 	var up := c.y < 300.0
@@ -631,9 +712,9 @@ func steps_for(level: int) -> Array:
 	var qsteps: Array = []
 	for k in quests.size():
 		var q: Dictionary = quests[k]
-		qsteps.append({"quest_index": k, "example": q.example, "point": "editor", "customer": q.get("customer", ""), "broken": q.get("broken", ""),
+		qsteps.append({"quest_index": k, "example": q.example, "point": "code_body", "customer": q.get("customer", ""), "broken": q.get("broken", ""), "starter": q.get("starter", ""),
 			"do": q.do.replace("{who}", who), "until": "miso:%d" % k,
-			"say": "[b]C Quest %d of %d: %s[/b]\n%s Write it in [b]main()[/b] and press [b]Run[/b]." % [k + 1, quests.size(), q.topic, q.say]})
+			"say": "[b]C Quest %d of %d: %s[/b]\n%s" % [k + 1, quests.size(), q.topic, q.say]})
 	var out: Array = []
 	var placed := false
 	for st in tour:
@@ -696,7 +777,7 @@ func _walkthrough_steps(level: int) -> Array:
 				{"quests_here": true},
 				{"say": "When we're done, customers come in! At this level they all order [b]Today's Special[/b] (top left). Run your Eggsilog program again for each one.", "point": "board"},
 				{"say": "Out of ingredients? Buy more at the [b]Night Market[/b] ([b]M[/b]), then press [b]E[/b] on the crates the truck drops off.", "point": "hud:market"},
-				{"say": "Your [b]Quest Log[/b] ([b]G[/b]) shows the Level Challenge and goals for the next upgrade, and the [b]Lessons[/b] ([b]T[/b]) explain every C idea. Have fun, chef!", "point": "goals"},
+				{"say": "[b]Your next step:[/b] serve the customers coming in (press [b]E[/b] on %s, then [b]Run[/b]). Later, your [b]Quest Log[/b] ([b]G[/b]) has the Level Challenge, and [b]Lessons[/b] ([b]T[/b]) explain every C idea. Have fun, chef!" % who, "point": "goals"},
 			]
 		2:
 			return [
@@ -721,6 +802,7 @@ func _walkthrough_steps(level: int) -> Array:
 		5:
 			return [
 				{"say": "Welcome to the [b]Grand Restaurant[/b]! Programs get long here, so you'll write your [b]own functions[/b] and reuse them."},
+				{"say": "Big kitchens run on [b]plates[/b]: each dish takes a clean one from the [b]DISH_RACK[/b], and served plates come back dirty to the [b]SINK[/b]. [b]wash()[/b] cleans one, so a washing function will come in handy!", "point": "sink"},
 				{"do": "Open your Library ([b]L[/b]).", "say": "Functions you save in the [b]Library[/b] can be used by every staff member. Open it with [b]L[/b].", "until": "library", "point": "hud:library"},
 				{"do": "Press [b]T[/b] for Lesson 5: Functions.", "say": "Tick a slot's [b]Use[/b] box to share it. Now press [b]T[/b] for the last lesson!", "until": "lessons", "point": "hud:tutorial"},
 			]

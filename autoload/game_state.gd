@@ -118,6 +118,24 @@ var staff_levels := {}
 var staff_specs := {}
 ## Café progress: 0 = locked, 1 = open (Macchiato), up to 10 = full Café menu.
 var cafe_step := 0
+## Dishwashing (Restaurant Level 5): every restaurant dish needs a clean plate
+## from the DISH_RACK (taken at assemble()); serving it leaves a dirty plate at
+## the SINK, and wash() makes it clean again. Café drinks and pastries don't use plates.
+const PLATES_FROM := 5
+const START_CLEAN_PLATES := 8
+const START_DIRTY_PLATES := 3  # left by the last owner: something to wash right away
+signal plates_changed
+var clean_plates := START_CLEAN_PLATES
+var dirty_plates := START_DIRTY_PLATES
+
+
+func plates_on() -> bool:
+	return restaurant_level >= PLATES_FROM
+
+
+## True when this dish is eaten off a plate (restaurant dishes, not Café items).
+func uses_plate(dish: String) -> bool:
+	return plates_on() and Kitchen.DISHES.has(dish) and not Kitchen.DISHES[dish].has("cafe")
 
 var money := START_MONEY:
 	set(value):
@@ -180,6 +198,8 @@ func reset() -> void:
 	deliveries = []
 	crates = []
 	cafe_step = 0
+	clean_plates = START_CLEAN_PLATES
+	dirty_plates = START_DIRTY_PLATES
 	table_chairs = NEW_GAME_SEATING.duplicate()
 	money = START_MONEY
 	player_level = 1
@@ -205,6 +225,7 @@ func to_save() -> Dictionary:
 		"inventory": inventory, "market_stock": market_stock, "market_restock_left": market_restock_left,
 		"deliveries": deliveries, "crates": crates,
 		"cafe_step": cafe_step, "customers_lost": customers_lost,
+		"clean_plates": clean_plates, "dirty_plates": dirty_plates,
 		"tutorials_seen": tutorials_seen, "lesson_stars": lesson_stars, "lesson_pages_done": lesson_pages_done, "guides_done": guides_done, "quest_progress": quest_progress, "short_tour": short_tour, "challenges_done": challenges_done, "level_sales": level_sales, "goals_reached": goals_reached, "todays_special": todays_special,
 	}
 
@@ -276,6 +297,9 @@ func from_save(d: Dictionary) -> void:
 		if str(specs[k]) in Progression.STAFF_SPECIALIZATIONS:
 			staff_specs[str(k)] = str(specs[k])
 	cafe_step = clampi(int(d.get("cafe_step", 0)), 0, Kitchen.CAFE_STEPS)
+	clean_plates = maxi(0, int(d.get("clean_plates", START_CLEAN_PLATES)))
+	dirty_plates = maxi(0, int(d.get("dirty_plates", START_DIRTY_PLATES)))
+	plates_changed.emit()
 	_load_market(d)
 	restaurant_level = int(d.get("restaurant_level", 1))
 	seating_changed.emit()

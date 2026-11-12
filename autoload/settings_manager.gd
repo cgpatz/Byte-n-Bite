@@ -17,7 +17,7 @@ var code_window := Rect2()
 ## Floating windows (Lessons, Recipe Book, Library, Stats): name -> [x, y, scale].
 var windows := {}
 ## Goals & Challenges list on the HUD: open or closed.
-var goals_open := true
+var goals_open := false  # the quest card is enough; "All quests" / G opens the log
 ## Camera zoom step in the restaurant: 0 = 4x (whole street), 1 = 5x (default), 2 = 6x (close).
 var zoom_step := 1
 ## Quest card (top left) folded to one line.

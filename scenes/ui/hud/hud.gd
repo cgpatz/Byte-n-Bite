@@ -290,6 +290,18 @@ func _build_challenges() -> void:
 	_refresh_challenges()
 
 
+## While Chef Miso's tutorial (tour + coding quests) runs, her box is the
+## ONLY place that shows the task: the quest card and Quest Log wait.
+var _tour_mode := false
+
+
+func set_tour_mode(on: bool) -> void:
+	if _tour_mode == on:
+		return
+	_tour_mode = on
+	_refresh_challenges()
+
+
 ## Opens / closes the goals and challenges list (remembered between games).
 func toggle_goals() -> void:
 	SettingsManager.goals_open = not SettingsManager.goals_open
@@ -316,8 +328,10 @@ func _refresh_challenges() -> void:
 	var quests: Array = MisoQuests.for_level(lv)
 	var any := not (goals.is_empty() and chals.is_empty() and quests.is_empty())
 	_goals_tab.visible = false
-	_goals.visible = any
+	_goals.visible = any and not _tour_mode
 	_refresh_quest_card()
+	if _qcard:
+		_qcard.visible = not _tour_mode
 	if not any:
 		return
 	for c in _ql_body.get_children():
@@ -362,7 +376,7 @@ func _refresh_challenges() -> void:
 	var open: bool = SettingsManager.goals_open
 	var left: int = GameState.goals_left(lv).size() + GameState.challenges_left(lv).size() + miso_left
 	_goals_tab.text = "%s Quests  ·  %d left" % ["◂" if open else "▸", left]
-	_goals.visible = open
+	_goals.visible = open and not _tour_mode
 	_ql_layout.call_deferred()
 
 
@@ -1189,7 +1203,7 @@ func _refresh_quest_card() -> void:
 		else:
 			var c0 = left[0]
 			var ct: String = String(c0.get("title", "")) if c0 is Dictionary else String(LevelChallenges.find(lv, String(c0)).get("title", ""))
-			task = "Level Challenge: %s" % ct
+			task = "Serve customers. Ready for more? Level Challenge: %s" % ct
 	else:
 		title = quests[k].topic
 		task = _plain(String(quests[k].do).replace("{who}", _qc_who()))

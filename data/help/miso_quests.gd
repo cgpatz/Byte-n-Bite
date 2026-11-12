@@ -15,10 +15,22 @@ const QUESTS := {
 			"say": "Your first C line! [b]printf[/b] prints text, and the staff member says it. Put the words in double quotes, end with [b]\\n[/b], and greet yourself by name!",
 			"example": "printf(\"Good morning!\\n\");",
 			"do": "Make {who} greet YOU: [b]printf[/b] a line with your name, then press [b]Run[/b]."},
-		{"topic": "Cook and serve a dish", "check": "serve", "customer": "EGGSILOG",
-			"say": "Staff work through [b]kitchen commands[/b]. For Eggsilog: fetch each ingredient, [b]cook()[/b] it (rice at the RICE_COOKER, egg at the GRILL), [b]plate()[/b] it at the ASSEMBLY, then [b]assemble()[/b] and [b]serve()[/b].",
-			"example": "go_to(FRIDGE); pick_up(RICE);\ngo_to(RICE_COOKER); cook();\ngo_to(ASSEMBLY); plate();\ngo_to(FRIDGE); pick_up(EGG);\ngo_to(GRILL); cook();\ngo_to(ASSEMBLY); plate();\nassemble(EGGSILOG);\nserve();",
-			"do": "A customer wants an Eggsilog! Make {who} cook and [b]serve()[/b] it."},
+		{"topic": "Fetch an ingredient", "check": "fetch",
+			"say": "Staff work through [b]kitchen commands[/b]. First one: walk to a station with [b]go_to()[/b], then grab something with [b]pick_up()[/b]. Station and ingredient names are ALL CAPS. (Station names show above the kitchen while the editor is open.)",
+			"example": "go_to(FRIDGE);\npick_up(RICE);",
+			"starter": "int main() {\n    // Walk to the fridge and pick up RICE\n    \n    return 0;\n}\n",
+			"do": "Make {who} walk to the [b]FRIDGE[/b] and [b]pick_up(RICE)[/b]."},
+		{"topic": "Cook it", "check": "cook",
+			"say": "Rice is cooked at the [b]RICE_COOKER[/b]. I wrote the first part for you: add the line that cooks it. [b]cook()[/b] cooks whatever the staff member is holding.",
+			"example": "go_to(RICE_COOKER);\ncook();",
+			"starter": "int main() {\n    go_to(FRIDGE);\n    pick_up(RICE);\n    go_to(RICE_COOKER);\n    // cook it here\n    \n    return 0;\n}\n",
+			"answer": "int main() {\n    go_to(FRIDGE);\n    pick_up(RICE);\n    go_to(RICE_COOKER);\n    cook();\n    return 0;\n}\n",
+			"do": "Add [b]cook();[/b] so {who} cooks the rice."},
+		{"topic": "Plate and serve", "check": "serve", "customer": "EGGSILOG",
+			"say": "A customer wants [b]Eggsilog[/b] (rice + egg)! Cooked food goes on the plate at the [b]ASSEMBLY[/b] with [b]plate()[/b]. The rice part is done for you. The egg cooks on the [b]GRILL[/b].",
+			"example": "go_to(GRILL); cook();\ngo_to(ASSEMBLY); plate();\nassemble(EGGSILOG);\nserve();",
+			"starter": "int main() {\n    // Rice: done for you\n    go_to(FRIDGE);\n    pick_up(RICE);\n    go_to(RICE_COOKER);\n    cook();\n    go_to(ASSEMBLY);\n    plate();\n\n    // Egg: fetch it, cook it on the GRILL, plate it\n    go_to(FRIDGE);\n    pick_up(EGG);\n    \n\n    // Then assemble(EGGSILOG); and serve();\n    \n    return 0;\n}\n",
+			"do": "Finish the egg, then [b]assemble(EGGSILOG);[/b] and [b]serve();[/b]"},
 		{"topic": "int variables and %d", "check": "int",
 			"say": "A [b]variable[/b] stores a value. [b]int[/b] holds whole numbers; print it with [b]%d[/b] and put the variable after the quotes.",
 			"example": "int eggs = 3;\nprintf(\"Eggs: %d\\n\", eggs);",
@@ -99,21 +111,25 @@ const QUESTS := {
 	],
 	4: [
 		{"topic": "Arrays", "check": "array",
-			"say": "An [b]array[/b] keeps many values in one variable. Use [b]list[i][/b] to read one; the first index is [b]0[/b].",
-			"example": "int dishes[] = {EGGSILOG, HOTSILOG};\nprintf(\"%s\\n\", dishes[0]);",
-			"do": "Make an [b]array[/b] and read an item with [b][ ][/b]."},
-		{"topic": "Looping through an array", "check": "array_loop",
-			"say": "A [b]for[/b] loop with [b]i[/b] as the index visits every item.",
-			"example": "int prices[] = {30, 40, 45};\nfor (int i = 0; i < 3; i++) {\n    printf(\"%d\\n\", prices[i]);\n}",
-			"do": "Loop through an array with a [b]for[/b] loop."},
-		{"topic": "sizeof", "check": "sizeof",
-			"say": "[b]sizeof(list) / sizeof(list[0])[/b] tells how many items an array has.",
-			"example": "int prices[] = {30, 40, 45};\nint n = sizeof(prices) / sizeof(prices[0]);\nprintf(\"%d items\\n\", n);",
-			"do": "Use [b]sizeof[/b] to count an array's items."},
-		{"topic": "recipe()", "check": "recipe",
-			"say": "[b]recipe(DISH, items)[/b] fills an array with a dish's ingredients and returns how many.",
-			"example": "int items[8];\nint n = recipe(HAMBURGER, items);\nprintf(\"%d ingredients\\n\", n);",
-			"do": "Call [b]recipe()[/b] to fill an array."},
+			"say": "An [b]array[/b] keeps many values in one variable, like a shelf with numbered slots. A recipe is a list, so put its ingredients in one! [b]items[0][/b] is the first slot (indexes start at [b]0[/b]).",
+			"example": "int items[] = {RICE, EGG, HOTDOG};\ngo_to(FRIDGE);\npick_up(items[0]);",
+			"do": "Make an [b]array[/b] of ingredients and [b]pick_up()[/b] one of them with [b][ ][/b]."},
+		{"topic": "One loop, whole dish", "check": "array_cook", "customer": "HOTSILOG",
+			"say": "Hotsilog written step by step takes 18 lines. With two arrays, one says WHAT to fetch and one says WHERE to cook it, and a [b]for[/b] loop does every ingredient the same way. I wrote the arrays; you write the loop's inside using [b]items[i][/b] and [b]cookers[i][/b].",
+			"example": "go_to(FRIDGE);\npick_up(items[i]);\ngo_to(cookers[i]);\ncook();\ngo_to(ASSEMBLY);\nplate();",
+			"starter": "int main() {\n    int items[]   = {RICE, EGG, HOTDOG};\n    int cookers[] = {RICE_COOKER, GRILL, GRILL};\n\n    for (int i = 0; i < 3; i++) {\n        // fetch items[i], cook it at cookers[i], plate it\n        \n    }\n\n    assemble(HOTSILOG);\n    serve();\n    return 0;\n}\n",
+			"answer": "int main() {\n    int items[]   = {RICE, EGG, HOTDOG};\n    int cookers[] = {RICE_COOKER, GRILL, GRILL};\n\n    for (int i = 0; i < 3; i++) {\n        go_to(FRIDGE);\n        pick_up(items[i]);\n        go_to(cookers[i]);\n        cook();\n        go_to(ASSEMBLY);\n        plate();\n    }\n\n    assemble(HOTSILOG);\n    serve();\n    return 0;\n}\n",
+			"do": "Fill the loop so it cooks and plates [b]items[i][/b], then serve the Hotsilog."},
+		{"topic": "Let the array count itself", "check": "sizeof",
+			"say": "The [b]3[/b] in [b]i < 3[/b] breaks if you add an ingredient. [b]sizeof(items) / sizeof(items[0])[/b] counts the slots for you, so the loop always fits the list.",
+			"example": "int n = sizeof(items) / sizeof(items[0]);\nfor (int i = 0; i < n; i++) {\n    // same steps as before\n}",
+			"answer": "int main() {\n    int items[]   = {RICE, EGG, HOTDOG};\n    int cookers[] = {RICE_COOKER, GRILL, GRILL};\n    int n = sizeof(items) / sizeof(items[0]);\n\n    for (int i = 0; i < n; i++) {\n        go_to(FRIDGE);\n        pick_up(items[i]);\n        go_to(cookers[i]);\n        cook();\n        go_to(ASSEMBLY);\n        plate();\n    }\n\n    assemble(HOTSILOG);\n    serve();\n    return 0;\n}\n",
+			"do": "Count your array with [b]sizeof[/b] and use it in the loop."},
+		{"topic": "Let the kitchen fill the arrays", "check": "recipe",
+			"say": "Typing the lists for every dish is slow. [b]recipe(DISH, items)[/b] fills the ingredient array and returns how many, and [b]cook_station(ING)[/b] says where each one cooks ([b]NOTHING[/b] = served fresh). Now one loop makes [b]any[/b] dish!",
+			"example": "int items[8];\nint n = recipe(HOTSILOG, items);\nfor (int i = 0; i < n; i++) {\n    go_to(FRIDGE);\n    pick_up(items[i]);\n    int where = cook_station(items[i]);\n    if (where != NOTHING) {\n        go_to(where);\n        cook();\n    }\n    go_to(ASSEMBLY);\n    plate();\n}",
+			"answer": "int main() {\n    int items[8];\n    int n = recipe(HOTSILOG, items);\n    for (int i = 0; i < n; i++) {\n        go_to(FRIDGE);\n        pick_up(items[i]);\n        int where = cook_station(items[i]);\n        if (where != NOTHING) {\n            go_to(where);\n            cook();\n        }\n        go_to(ASSEMBLY);\n        plate();\n    }\n    assemble(HOTSILOG);\n    serve();\n    return 0;\n}\n",
+			"do": "Use [b]recipe()[/b] and [b]cook_station()[/b] in a loop."},
 		{"topic": "2D arrays", "check": "array2d",
 			"say": "A [b]2D array[/b] has rows and columns: [b]grid[row][col][/b].",
 			"example": "int menu[2][2] = {{EGGSILOG, HOTSILOG}, {TOCILOG, HAMBURGER}};\nprintf(\"%s\\n\", menu[1][0]);",
@@ -132,6 +148,10 @@ const QUESTS := {
 			"say": "A function can [b]return[/b] a value back to whoever called it.",
 			"example": "int price_of(int dish) {\n    if (dish == EGGSILOG) {\n        return 30;\n    }\n    return 40;\n}\n\nint main() {\n    printf(\"%d\\n\", price_of(EGGSILOG));\n    return 0;\n}",
 			"do": "Call a function that uses [b]return[/b] to give back a value."},
+		{"topic": "Wash the dishes", "check": "wash_fn",
+			"say": "Served plates come back dirty to the [b]SINK[/b], and [b]assemble()[/b] needs a clean one from the [b]DISH_RACK[/b]. Write a [b]function[/b] that washes them all with a loop: [b]while (dirty_plates() > 0) { wash(); }[/b]",
+			"example": "void wash_all() {\n    go_to(SINK);\n    while (dirty_plates() > 0) {\n        wash();\n    }\n}\n\nint main() {\n    wash_all();\n    return 0;\n}",
+			"do": "Write a function that washes the dirty plates with [b]wash()[/b] in a loop, and call it from [b]main()[/b]."},
 		{"topic": "Your Library", "check": "library",
 			"say": "Functions saved in your [b]Library (L)[/b] (with [b]Use[/b] ticked) can be called by every staff member.",
 			"example": "int main() {\n    fetch_and_cook(EGG);   // lives in a Library slot\n    return 0;\n}",
@@ -158,6 +178,10 @@ static func met(check: String, trace: Dictionary) -> bool:
 			for p in printfs:
 				all += String(p.get("text", ""))
 			return _greets_player(all)
+		"fetch":
+			return _n(trace, "fn:go_to") + _n(trace, "fn:move_to") >= 1 and _n(trace, "fn:pick_up") >= 1
+		"cook":
+			return _n(trace, "fn:cook") >= 1
 		"serve":
 			return int(trace.get("served", 0)) >= 1
 		"kitchen":
@@ -219,10 +243,12 @@ static func met(check: String, trace: Dictionary) -> bool:
 			return _n(trace, "array") >= 1 and _n(trace, "index") >= 1
 		"array_loop":
 			return _n(trace, "array") >= 1 and _n(trace, "for") >= 2 and _n(trace, "index") >= 2
+		"array_cook":
+			return _n(trace, "array") >= 1 and _n(trace, "for") >= 2 and _n(trace, "index") >= 2 and _n(trace, "fn:cook") >= 2
 		"sizeof":
 			return _n(trace, "sizeof") >= 1
 		"recipe":
-			return _n(trace, "fn:recipe") >= 1
+			return _n(trace, "fn:recipe") >= 1 and _n(trace, "fn:cook_station") >= 1
 		"array2d":
 			return _n(trace, "array2d") >= 1 and _n(trace, "index") >= 1
 		"func":
@@ -233,6 +259,8 @@ static func met(check: String, trace: Dictionary) -> bool:
 			return _n(trace, "user_return") >= 1
 		"library":
 			return _n(trace, "library_call") >= 1
+		"wash_fn":
+			return _n(trace, "user_call") >= 1 and _n(trace, "fn:wash") >= 1 and _n(trace, "loop") >= 1
 	return false
 
 
@@ -265,6 +293,12 @@ static func why_not(check: String, trace: Dictionary) -> String:
 			if printfs.is_empty():
 				return "I didn't see any printf run. Write it inside main() { } and end the line with ;"
 			return "Nice printf! Now put your name in the text, like printf(\"Hi, %s!\\n\");" % _player_name()
+		"fetch":
+			if _n(trace, "fn:go_to") + _n(trace, "fn:move_to") == 0:
+				return "Almost! Start with go_to(FRIDGE); so your staff walks to the fridge."
+			return "Almost! At the fridge, add pick_up(RICE); to grab the rice."
+		"cook":
+			return "Almost! After go_to(RICE_COOKER); add cook(); (with the empty brackets and the ;)."
 		"serve":
 			if _n(trace, "fn:assemble") == 0:
 				return "Almost! Plate the rice AND the egg at the ASSEMBLY, then assemble(EGGSILOG); and serve();"
@@ -318,13 +352,21 @@ static func why_not(check: String, trace: Dictionary) -> String:
 		"break_continue":
 			return "Inside a loop, use break; to stop it (or continue; to skip a round)."
 		"array":
-			return "Make an array like int a[] = {1, 2, 3}; and read one item with a[0]."
+			return "Make an array like int items[] = {RICE, EGG}; then use one slot: pick_up(items[0]);"
+		"array_cook":
+			if _n(trace, "for") < 2:
+				return "Put the steps INSIDE the loop's { } so they run for every ingredient."
+			if _n(trace, "index") < 2:
+				return "Inside the loop, use items[i] and cookers[i] (with the [i]) so each round takes the next ingredient."
+			return "Almost! Each round needs go_to(cookers[i]); cook(); before go_to(ASSEMBLY); plate();"
 		"array_loop":
 			return "Use a for loop and read list[i] inside it."
 		"sizeof":
 			return "Use sizeof(list) / sizeof(list[0]) to count the items."
 		"recipe":
-			return "Call recipe(DISH, items) with an int array, like int items[8];"
+			if _n(trace, "fn:recipe") == 0:
+				return "Call recipe(DISH, items) with an int array, like int items[8];"
+			return "Now ask where each one cooks: int where = cook_station(items[i]);"
 		"array2d":
 			return "Make a 2D array like int g[2][2] and read g[1][0]."
 		"func":
@@ -335,4 +377,10 @@ static func why_not(check: String, trace: Dictionary) -> String:
 			return "Make a function that ends with return value; and call it."
 		"library":
 			return "Tick Use on a Library slot (L) and call its function in main()."
+		"wash_fn":
+			if _n(trace, "fn:wash") == 0:
+				return "Inside your function: go_to(SINK); then wash(); (with no dirty plates, serve a dish first)."
+			if _n(trace, "loop") == 0:
+				return "Wash in a loop: while (dirty_plates() > 0) { wash(); }"
+			return "Put the washing in your OWN function (void wash_all() { ... }) and call it from main()."
 	return "Not quite yet: check the example in your Quest Log."

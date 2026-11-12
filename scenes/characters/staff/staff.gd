@@ -55,6 +55,7 @@ const FAR_REACH := 80.0
 ## Seconds for quick actions.
 const PICK_TIME := 0.4
 const COMBINE_TIME := 0.8
+const WASH_TIME := 1.2
 const SERVE_TIME := 0.5
 const MAX_LOG_CHARS := 12000
 
@@ -282,6 +283,12 @@ func _draw_action() -> void:
 			draw_circle(p, 6 + k * 6, Color(1, 1, 1, 0.55 * (1.0 - k)))
 		draw_circle(at + Vector2(0, -8), 5 + absf(sin(t * 9.0)) * 3, Color(1.0, 0.55, 0.15, 0.7))
 		return
+	if _action == "wash":
+		for i in 4:
+			var k := fmod(t * 1.2 + i / 4.0, 1.0)
+			var p := at + Vector2((i - 1.5) * 10 + sin(t * 5.0 + i) * 5, -6 - k * 34)
+			draw_arc(p, 4 + k * 4, 0, TAU, 12, Color(0.75, 0.9, 1.0, 0.8 * (1.0 - k)), 2.0)
+		return
 	var col: Color = {"pick": Color(0.6, 0.9, 1.0), "plate": Color(1, 0.95, 0.6), "assemble": Color(1, 0.85, 0.3),
 		"serve": Color(1, 0.6, 0.7), "trash": Color(0.7, 0.7, 0.7)}.get(_action, Color.WHITE)
 	var mid := at.lerp(Vector2.ZERO, 0.5)
@@ -347,6 +354,8 @@ func run_program() -> void:
 		return
 	var back := _return_unused()
 	_log("[color=#b9a58a]▶ %s starts working (hands and plate cleared%s).[/color]" % [staff_name, back])
+	for note in interp.notes:
+		_log("[color=#c9952f]Note: %s[/color]" % String(note).replace("[", "[lb]"))
 	held = {}
 	plate_items = {}
 	_interp = interp
@@ -562,10 +571,10 @@ func _report_error(err: Dictionary) -> void:
 		var slot_name := "Slot %d" % (info.slot + 1)
 		if info.slot < GameState.library_slots.size():
 			slot_name = GameState.library_slots[info.slot].name
-		_log("[color=#ff7a6a]Library \"%s\", line %d: %s[/color]" % [slot_name, info.line, msg])
+		_log("[color=#ff7a6a]✖ Library \"%s\", line %d: %s[/color]" % [slot_name, info.line, msg])
 		error_at.emit(-1, err.get("msg", ""))
 		return
-	_log("[color=#ff7a6a]Line %d: %s[/color]" % [line, msg])
+	_log("[color=#ff7a6a]✖ Line %d: %s[/color]" % [line, msg])
 	Sfx.play("error", -6.0)
 	_progressive_hint(String(err.get("msg", "")), line)
 	error_at.emit(line, err.get("msg", ""))
@@ -738,6 +747,24 @@ func run_builtin(fname: String, args: Array, _line: int) -> Dictionary:
 			return {"value": 0}
 		"holding":
 			return {"value": held.get("id", Kitchen.NOTHING)}
+		"wash":
+			var we := _need_station("SINK", "wash")
+			if we != "":
+				return {"error": we}
+			if not held.is_empty():
+				return {"error": "%s needs empty hands to wash (holding %s). plate() or trash() it first." % [staff_name, Kitchen.describe(held)]}
+			if GameState.dirty_plates <= 0:
+				return {"error": "There are no dirty plates to wash. Check first: if (dirty_plates() > 0) { wash(); }"}
+			GameState.dirty_plates -= 1  # taken now, so two washers never grab the same plate
+			GameState.plates_changed.emit()
+			await _act("wash", WASH_TIME, "washing...")
+			GameState.clean_plates += 1
+			GameState.plates_changed.emit()
+			return {"value": 0}
+		"clean_plates":
+			return {"value": GameState.clean_plates}
+		"dirty_plates":
+			return {"value": GameState.dirty_plates}
 		"trash":
 			var e := _need_station("TRASH", "trash")
 			if e != "":
@@ -955,10 +982,19 @@ func _do_assemble(id: int) -> Dictionary:
 			problems.append("has %d extra %s" % [extra, ing])
 	if not problems.is_empty():
 		return {"error": "The plate can't become %s yet: it %s. (Plate: %s)" % [dish, " and ".join(problems), Kitchen.describe_plate(plate_items)]}
+	var plated := GameState.uses_plate(dish)
+	if plated:
+		if GameState.clean_plates <= 0:
+			return {"error": "No clean plates on the DISH_RACK! Wash the dirty ones first: go_to(SINK); wash(); (dirty_plates() tells how many)."}
+		GameState.clean_plates -= 1
+		GameState.plates_changed.emit()
 	await _act("assemble", COMBINE_TIME, "assembling...")
 	if not _stop_requested:
 		plate_items = {}
 		held = {"id": id, "cooked": true}
+	elif plated:
+		GameState.clean_plates += 1  # stopped mid-way: the plate goes back
+		GameState.plates_changed.emit()
 	return {"value": 0}
 
 
@@ -966,6 +1002,9 @@ func _do_assemble(id: int) -> Dictionary:
 ## over. If nobody has ordered it yet, it is left on the SERVING_COUNTER.
 func _served_one(dish := "") -> void:
 	run_trace.served += 1
+	if GameState.uses_plate(dish):
+		GameState.dirty_plates += 1  # the customer's empty plate goes to the SINK
+		GameState.plates_changed.emit()
 	Sfx.play("serve", -2.0)
 	if dish != "":
 		run_trace.dishes[dish] = true

@@ -27,6 +27,9 @@ static func all_sets() -> Array:
 	out.append({"group": "Library", "title": "make_dish(int dish)", "level": 5,
 		"note": "Paste into a Library slot (L). Every staff program can then call make_dish(order);",
 		"code": make_dish()})
+	out.append({"group": "Library", "title": "wash_all()", "level": 5,
+		"note": "Paste into a Library slot (L). Washes every dirty plate at the SINK (Level 5).",
+		"code": WASH_ALL})
 	out.append({"group": "Library", "title": "fetch_cook_plate(int item, int station)", "level": 5,
 		"note": "Paste into a Library slot (L). Fetches one ingredient, cooks it there and plates it.",
 		"code": FETCH_COOK_PLATE})
@@ -172,8 +175,8 @@ static func challenges_program(lv: int) -> String:
 		4:
 			return generic_arrays().replace("    int items[8];\n", "    int items[8];\n    int room = sizeof(items) / sizeof(items[0]);\n    printf(\"Room for %d ingredients\\n\", room);\n")
 		_:
-			return ("// Level 5 challenges (needs make_dish() in a Library slot)\nint price_of(int dish) {\n    if (dish == EGGSILOG) {\n        return 30;\n    }\n    return 50;\n}\n\n"
-				+ "int main() {\n    while (1) {\n        if (has_order()) {\n            int order = take_order();\n            make_dish(order);\n"
+			return ("// Level 5 challenges (needs make_dish() in a Library slot)\n" + WASH_ALL + "\n\nint price_of(int dish) {\n    if (dish == EGGSILOG) {\n        return 30;\n    }\n    return 50;\n}\n\n"
+				+ "int main() {\n    while (1) {\n        if (has_order()) {\n            int order = take_order();\n            if (clean_plates() == 0) {\n                wash_all();\n            }\n            make_dish(order);\n"
 				+ "            printf(\"About %d coins\\n\", price_of(order));\n        } else {\n            wait(1);\n        }\n    }\n    return 0;\n}")
 
 
@@ -254,12 +257,21 @@ static func generic_arrays() -> String:
 
 ## main() for Level 5: every order, every plate, through make_dish().
 static func _main_make_dish() -> String:
-	return "\n\nint main() {\n    while (1) {\n        if (has_order()) {\n            int order = take_order();\n            int n = order_quantity();\n            for (int p = 0; p < n; p++) {\n                make_dish(order);\n            }\n        } else {\n            wait(1);\n        }\n    }\n    return 0;\n}"
+	return "\n\n" + WASH_ALL + "\n\nint main() {\n    while (1) {\n        if (has_order()) {\n            int order = take_order();\n            int n = order_quantity();\n            for (int p = 0; p < n; p++) {\n                if (clean_plates() == 0) {\n                    wash_all();\n                }\n                make_dish(order);\n            }\n        } else {\n            wait(1);\n        }\n    }\n    return 0;\n}"
 
 
 static func make_dish() -> String:
 	return ("// Makes and serves any dish (needs Restaurant Level 4 for recipe()).\nvoid make_dish(int dish) {\n    int items[8];\n"
 		+ _array_steps("dish", "    ") + "}")
+
+
+const WASH_ALL := """// Level 5: washes every dirty plate at the SINK.
+void wash_all() {
+    go_to(SINK);
+    while (dirty_plates() > 0) {
+        wash();
+    }
+}"""
 
 
 const FETCH_COOK_PLATE := """// Fetches an ingredient, cooks it at a station (NOTHING = fresh) and plates it.
@@ -308,8 +320,10 @@ static func quest_sets() -> Array:
 				code = _main("    int eggs = 2;\n    float price = 30.50;\n    printf(\"Eggs: %d  Price: %.2f\\n\", eggs, price);\n")
 				out.append({"group": "Chef Miso quests", "title": "L%d Q%d: Fix the bug (broken version)" % [lv, k + 1], "level": lv,
 					"note": "The program Chef Miso loads for this quest, with its 2 bugs.", "code": q.broken})
+			elif q.has("answer"):
+				code = q.answer
 			elif q.check == "serve":
-				code = _main(_indent(q.example))
+				code = _main(dish_steps(String(q.get("customer", "EGGSILOG")), "    "))
 			elif String(q.example).contains(" main()"):
 				code = q.example
 			else:

@@ -136,14 +136,47 @@ func _close_by() -> Array:
 	return out
 
 
+## Staff reach across the counter: the closest staff member within this distance.
+const STAFF_REACH := 210.0
+
+
+func _staff_across() -> Node:
+	var root := get_tree().get_first_node_in_group("game_root")
+	if root == null or not root.has_method("_staff_list"):
+		return null
+	var best: Node = null
+	var bd := STAFF_REACH
+	for st in root._staff_list():
+		if is_instance_valid(st) and st.can_interact():
+			var d := global_position.distance_to(st.global_position)
+			if d < bd:
+				bd = d
+				best = st
+	return best
+
+
 ## Focus the closest interactable in range (something right next to the
 ## manager wins over something further away).
+## During Chef Miso's tutorial, buying (tables, chairs, restaurant
+## upgrades) waits: one thing to learn at a time.
+func _tour_blocks(n: Node) -> bool:
+	var g := get_tree().get_first_node_in_group("game_root")
+	if g == null or g.get("guide") == null or not g.guide.is_touring():
+		return false
+	if not n.has_method("get_prompt"):
+		return false
+	if n.get("opens") == "upgrades":
+		return true
+	var p := String(n.get_prompt())
+	return p.begins_with("Add a chair") or p.begins_with("Buy a table")
+
+
 func _update_focus() -> void:
 	var close := _close_by()
 	var best: Node = null
 	var best_dist := INF
 	for n in _in_reach() + close:
-		if not is_instance_valid(n) or not n.can_interact():
+		if not is_instance_valid(n) or not n.can_interact() or _tour_blocks(n):
 			continue
 		var d := global_position.distance_squared_to((n as Node2D).global_position)
 		if not n in close:
@@ -151,6 +184,13 @@ func _update_focus() -> void:
 		if d < best_dist:
 			best_dist = d
 			best = n
+	# Staff win over "Inspect …" stations (and over nothing) when they're a
+	# counter's width away: you can talk to the cook across the counter.
+	if best == null or (best is Station and String(best.get_prompt()).begins_with("Inspect")):
+		var s := _staff_across()
+		if s != null:
+			best = s
+			close.append(s)
 	if not can_move:
 		best = null
 	if best != _focus:

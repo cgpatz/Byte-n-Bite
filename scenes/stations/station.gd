@@ -122,6 +122,71 @@ func _draw() -> void:
 		draw_string(font, pos, display_name, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color.WHITE)
 
 
+## Code-name tag (e.g. RICE_COOKER) shown above the station while the code
+## editor is open, so players can match go_to(...) names to the kitchen.
+var _code_tag: Label
+
+
+func show_code_tag(on: bool) -> void:
+	if on and _code_tag == null:
+		_code_tag = Label.new()
+		_code_tag.text = station_id
+		_code_tag.z_index = 50
+		_code_tag.z_as_relative = false
+		_code_tag.add_theme_font_override("font", preload("res://scenes/ui/common/ui_art.gd").mono())
+		_code_tag.add_theme_font_size_override("font_size", 18)
+		_code_tag.add_theme_color_override("font_color", Color("fff4d6"))
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0.18, 0.13, 0.09, 0.88)
+		sb.set_corner_radius_all(6)
+		sb.content_margin_left = 6
+		sb.content_margin_right = 6
+		sb.content_margin_top = 1
+		sb.content_margin_bottom = 2
+		_code_tag.add_theme_stylebox_override("normal", sb)
+		_code_tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(_code_tag)
+		_code_tag.reset_size()
+		var top := -size.y / 2.0
+		var tex: Texture2D = art if art else auto_art
+		if tex and not art_fit:
+			top = footprint_tiles().y * 32.0 - tex.get_height() * float(PixelArt.SCALE) + art_offset.y
+		_code_tag.position = Vector2(-_code_tag.size.x / 2.0, top - _code_tag.size.y + 6)
+	if _code_tag:
+		_code_tag.visible = on
+
+
+## Small always-on label under the station (Level 5 plate counts). "" hides it.
+var _badge: Label
+
+
+func set_badge(text: String, warn := false) -> void:
+	if text == "":
+		if _badge:
+			_badge.hide()
+		return
+	if _badge == null:
+		_badge = Label.new()
+		_badge.z_index = 40
+		_badge.z_as_relative = false
+		_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_badge.add_theme_font_size_override("font_size", 16)
+		add_child(_badge)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.62, 0.16, 0.1, 0.92) if warn else Color(0.96, 0.92, 0.82, 0.92)
+	sb.border_color = Color(0.18, 0.13, 0.09)
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(6)
+	sb.content_margin_left = 6
+	sb.content_margin_right = 6
+	_badge.add_theme_stylebox_override("normal", sb)
+	_badge.add_theme_color_override("font_color", Color.WHITE if warn else Color(0.18, 0.13, 0.09))
+	_badge.text = text
+	_badge.show()
+	_badge.reset_size()
+	_badge.position = Vector2(-_badge.size.x / 2.0, footprint_tiles().y * 32.0 - 4.0)
+
+
 ## Tiles this station covers (e.g. 120×56 -> 2×1).
 func footprint_tiles() -> Vector2i:
 	return Vector2i(maxi(1, roundi(size.x / 64.0)), maxi(1, roundi(size.y / 64.0)))

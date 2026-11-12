@@ -76,6 +76,23 @@ func _ready() -> void:
 				print(jane.log_text)
 		# 2b. Level 5: the admin make_dish() Code Set makes every dish, Café included.
 		if lv == 5:
+			# Dishwashing: assemble() takes a clean plate, serving leaves a dirty one, wash() cleans it.
+			var c0 := GameState.clean_plates
+			var d0 := GameState.dirty_plates
+			game.place_order(null, "EGGSILOG")
+			jane.program_source = "void main() {\n%s}" % CodeSets.dish_steps("EGGSILOG", "    ")
+			await jane.run_program()
+			var used_ok := GameState.clean_plates == c0 - 1 and GameState.dirty_plates == d0 + 1
+			jane.program_source = CodeSets.WASH_ALL + "\nint main() {\n    wash_all();\n    return 0;\n}"
+			await jane.run_program()
+			_report(used_ok and GameState.dirty_plates == 0 and GameState.clean_plates == c0 + d0,
+				"Level 5 plates: a dish uses a clean plate, serving returns it dirty, wash_all() cleans them (%d clean, %d dirty)" % [GameState.clean_plates, GameState.dirty_plates])
+			GameState.clean_plates = 0
+			jane.program_source = "void main() {\n%s}" % CodeSets.dish_steps("EGGSILOG", "    ")
+			jane.clear_log()
+			await jane.run_program()
+			_report(jane.log_text.contains("No clean plates"), "Level 5 plates: assemble() with no clean plates gives a clear error")
+			GameState.clean_plates = 99  # the checks below test cooking, not washing
 			var bad: Array = []
 			for dish in Kitchen.DISHES:
 				var before2 := GameState.money

@@ -292,6 +292,27 @@ const KITCHEN := {
 		"mistakes": ["Passing list[0] instead of list.", "Looping to the array size instead of n."],
 		"related": ["check_counter", "recipe"],
 	},
+	"wash": {
+		"about": "Level 5 dishwashing. Every restaurant dish takes a clean plate from the DISH_RACK at assemble(), and serving it sends a dirty plate to the SINK. wash() cleans one dirty plate and puts it back on the rack. Café drinks and pastries don't use plates.",
+		"steps": ["go_to(SINK);", "Hands must be empty.", "wash(); cleans one plate (repeat with a loop)."],
+		"example": "void wash_all() {\n    go_to(SINK);\n    while (dirty_plates() > 0) {\n        wash();\n    }\n}\n\nint main() {\n    wash_all();\n    return 0;\n}",
+		"mistakes": ["Washing while holding food: plate() or trash() it first.", "Calling wash() when dirty_plates() is 0."],
+		"related": ["clean_plates", "dirty_plates", "assemble"],
+	},
+	"clean_plates": {
+		"about": "Returns how many clean plates are on the DISH_RACK. If it is 0, assemble() fails until someone washes.",
+		"steps": ["if (clean_plates() < 2) { wash some plates }"],
+		"example": "int main() {\n    printf(\"Clean: %d  Dirty: %d\\n\", clean_plates(), dirty_plates());\n    return 0;\n}",
+		"mistakes": ["Forgetting the ( ): clean_plates is a function."],
+		"related": ["wash", "dirty_plates"],
+	},
+	"dirty_plates": {
+		"about": "Returns how many dirty plates wait at the SINK. Use it as a loop condition: wash while there are any.",
+		"steps": ["while (dirty_plates() > 0) { wash(); }"],
+		"example": "int main() {\n    go_to(SINK);\n    while (dirty_plates() > 0) {\n        wash();\n    }\n    return 0;\n}",
+		"mistakes": ["while (dirty_plates()) without going to the SINK first."],
+		"related": ["wash", "clean_plates"],
+	},
 }
 
 

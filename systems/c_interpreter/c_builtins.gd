@@ -35,7 +35,10 @@ const FUNCS := {
 	"recipe": {"level": 4, "args": 2, "sig": "recipe(DISH, items)", "desc": "Fills the array items with the dish's ingredients and returns how many.", "array_arg": 1},
 	"orders": {"level": 4, "args": 1, "sig": "orders(list)", "desc": "Copies the dishes on the counter's tickets (oldest first) into an array and returns how many.", "array_arg": 0},
 	"cook_station": {"level": 4, "args": 1, "sig": "cook_station(INGREDIENT)", "desc": "Returns the station that cooks an ingredient, or NOTHING if it's served fresh."},
-	# Level 5 — Grand Restaurant: your own functions
+	# Level 5 — Grand Restaurant: your own functions (and dishwashing to write them for)
+	"wash": {"level": 5, "args": 0, "sig": "wash()", "desc": "At SINK: wash one dirty plate; it goes on the DISH_RACK, clean."},
+	"clean_plates": {"level": 5, "args": 0, "sig": "clean_plates()", "desc": "Returns how many clean plates are on the DISH_RACK (each restaurant dish needs one at assemble())."},
+	"dirty_plates": {"level": 5, "args": 0, "sig": "dirty_plates()", "desc": "Returns how many dirty plates are waiting at the SINK."},
 }
 
 ## Standard C functions handled by the interpreter itself.

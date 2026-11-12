@@ -98,6 +98,10 @@ func _on_start_pressed() -> void:
 		error_label.text = "Please enter your name."
 		manager_name_edit.grab_focus()
 		return
+	# A new game starts with the full Quest Log closed (the quest card shows the
+	# current quest; "All quests" or G opens the log).
+	SettingsManager.goals_open = false
+	SettingsManager.save_settings()
 	confirmed.emit(game_name, manager, _new_to_c)
 	queue_free()
 
